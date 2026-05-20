@@ -2321,7 +2321,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function replace_sponsorship_page_content(string $content): string {
-        if (is_admin() || !is_page('sponsorship') || !in_the_loop() || !is_main_query()) {
+        if (is_admin() || !is_page('sponsorship')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 8211) {
             return $content;
         }
 
