@@ -1,0 +1,46 @@
+name: Deploy Ma's House WordPress Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "ma-artwork-airtable-woo-sync.php"
+      - "README.md"
+      - "assets/**"
+
+jobs:
+  deploy:
+    name: Deploy plugin to mashouse.studio
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate plugin PHP
+        run: php -l ma-artwork-airtable-woo-sync.php
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SITEGROUND_SSH_KEY }}" > ~/.ssh/siteground_key
+          chmod 600 ~/.ssh/siteground_key
+          ssh-keyscan -p "${{ secrets.SITEGROUND_PORT }}" "${{ secrets.SITEGROUND_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy plugin files
+        run: |
+          rsync -az --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude "DEPLOYMENT.md" \
+            -e "ssh -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
+            ./ "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:${{ secrets.MASHOUSE_PLUGIN_PATH }}/"
+
+      - name: Verify deployed file exists
+        run: |
+          ssh -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php'"
