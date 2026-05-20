@@ -8,6 +8,8 @@ This plugin is intended to be managed from GitHub and deployed to SiteGround wit
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the GitHub repository setup, required secrets, and rollback workflow.
 
+Last deployment wiring check: 2026-05-20.
+
 ## Install
 
 Upload `ma-artwork-airtable-woo-sync.zip` in WordPress, or copy the `ma-artwork-airtable-woo-sync` folder into `wp-content/plugins`.
