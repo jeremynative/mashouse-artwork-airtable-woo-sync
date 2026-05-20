@@ -27,6 +27,15 @@ Settings -> Secrets and variables -> Actions -> New repository secret
 - `SITEGROUND_SSH_KEY`
 - `MASHOUSE_PLUGIN_PATH`
 
+Current working values:
+
+- `SITEGROUND_HOST`: `c1108516.sgvps.net`
+- `SITEGROUND_PORT`: `18765`
+- `SITEGROUND_USER`: `u4-tvqwqtej8qbs`
+- `MASHOUSE_PLUGIN_PATH`: `/home/customer/www/mashouse.studio/public_html/wp-content/plugins/ma-artwork-airtable-woo-sync`
+
+Use the direct SiteGround host above for deploys. Do not use `ssh.mashouse.studio`, because that hostname currently resolves through Cloudflare and GitHub Actions cannot SSH through it.
+
 The local deploy key generated for this workflow is stored outside the plugin repo here:
 
 - Private key for GitHub secret `SITEGROUND_SSH_KEY`:
@@ -40,11 +49,7 @@ Public key:
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMnr30giE3+hG5dSFUUuxd+AUvUSHgpzXq0kFCQs0had github-actions-mashouse-plugin-deploy
 ```
 
-`MASHOUSE_PLUGIN_PATH` should point to the live plugin folder on SiteGround, likely:
-
-`/home/customer/www/mashouse.studio/public_html/wp-content/plugins/ma-artwork-airtable-woo-sync`
-
-Confirm the exact absolute path in SiteGround SSH before enabling automatic deploys.
+The workflow has been tested from GitHub Actions and verifies the deployed plugin file exists after upload.
 
 ## Deployment Rules
 
