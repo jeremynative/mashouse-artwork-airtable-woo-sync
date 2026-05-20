@@ -49,6 +49,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
+        add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
+        add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
@@ -2454,7 +2457,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin()) {
             return;
         }
-        echo '<style id="ma-global-site-polish-css">body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}</style>';
+        echo '<style id="ma-global-site-polish-css">body .hfg_header.site-header,body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after,.hfg_header.site-header:before,.hfg_header.site-header:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}</style>';
     }
 
     public static function optimize_frontend_product_assets(): void {
@@ -2512,6 +2515,256 @@ final class MA_Artwork_Airtable_Woo_Sync {
             wp_dequeue_style($handle);
             wp_deregister_style($handle);
         }
+    }
+
+    public static function optimize_frontend_global_assets(): void {
+        if (is_admin()) {
+            return;
+        }
+
+        $allow_payment_assets = self::allow_payment_assets_on_current_request();
+        $allow_donation_assets = self::allow_donation_assets_on_current_request();
+        $allow_contact_assets = self::allow_contact_assets_on_current_request();
+
+        if (!$allow_payment_assets) {
+            foreach (self::payment_script_handles() as $handle) {
+                wp_dequeue_script($handle);
+                wp_deregister_script($handle);
+            }
+            foreach (self::payment_style_handles() as $handle) {
+                wp_dequeue_style($handle);
+                wp_deregister_style($handle);
+            }
+        }
+
+        if (!$allow_donation_assets) {
+            foreach (self::donation_script_handles() as $handle) {
+                wp_dequeue_script($handle);
+                wp_deregister_script($handle);
+            }
+            foreach (self::donation_style_handles() as $handle) {
+                wp_dequeue_style($handle);
+                wp_deregister_style($handle);
+            }
+        }
+
+        if (!$allow_contact_assets) {
+            foreach (['google-recaptcha', 'wpcf7-recaptcha'] as $handle) {
+                wp_dequeue_script($handle);
+                wp_deregister_script($handle);
+            }
+        }
+
+        if (!$allow_donation_assets && !$allow_contact_assets) {
+            foreach (self::front_end_editor_script_handles() as $handle) {
+                wp_dequeue_script($handle);
+                wp_deregister_script($handle);
+            }
+        }
+    }
+
+    public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
+        if (is_admin()) {
+            return $tag;
+        }
+        $src_lower = strtolower($src);
+        if (!self::allow_payment_assets_on_current_request() && (
+            self::contains($src_lower, 'js.stripe.com') ||
+            self::contains($src_lower, 'paypal.com/sdk/js') ||
+            self::contains($src_lower, 'woocommerce-paypal-payments/assets/')
+        )) {
+            return '';
+        }
+        if (!self::allow_donation_assets_on_current_request() && (
+            self::contains($src_lower, '/plugins/give/') ||
+            self::contains($src_lower, '/plugins/give-recurring/')
+        )) {
+            return '';
+        }
+        if (!self::allow_contact_assets_on_current_request() && (
+            self::contains($src_lower, 'google.com/recaptcha') ||
+            self::contains($src_lower, 'gstatic.com/recaptcha') ||
+            self::contains($src_lower, '/contact-form-7/modules/recaptcha/')
+        )) {
+            return '';
+        }
+        return $tag;
+    }
+
+    public static function filter_frontend_style_tag(string $html, string $handle, string $href, string $media): string {
+        if (is_admin()) {
+            return $html;
+        }
+        $href_lower = strtolower($href);
+        if (!self::allow_payment_assets_on_current_request() && self::contains($href_lower, 'woocommerce-gateway-stripe')) {
+            return '';
+        }
+        if (!self::allow_donation_assets_on_current_request() && (
+            self::contains($href_lower, '/plugins/give/') ||
+            self::contains($href_lower, '/plugins/give-recurring/')
+        )) {
+            return '';
+        }
+        return $html;
+    }
+
+    private static function allow_payment_assets_on_current_request(): bool {
+        if (!class_exists('WooCommerce')) {
+            return false;
+        }
+        if ((function_exists('is_cart') && is_cart()) || (function_exists('is_checkout') && is_checkout()) || (function_exists('is_account_page') && is_account_page())) {
+            return true;
+        }
+        return self::current_page_slug_matches(['cart', 'checkout', 'my-account', 'order-pay']);
+    }
+
+    private static function allow_donation_assets_on_current_request(): bool {
+        if (self::current_page_slug_matches(['donate', 'donation', 'donations', 'support'])) {
+            return true;
+        }
+        $post = get_post();
+        if (!$post instanceof WP_Post) {
+            return false;
+        }
+        $content = (string) $post->post_content;
+        return has_shortcode($content, 'give_form') || has_shortcode($content, 'give_totals') || has_shortcode($content, 'give_goal') || self::contains($content, 'givewp');
+    }
+
+    private static function allow_contact_assets_on_current_request(): bool {
+        if (self::current_page_slug_matches(['contact', 'visit-contact', 'visit', 'rsvp'])) {
+            return true;
+        }
+        $post = get_post();
+        if (!$post instanceof WP_Post) {
+            return false;
+        }
+        $content = (string) $post->post_content;
+        return has_shortcode($content, 'contact-form-7') || self::contains($content, 'wpcf7') || self::contains($content, 'g-recaptcha');
+    }
+
+    private static function current_page_slug_matches(array $slugs): bool {
+        if (!is_page()) {
+            return false;
+        }
+        $post = get_post();
+        if (!$post instanceof WP_Post) {
+            return false;
+        }
+        $slug = strtolower((string) $post->post_name);
+        foreach ($slugs as $needle) {
+            if ($slug === $needle || self::contains($slug, (string) $needle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function contains(string $haystack, string $needle): bool {
+        return $needle !== '' && strpos($haystack, $needle) !== false;
+    }
+
+    private static function payment_script_handles(): array {
+        return [
+            'give-stripe-js',
+            'give-stripe-js-js',
+            'give-stripe-onpage-js',
+            'give-stripe-onpage-js-js',
+            'wc-stripe-blocks-integration',
+            'wc-stripe-express-checkout',
+            'wc-stripe-payment-request',
+            'wc-stripe-upe-classic',
+            'woocommerce_stripe',
+            'stripe',
+            'ppcp-smart-button',
+            'ppcp-smart-button-js',
+            'ppcp-button',
+            'ppcp-button-js',
+            'ppcp-button-js-button',
+            'ppcp-smart-buttons',
+            'ppcp-fraudnet',
+            'ppcp-fraudnet-js',
+            'paypal-checkout',
+        ];
+    }
+
+    private static function payment_style_handles(): array {
+        return [
+            'wc-stripe-blocks-checkout-style',
+            'wc-blocks-style',
+        ];
+    }
+
+    private static function donation_script_handles(): array {
+        return [
+            'give',
+            'give-js',
+            'give-stripe-js',
+            'give-stripe-js-js',
+            'give-stripe-onpage-js',
+            'give-stripe-onpage-js-js',
+            'give_recurring_script',
+            'give_recurring_script-js',
+            'givewp-entities-public',
+            'givewp-entities-public-js',
+        ];
+    }
+
+    private static function donation_style_handles(): array {
+        return [
+            'give-styles',
+            'givewp-design-system-foundation',
+            'give_recurring_css',
+            'give_recurring_css-css',
+        ];
+    }
+
+    private static function front_end_editor_script_handles(): array {
+        return [
+            'react',
+            'react-dom',
+            'react-jsx-runtime',
+            'wp-a11y',
+            'wp-api-fetch',
+            'wp-autop',
+            'wp-blob',
+            'wp-block-editor',
+            'wp-block-serialization-default-parser',
+            'wp-blocks',
+            'wp-commands',
+            'wp-components',
+            'wp-compose',
+            'wp-core-data',
+            'wp-data',
+            'wp-date',
+            'wp-deprecated',
+            'wp-dom',
+            'wp-dom-ready',
+            'wp-edit-post',
+            'wp-editor',
+            'wp-element',
+            'wp-escape-html',
+            'wp-format-library',
+            'wp-html-entities',
+            'wp-hooks',
+            'wp-is-shallow-equal',
+            'wp-keyboard-shortcuts',
+            'wp-keycodes',
+            'wp-notices',
+            'wp-preferences',
+            'wp-preferences-persistence',
+            'wp-primitives',
+            'wp-priority-queue',
+            'wp-private-apis',
+            'wp-redux-routine',
+            'wp-rich-text',
+            'wp-server-side-render',
+            'wp-shortcode',
+            'wp-style-engine',
+            'wp-token-list',
+            'wp-url',
+            'wp-warning',
+            'moment',
+        ];
     }
 
     public static function render_artist_profile_css(): void {
