@@ -45,3 +45,24 @@ jobs:
           ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
             "test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php'"
+
+      - name: Clear public site caches
+        run: |
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+            if command -v wp >/dev/null 2>&1; then \
+              wp --path=\"\$WP_ROOT\" cache flush || true; \
+              wp --path=\"\$WP_ROOT\" rewrite flush --hard || true; \
+              wp --path=\"\$WP_ROOT\" sg purge || true; \
+              wp --path=\"\$WP_ROOT\" sg-cachepress purge-cache || true; \
+              wp --path=\"\$WP_ROOT\" rocket clean --confirm || true; \
+              wp --path=\"\$WP_ROOT\" transient delete --all || true; \
+            fi; \
+            rm -rf \"\$WP_ROOT/wp-content/cache/wp-rocket\" \
+                   \"\$WP_ROOT/wp-content/cache/autoptimize\" \
+                   \"\$WP_ROOT/wp-content/cache/siteground-optimizer\" \
+                   \"\$WP_ROOT/wp-content/cache/min\" \
+                   \"\$WP_ROOT/wp-content/cache/breeze\" \
+                   \"\$WP_ROOT/wp-content/cache/wpo-minify\" || true; \
+            find \"\$WP_ROOT/wp-content/cache\" -maxdepth 3 -type f \( -name '*.html' -o -name '*.html_gzip' -o -name '*.css' -o -name '*.js' \) -delete 2>/dev/null || true"
