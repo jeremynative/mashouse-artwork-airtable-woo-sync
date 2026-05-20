@@ -467,7 +467,7 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__read-more {
 
 .ma-about-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
   gap: 36px;
   align-items: center;
   padding-bottom: 36px;
@@ -503,11 +503,11 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__read-more {
 
 .ma-about-hero h1 {
   margin: 0;
-  max-width: 10.5em;
+  max-width: 13em;
   color: #111;
-  font-size: clamp(34px, 3.8vw, 50px);
-  line-height: 1.04;
-  font-weight: 740;
+  font-size: clamp(28px, 2.75vw, 38px);
+  line-height: 1.1;
+  font-weight: 720;
   letter-spacing: 0;
 }
 
@@ -636,7 +636,7 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__read-more {
   }
 
   .ma-about-hero h1 {
-    font-size: 34px;
+    font-size: 31px;
   }
 
   .ma-about-intro__lead p {
