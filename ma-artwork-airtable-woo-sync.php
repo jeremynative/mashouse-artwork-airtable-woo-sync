@@ -50,6 +50,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
+        add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
@@ -2454,6 +2455,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         return self::news_page_html();
+    }
+
+    public static function render_news_posts_page_template(): void {
+        if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
+            return;
+        }
+        if ((int) get_option('page_for_posts') !== 32) {
+            return;
+        }
+
+        status_header(200);
+        get_header();
+        echo '<main id="content" class="neve-main ma-news-main" role="main">';
+        echo self::news_page_html();
+        echo '</main>';
+        get_footer();
+        exit;
     }
 
     private static function news_page_html(): string {

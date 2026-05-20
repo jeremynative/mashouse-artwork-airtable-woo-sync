@@ -47,6 +47,10 @@ body.page-id-32 .entry-content {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.ma-news-main {
+  width: 100%;
+}
+
 .ma-news-page {
   max-width: 1180px;
   margin: 0 auto;
