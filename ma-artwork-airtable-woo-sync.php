@@ -52,6 +52,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
         add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
+        add_filter('wp_resource_hints', [__CLASS__, 'filter_frontend_resource_hints'], 20, 2);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
@@ -2555,6 +2556,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
         }
 
+        if (!self::allow_marketing_assets_on_current_request()) {
+            foreach (['klaviyo', 'klaviyo-js', 'kl-identify-browser', 'kl-identify-browser-js', 'wck-viewed-product', 'wck-viewed-product-js'] as $handle) {
+                wp_dequeue_script($handle);
+                wp_deregister_script($handle);
+            }
+        }
+
         if (!$allow_donation_assets && !$allow_contact_assets) {
             foreach (self::front_end_editor_script_handles() as $handle) {
                 wp_dequeue_script($handle);
@@ -2588,6 +2596,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
         )) {
             return '';
         }
+        if (!self::allow_marketing_assets_on_current_request() && (
+            self::contains($src_lower, 'static.klaviyo.com') ||
+            self::contains($src_lower, 'static-tracking.klaviyo.com') ||
+            self::contains($src_lower, '/plugins/klaviyo/')
+        )) {
+            return '';
+        }
         return $tag;
     }
 
@@ -2596,7 +2611,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return $html;
         }
         $href_lower = strtolower($href);
-        if (!self::allow_payment_assets_on_current_request() && self::contains($href_lower, 'woocommerce-gateway-stripe')) {
+        if (!self::allow_payment_assets_on_current_request() && (
+            self::contains($href_lower, 'woocommerce-gateway-stripe') ||
+            self::contains($href_lower, 'woocommerce-paypal-payments')
+        )) {
             return '';
         }
         if (!self::allow_donation_assets_on_current_request() && (
@@ -2606,6 +2624,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return '';
         }
         return $html;
+    }
+
+    public static function filter_frontend_resource_hints(array $urls, string $relation_type): array {
+        if (is_admin() || $relation_type !== 'preload') {
+            return $urls;
+        }
+        return array_values(array_filter($urls, static function ($url): bool {
+            $href = is_array($url) ? strtolower((string) ($url['href'] ?? '')) : strtolower((string) $url);
+            return strpos($href, 'social-icons-widget-by-wpzoom/assets/font/') === false;
+        }));
     }
 
     private static function allow_payment_assets_on_current_request(): bool {
@@ -2640,6 +2668,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $content = (string) $post->post_content;
         return has_shortcode($content, 'contact-form-7') || self::contains($content, 'wpcf7') || self::contains($content, 'g-recaptcha');
+    }
+
+    private static function allow_marketing_assets_on_current_request(): bool {
+        return self::allow_payment_assets_on_current_request() || self::allow_donation_assets_on_current_request();
     }
 
     private static function current_page_slug_matches(array $slugs): bool {
