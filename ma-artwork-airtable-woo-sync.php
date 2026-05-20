@@ -3149,15 +3149,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ], $atts, 'ma_past_sponsors');
 
         $sponsorship_form_ids = array_values(array_filter(array_map('absint', explode(',', (string) $atts['forms']))));
-        $sponsors = self::givewp_public_sponsors($sponsorship_form_ids, absint($atts['limit']));
+        $sponsors = self::givewp_public_sponsors($sponsorship_form_ids, absint($atts['limit']), 500.0);
         $heading = 'Past Sponsors';
-        $note = 'Pulled from GiveWP sponsorship records. Anonymous gifts are kept private.';
-
-        if (!$sponsors) {
-            $sponsors = self::givewp_public_sponsors([], absint($atts['limit']));
-            $heading = 'Past Sponsors & Supporters';
-            $note = 'Pulled from public GiveWP records. Anonymous gifts are kept private.';
-        }
+        $note = 'Pulled from GiveWP records for sponsorship forms and non-anonymous gifts of $500 or more.';
 
         if (!$sponsors) {
             return '<section class="ma-past-sponsors"><h2>Past Sponsors</h2><p>Sponsors will appear here as GiveWP sponsorship records are completed.</p></section>';
@@ -3185,7 +3179,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return (string) ob_get_clean();
     }
 
-    private static function givewp_public_sponsors(array $form_ids, int $limit): array {
+    private static function givewp_public_sponsors(array $form_ids, int $limit, float $minimum_total = 0.0): array {
         $limit = max(1, min(120, $limit ?: 48));
         $query = [
             'post_type' => 'give_payment',
@@ -3195,18 +3189,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'orderby' => 'date',
             'order' => 'DESC',
         ];
-        if ($form_ids) {
-            $query['meta_query'] = [[
-                'key' => '_give_payment_form_id',
-                'value' => array_map('strval', $form_ids),
-                'compare' => 'IN',
-            ]];
-        }
-
+        $form_ids = array_map('strval', $form_ids);
         $seen = [];
         $sponsors = [];
         foreach (get_posts($query) as $payment_id) {
             if (self::text(get_post_meta($payment_id, '_give_anonymous_donation', true)) === '1') {
+                continue;
+            }
+            $form_id = self::text(get_post_meta($payment_id, '_give_payment_form_id', true));
+            $total = (float) get_post_meta($payment_id, '_give_payment_total', true);
+            if (!in_array($form_id, $form_ids, true) && $total < $minimum_total) {
                 continue;
             }
             $first = self::text(get_post_meta($payment_id, '_give_donor_billing_first_name', true));
