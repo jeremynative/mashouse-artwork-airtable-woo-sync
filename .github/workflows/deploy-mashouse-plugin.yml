@@ -62,6 +62,11 @@ jobs:
             rm -rf \"\$WP_ROOT/wp-content/cache/wp-rocket\" \
                    \"\$WP_ROOT/wp-content/cache/autoptimize\" \
                    \"\$WP_ROOT/wp-content/cache/siteground-optimizer\" \
+                   \"\$WP_ROOT/wp-content/cache/sgo-cache\" \
+                   \"\$WP_ROOT/wp-content/cache/used-css\" \
+                   \"\$WP_ROOT/wp-content/cache/critical-css\" \
+                   \"\$WP_ROOT/wp-content/cache/background-css\" \
+                   \"\$WP_ROOT/wp-content/cache/busting\" \
                    \"\$WP_ROOT/wp-content/cache/min\" \
                    \"\$WP_ROOT/wp-content/cache/breeze\" \
                    \"\$WP_ROOT/wp-content/cache/wpo-minify\" || true; \
