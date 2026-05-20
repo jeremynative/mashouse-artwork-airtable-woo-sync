@@ -2180,10 +2180,55 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return [];
         }
         $records = array_values(array_filter(array_map([__CLASS__, 'compact_exhibit_record'], $records)));
+        if (!$records) {
+            $records = self::fallback_exhibits_from_product_terms($product_id);
+        }
         usort($records, static function ($a, $b) {
             return strcmp((string) ($b['start_date'] ?? ''), (string) ($a['start_date'] ?? ''));
         });
         return $records;
+    }
+
+    private static function fallback_exhibits_from_product_terms(int $product_id): array {
+        $terms = get_the_terms($product_id, 'product_tag');
+        if (!$terms || is_wp_error($terms)) {
+            return [];
+        }
+        $artist = strtolower(self::text(get_post_meta($product_id, 'ma_artist_name', true)));
+        $records = [];
+        foreach ($terms as $term) {
+            $name = self::text($term->name ?? '');
+            if (!$name || strtolower($name) === $artist) {
+                continue;
+            }
+            $label = trim(preg_replace('/\s+/', ' ', str_replace(['_', '-'], ' ', $name)));
+            if (!$label || preg_match('/^(artwork|book|zine)$/i', $label)) {
+                continue;
+            }
+            $post_id = self::find_exhibit_post_id($label);
+            if (!$post_id) {
+                $post_id = self::find_exhibit_post_id(trim(preg_replace('/\b20\d{2}\b/', '', $label)));
+            }
+            $post_title = $post_id ? self::text(get_the_title($post_id)) : $label;
+            $records[] = [
+                'title' => $post_title ?: $label,
+                'venue' => $post_id ? self::event_venue_for_post($post_id) : '',
+                'location' => '',
+                'start_date' => $post_id ? self::date_ymd(get_post_meta($post_id, '_EventStartDate', true) ?: get_post_field('post_date', $post_id)) : '',
+                'end_date' => $post_id ? self::date_ymd(get_post_meta($post_id, '_EventEndDate', true) ?: get_post_meta($post_id, '_EventStartDate', true)) : '',
+                'url' => $post_id ? (get_permalink($post_id) ?: '') : '',
+                'image_url' => $post_id ? (get_the_post_thumbnail_url($post_id, 'large') ?: '') : '',
+            ];
+        }
+        return $records;
+    }
+
+    private static function event_venue_for_post(int $post_id): string {
+        $venue_id = (int) get_post_meta($post_id, '_EventVenueID', true);
+        if ($venue_id) {
+            return self::text(get_the_title($venue_id));
+        }
+        return '';
     }
 
     private static function product_exhibit_card(array $exhibits, WC_Product $product): string {
