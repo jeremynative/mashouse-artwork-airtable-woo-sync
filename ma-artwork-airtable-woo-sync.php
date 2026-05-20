@@ -60,6 +60,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('wp_resource_hints', [__CLASS__, 'filter_frontend_resource_hints'], 20, 2);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
+        add_filter('the_content', [__CLASS__, 'replace_about_page_content'], 36);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -2330,6 +2331,116 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         return self::sponsorship_page_html();
+    }
+
+    public static function replace_about_page_content(string $content): string {
+        if (is_admin() || !is_page('about')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 767) {
+            return $content;
+        }
+
+        return self::about_page_html();
+    }
+
+    private static function about_page_html(): string {
+        $hero = 'https://www.mashouse.studio/wp-content/uploads/2021/07/roger-waters-20201110_145009-e1636136206168-1024x553.jpg';
+        $staff = [
+            ['name' => 'Jeremy Dennis', 'role' => 'Founder'],
+            ['name' => 'Denise Silva-Dennis', 'role' => 'Workshop Coordinator'],
+            ['name' => 'Avery Dennis', 'role' => 'Facilities Director'],
+            ['name' => 'Brianna L. Hernández', 'role' => 'Director of Curation'],
+        ];
+        $board = [
+            ['name' => 'Kelly Dennis', 'role' => 'President'],
+            ['name' => 'Jeremy Dennis', 'role' => 'Founder'],
+            ['name' => 'Darlene Troge', 'role' => 'Treasurer'],
+            ['name' => 'Brianna L. Hernández', 'role' => 'Secretary'],
+            ['name' => 'Debbie Rechler', 'role' => 'Board Member'],
+            ['name' => 'Stephanie Joyce', 'role' => 'Board Member'],
+            ['name' => 'Maureen McMahon', 'role' => 'Board Member'],
+            ['name' => 'Danielle Hopson Begun', 'role' => 'Board Member'],
+            ['name' => 'Christian Weaver', 'role' => 'Board Member'],
+        ];
+
+        ob_start();
+        ?>
+        <article class="ma-about-page">
+            <section class="ma-about-hero">
+                <figure>
+                    <img src="<?php echo esc_url($hero); ?>" alt="Ma's House with friends and family" loading="eager">
+                    <figcaption>Photo of Ma's House with friends and family with Shinnecock founding artist Jeremy Dennis.</figcaption>
+                </figure>
+                <div class="ma-about-hero__copy">
+                    <p>About Ma's House</p>
+                    <h1>A communal art space on the Shinnecock Indian Reservation.</h1>
+                </div>
+            </section>
+
+            <section class="ma-about-intro">
+                <div class="ma-about-intro__lead">
+                    <h2>Ma's House &amp; BIPOC Art Studio Inc.</h2>
+                    <p>Ma's House is a nonprofit communal art space based in Southampton, New York, supporting Black, Indigenous, and People of Color artists through residencies, exhibitions, workshops, a library, and community programs.</p>
+                </div>
+                <div class="ma-about-intro__body">
+                    <p>The family house, built in the 1960s, has been restored as a safe and generative place for artists to create work, participate in residencies, and exhibit contemporary work on the Shinnecock Indian Reservation. Ma's House &amp; BIPOC Art Studio Inc. was chartered in 2021 as a 501(c)3 tax-exempt organization in New York State.</p>
+                    <p>Since June 2020, Indigenous visual artist and photographer Jeremy Dennis has worked to restore the Silva family home he grew up in. The project grew from the disruptions of the COVID-19 pandemic and from the need for spaces grounded in creativity, healing, imagining, and liberation for BIPOC artists and communities.</p>
+                </div>
+            </section>
+
+            <section class="ma-about-programs" aria-label="What Ma's House supports">
+                <article>
+                    <h3>Residency</h3>
+                    <p>Time, space, and community support for BIPOC artists developing new work.</p>
+                </article>
+                <article>
+                    <h3>Exhibitions</h3>
+                    <p>Contemporary art shows and public programs rooted in Indigenous presence and local history.</p>
+                </article>
+                <article>
+                    <h3>Community</h3>
+                    <p>Workshops, gatherings, a library, and programs for Shinnecock community members and the broader public.</p>
+                </article>
+            </section>
+
+            <section class="ma-about-people">
+                <div class="ma-about-people__group">
+                    <h2>Staff</h2>
+                    <div class="ma-about-people__list">
+                        <?php foreach ($staff as $person) : ?>
+                            <article>
+                                <h3><?php echo esc_html($person['name']); ?></h3>
+                                <p><?php echo esc_html($person['role']); ?></p>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="ma-about-people__group">
+                    <h2>Board of Trustees</h2>
+                    <div class="ma-about-people__list">
+                        <?php foreach ($board as $person) : ?>
+                            <article>
+                                <h3><?php echo esc_html($person['name']); ?></h3>
+                                <p><?php echo esc_html($person['role']); ?></p>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="ma-about-people__group ma-about-people__group--small">
+                    <h2>Emeritus Board Members</h2>
+                    <div class="ma-about-people__list">
+                        <article>
+                            <h3>James King</h3>
+                            <p>Emeritus Board Member</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </article>
+        <?php
+        return (string) ob_get_clean();
     }
 
     private static function sponsorship_page_html(): string {

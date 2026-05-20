@@ -29,6 +29,208 @@ body.page-id-8211 .entry-content {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+body.page-id-767 .nv-single-page-wrap {
+  margin: 0 !important;
+}
+
+body.page-id-767 .entry-content {
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ma-about-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 22px 72px;
+}
+
+.ma-about-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+  gap: 36px;
+  align-items: end;
+  padding-bottom: 36px;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.ma-about-hero figure {
+  margin: 0;
+}
+
+.ma-about-hero img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.ma-about-hero figcaption {
+  margin-top: 9px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ma-about-hero__copy p {
+  margin: 0 0 14px;
+  color: #777;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.ma-about-hero h1 {
+  margin: 0;
+  color: #111;
+  font-size: clamp(38px, 5.4vw, 68px);
+  line-height: .98;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.ma-about-intro {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 48px;
+  margin-top: 48px;
+}
+
+.ma-about-intro h2,
+.ma-about-people h2 {
+  margin: 0;
+  color: #111;
+  font-size: 28px;
+  line-height: 1.12;
+}
+
+.ma-about-intro__lead p {
+  margin: 16px 0 0;
+  color: #222;
+  font-size: 20px;
+  line-height: 1.45;
+}
+
+.ma-about-intro__body {
+  display: grid;
+  gap: 18px;
+}
+
+.ma-about-intro__body p {
+  margin: 0;
+  color: #222;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.ma-about-programs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 46px;
+}
+
+.ma-about-programs article {
+  padding: 22px 0 0;
+  border-top: 3px solid #ed1c24;
+}
+
+.ma-about-programs h3 {
+  margin: 0 0 8px;
+  color: #111;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.ma-about-programs p {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ma-about-people {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 42px;
+  margin-top: 56px;
+  padding-top: 36px;
+  border-top: 1px solid #d9d9d9;
+}
+
+.ma-about-people__group--small {
+  grid-column: 1 / -1;
+  max-width: 520px;
+}
+
+.ma-about-people__list {
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+}
+
+.ma-about-people__list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 190px);
+  gap: 18px;
+  padding: 13px 0;
+  border-top: 1px solid #e7e7e7;
+}
+
+.ma-about-people__list h3 {
+  margin: 0;
+  color: #111;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.ma-about-people__list p {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+@media (max-width: 860px) {
+  .ma-about-hero,
+  .ma-about-intro,
+  .ma-about-people {
+    grid-template-columns: 1fr;
+  }
+
+  .ma-about-programs {
+    grid-template-columns: 1fr;
+  }
+
+  .ma-about-people {
+    gap: 34px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ma-about-page {
+    padding: 24px 16px 54px;
+  }
+
+  .ma-about-hero h1 {
+    font-size: 36px;
+  }
+
+  .ma-about-intro__lead p {
+    font-size: 18px;
+  }
+
+  .ma-about-people__list article {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .ma-about-people__list p {
+    text-align: left;
+  }
+}
+
 .ma-sponsorship-page {
   max-width: 1180px;
   margin: 0 auto;
