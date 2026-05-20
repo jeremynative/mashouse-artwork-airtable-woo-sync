@@ -44,6 +44,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
+        add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
     }
@@ -2169,6 +2170,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     var template = document.getElementById('ma-product-exhibit-body-template');
                     if (!template || !template.content) return;
                     section = template.content.firstElementChild.cloneNode(true);
+                } else {
+                    return;
                 }
                 var titleWidget = document.querySelector('.elementor-widget-woocommerce-product-title');
                 var hero = titleWidget;
@@ -2208,6 +2211,28 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }());
         </script>
         <?php
+    }
+
+    public static function append_product_body_sections(string $content): string {
+        if (is_admin() || !is_product() || !class_exists('WooCommerce')) {
+            return $content;
+        }
+        if (strpos($content, 'ma-product-exhibit-section') !== false) {
+            return $content;
+        }
+        $product = wc_get_product((int) get_queried_object_id());
+        if (!$product instanceof WC_Product) {
+            return $content;
+        }
+        $exhibit_html = self::product_exhibit_body_section_html($product);
+        if (!$exhibit_html) {
+            return $content;
+        }
+        $artist_pos = strpos($content, '<section class="ma-artist-profile');
+        if ($artist_pos !== false) {
+            return substr($content, 0, $artist_pos) . $exhibit_html . substr($content, $artist_pos);
+        }
+        return $content . $exhibit_html;
     }
 
     private static function product_exhibits(int $product_id): array {
