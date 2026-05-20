@@ -38,6 +38,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('woocommerce_product_tabs', [__CLASS__, 'add_scale_product_tab']);
         add_action('woocommerce_single_product_summary', [__CLASS__, 'render_single_product_artwork_panel'], 21);
         add_action('woocommerce_product_meta_start', [__CLASS__, 'render_single_product_artwork_panel_in_meta'], 5);
+        add_action('woocommerce_before_add_to_cart_form', [__CLASS__, 'render_purchase_support_note'], 4);
         add_action('woocommerce_after_shop_loop_item_title', [__CLASS__, 'render_loop_on_view_label'], 11);
         add_action('woocommerce_before_main_content', [__CLASS__, 'render_shop_on_view_section'], 25);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_shop_on_view_section'], 4);
@@ -2119,6 +2120,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
         echo $html;
     }
 
+    public static function render_purchase_support_note(): void {
+        if (!is_product() || !class_exists('WooCommerce')) {
+            return;
+        }
+        $product = wc_get_product((int) get_queried_object_id());
+        if (!$product instanceof WC_Product) {
+            return;
+        }
+        $price = (float) $product->get_price();
+        if ($price <= 0 || !$product->is_purchasable()) {
+            return;
+        }
+        echo '<p class="ma-product-purchase-note">By purchasing artwork, you are supporting a reciprocal fundraising model: artists are paid for their work, and Ma&rsquo;s House receives support for the programs, residencies, exhibitions, and community gatherings that keep our space active and accessible.</p>';
+    }
+
     private static function single_product_artwork_panel_html(WC_Product $product): string {
         $rows = self::product_detail_rows($product);
         $profile_url = esc_url(self::text(get_post_meta($product->get_id(), 'ma_artist_profile_url', true)));
@@ -2443,6 +2459,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         echo '<style id="ma-product-font-final-css">body.single-product .elementor-element-923ecf0,body.single-product .elementor-element-923ecf0 *:not(.dashicons):not(.eicon):not([class*="icon"]){font-family:' . esc_html(self::font_stack()) . ' !important}body.single-product .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-widget-woocommerce-product-price .price span,body.single-product .elementor-widget-woocommerce-product-price .amount{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important}body.single-product .elementor-widget-woocommerce-product-title .product_title{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important}</style>';
         echo '<style id="ma-product-price-font-final-css">body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important;font-weight:500!important}</style>';
         echo '<style id="ma-product-system-font-css">body.single-product .elementor-element-923ecf0,body.single-product .elementor-element-923ecf0 *:not(.dashicons):not(.eicon):not([class*="icon"]){font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-style:normal!important;font-weight:500!important}</style>';
+        echo '<style id="ma-product-purchase-note-css">body.single-product .ma-product-purchase-note{max-width:520px;margin:0 0 14px!important;color:#444!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:12px!important;line-height:1.45!important;font-weight:400!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock+.ma-product-purchase-note{margin-top:0!important}</style>';
         echo '<style id="ma-product-exhibit-body-css">body.single-product .ma-product-summary-column>.ma-product-exhibit-card,body.single-product .ma-product-artwork-panel .ma-product-exhibit-card{display:none!important}.ma-product-exhibit-section{clear:both;width:min(1120px,calc(100% - 48px));max-width:1120px;margin:44px auto 0!important;padding:28px 0;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.08);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-exhibit-section h2{margin:0 0 18px!important;color:#111!important;font-size:22px!important;line-height:1.2!important;font-weight:650!important}.ma-product-exhibit-section .ma-product-exhibit-card{display:grid!important;max-width:820px;grid-template-columns:170px minmax(0,1fr)!important;gap:24px!important;align-items:start!important;margin:0!important;color:#111!important;text-decoration:none!important;background:transparent!important;border:0!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{min-height:0!important;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-section .ma-product-exhibit-card__image img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-section .ma-product-exhibit-card__body span{display:block;margin:0 0 8px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-section .ma-product-exhibit-card__body h3{margin:0 0 8px!important;color:#111!important;font-size:19px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-section .ma-product-exhibit-card__body p{margin:0 0 5px;color:#333;font-size:14px;line-height:1.45}@media(max-width:760px){.ma-product-exhibit-section{width:calc(100% - 32px);margin-top:28px!important;padding:24px 0}.ma-product-exhibit-section .ma-product-exhibit-card{grid-template-columns:1fr!important;gap:14px!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{max-width:260px}}</style>';
     }
 
