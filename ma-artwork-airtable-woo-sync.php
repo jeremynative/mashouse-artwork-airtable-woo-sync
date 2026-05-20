@@ -33,6 +33,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('admin_menu', [__CLASS__, 'add_admin_page']);
         add_action('admin_init', [__CLASS__, 'register_settings']);
         add_action('init', [__CLASS__, 'ensure_runtime_setup'], 20);
+        add_action('save_post_post', [__CLASS__, 'sync_artist_post_to_products'], 20, 3);
         add_action('event_tickets_rsvp_attendee_created', [__CLASS__, 'sync_rsvp_attendee_created'], 20, 4);
         add_action('event_tickets_rsvp_ticket_created', [__CLASS__, 'sync_rsvp_ticket_created'], 25, 4);
         add_filter('woocommerce_product_tabs', [__CLASS__, 'add_scale_product_tab']);
@@ -1417,6 +1418,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$post_id) {
             return '';
         }
+        return self::bio_from_artist_post_id($post_id);
+    }
+
+    private static function bio_from_artist_post_id(int $post_id): string {
+        if ($post_id <= 0 || get_post_type($post_id) !== 'post') {
+            return '';
+        }
         $content = (string) get_post_field('post_content', $post_id);
         if (!$content || strpos($content, 'ma-artist-page__bio') === false) {
             return '';
@@ -2284,11 +2292,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin() || !is_product() || !class_exists('WooCommerce')) {
             return $content;
         }
-        if (strpos($content, 'ma-product-exhibit-section') !== false) {
-            return $content;
-        }
         $product = wc_get_product((int) get_queried_object_id());
         if (!$product instanceof WC_Product) {
+            return $content;
+        }
+        $artist_html = self::artist_product_section(self::artist_profile_data_for_product($product));
+        if ($artist_html) {
+            if (strpos($content, 'ma-artist-profile') !== false) {
+                $content = preg_replace('/<section class="ma-artist-profile"[^>]*>.*?<\/section>/is', $artist_html, $content, 1) ?: $content;
+            } else {
+                $content .= $artist_html;
+            }
+        }
+        if (strpos($content, 'ma-product-exhibit-section') !== false) {
             return $content;
         }
         $exhibit_html = self::product_exhibit_body_section_html($product);
@@ -2358,6 +2374,112 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return self::text(get_the_title($venue_id));
         }
         return '';
+    }
+
+    private static function artist_profile_data_for_product(WC_Product $product): array {
+        $post = get_post($product->get_id());
+        $source = $post ? ((string) $post->post_title . "\n" . (string) $post->post_content) : $product->get_name();
+        $name = self::text(get_post_meta($product->get_id(), 'ma_artist_name', true)) ?: self::infer_artist_name_from_text($source);
+        $profile_post_id = (int) get_post_meta($product->get_id(), 'ma_artist_profile_post_id', true);
+        if (!$profile_post_id && $name) {
+            $profile_post_id = self::find_artist_profile_post(['name' => $name]);
+        }
+
+        $profile_url = '';
+        $bio = '';
+        $portrait_url = '';
+        if ($profile_post_id) {
+            $profile_url = get_permalink($profile_post_id) ?: '';
+            $bio = self::bio_from_artist_post_id($profile_post_id);
+            $portrait_url = self::text(get_post_meta($profile_post_id, 'ma_artist_portrait_url', true));
+        }
+
+        if (!$bio && $name) {
+            $bio = self::bio_from_existing_artist_post($name);
+        }
+        if (!$bio) {
+            $bio = self::text(get_post_meta($product->get_id(), 'ma_artist_bio', true));
+        }
+        if (!$portrait_url) {
+            $portrait_url = self::text(get_post_meta($product->get_id(), 'ma_artist_portrait_url', true));
+        }
+        if (!$profile_url) {
+            $profile_url = self::text(get_post_meta($product->get_id(), 'ma_artist_profile_url', true));
+        }
+
+        return [
+            'name' => $name,
+            'bio' => $bio,
+            'portrait_url' => $portrait_url,
+            'profile_url' => $profile_url,
+            'profile_post_id' => $profile_post_id,
+        ];
+    }
+
+    public static function sync_artist_post_to_products(int $post_id, WP_Post $post, bool $update): void {
+        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id) || $post->post_type !== 'post') {
+            return;
+        }
+
+        $artist_name = self::text(get_post_meta($post_id, 'ma_artist_name', true)) ?: self::text(get_the_title($post_id));
+        if (!$artist_name || !self::is_artist_profile_post($post_id, $artist_name)) {
+            return;
+        }
+
+        $bio = self::bio_from_artist_post_id($post_id);
+        $profile_url = get_permalink($post_id) ?: '';
+        $portrait_url = self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true));
+        $product_ids = self::product_ids_for_artist_post($post_id, $artist_name);
+
+        foreach ($product_ids as $product_id) {
+            update_post_meta($product_id, 'ma_artist_name', $artist_name);
+            update_post_meta($product_id, 'ma_artist_profile_post_id', $post_id);
+            update_post_meta($product_id, 'ma_artist_profile_url', esc_url_raw($profile_url));
+            if ($bio) {
+                update_post_meta($product_id, 'ma_artist_bio', $bio);
+            }
+            if ($portrait_url) {
+                update_post_meta($product_id, 'ma_artist_portrait_url', esc_url_raw($portrait_url));
+            }
+            clean_post_cache($product_id);
+            if (function_exists('wc_delete_product_transients')) {
+                wc_delete_product_transients($product_id);
+            }
+        }
+    }
+
+    private static function is_artist_profile_post(int $post_id, string $artist_name): bool {
+        if (get_post_meta($post_id, 'ma_artist_name', true)) {
+            return true;
+        }
+        if (has_category('Artists', $post_id)) {
+            return true;
+        }
+        $content = (string) get_post_field('post_content', $post_id);
+        return strpos($content, 'ma-artist-page') !== false && stripos($content, $artist_name) !== false;
+    }
+
+    private static function product_ids_for_artist_post(int $post_id, string $artist_name): array {
+        $ids = get_posts([
+            'post_type' => 'product',
+            'post_status' => ['publish', 'draft', 'pending', 'private'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'meta_query' => [
+                'relation' => 'OR',
+                [
+                    'key' => 'ma_artist_profile_post_id',
+                    'value' => $post_id,
+                    'compare' => '=',
+                ],
+                [
+                    'key' => 'ma_artist_name',
+                    'value' => $artist_name,
+                    'compare' => '=',
+                ],
+            ],
+        ]);
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     private static function product_exhibit_body_section_html(WC_Product $product): string {
