@@ -46,6 +46,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
+        add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
@@ -2634,6 +2635,28 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $href = is_array($url) ? strtolower((string) ($url['href'] ?? '')) : strtolower((string) $url);
             return strpos($href, 'social-icons-widget-by-wpzoom/assets/font/') === false;
         }));
+    }
+
+    public static function start_frontend_performance_buffer(): void {
+        if (is_admin() || wp_doing_ajax() || (function_exists('wp_is_json_request') && wp_is_json_request())) {
+            return;
+        }
+        ob_start([__CLASS__, 'filter_frontend_html']);
+    }
+
+    public static function filter_frontend_html(string $html): string {
+        if ($html === '' || stripos($html, '<html') === false) {
+            return $html;
+        }
+        $html = preg_replace('~<link\b(?=[^>]*\brel=(["\'])preload\1)(?=[^>]*social-icons-widget-by-wpzoom/assets/font/)[^>]*>\s*~i', '', $html) ?? $html;
+        if (!self::allow_payment_assets_on_current_request()) {
+            $html = preg_replace('~<link\b(?=[^>]*woocommerce-paypal-payments/assets/)[^>]*>\s*~i', '', $html) ?? $html;
+        }
+        if (!self::allow_marketing_assets_on_current_request()) {
+            $html = preg_replace('~<script\b(?=[^>]*\bsrc=(["\'])[^"\']*klaviyo[^"\']*\1)[^>]*>\s*</script>\s*~i', '', $html) ?? $html;
+            $html = preg_replace('~<script\b[^>]*\bid=(["\'])kl-identify-browser-js\1[^>]*>\s*</script>\s*~i', '', $html) ?? $html;
+        }
+        return $html;
     }
 
     private static function allow_payment_assets_on_current_request(): bool {
