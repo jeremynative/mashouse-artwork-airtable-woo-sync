@@ -29,7 +29,7 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SITEGROUND_SSH_KEY }}" > ~/.ssh/siteground_key
           chmod 600 ~/.ssh/siteground_key
-          ssh-keyscan -T 20 -p "${{ secrets.SITEGROUND_PORT }}" "${{ secrets.SITEGROUND_HOST }}" >> ~/.ssh/known_hosts || true
+          ssh-keyscan -4 -T 20 -p "${{ secrets.SITEGROUND_PORT }}" "${{ secrets.SITEGROUND_HOST }}" >> ~/.ssh/known_hosts || true
 
       - name: Deploy plugin files
         run: |
@@ -37,11 +37,11 @@ jobs:
             --exclude ".git/" \
             --exclude ".github/" \
             --exclude "DEPLOYMENT.md" \
-            -e "ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
+            -e "ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
             ./ "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:${{ secrets.MASHOUSE_PLUGIN_PATH }}/"
 
       - name: Verify deployed file exists
         run: |
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
             "test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php'"
