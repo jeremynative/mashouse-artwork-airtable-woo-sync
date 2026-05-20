@@ -61,6 +61,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
         add_filter('the_content', [__CLASS__, 'replace_about_page_content'], 36);
+        add_filter('the_content', [__CLASS__, 'replace_news_page_content'], 37);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -2440,6 +2441,107 @@ final class MA_Artwork_Airtable_Woo_Sync {
             </section>
         </article>
         <?php
+        return (string) ob_get_clean();
+    }
+
+    public static function replace_news_page_content(string $content): string {
+        if (is_admin() || !is_page('news')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 32) {
+            return $content;
+        }
+
+        return self::news_page_html();
+    }
+
+    private static function news_page_html(): string {
+        $visiting_artists = self::news_posts_for_category('resident-artists', 12);
+        $blog_news = self::news_posts_for_category('news', 12);
+
+        ob_start();
+        ?>
+        <article class="ma-news-page">
+            <header class="ma-news-hero">
+                <p>News</p>
+                <h1>Updates from Ma's House</h1>
+                <div>
+                    <p>Recent visiting artists, residency updates, press, and stories from the programs, exhibitions, and community work happening at Ma's House.</p>
+                </div>
+            </header>
+
+            <section class="ma-news-section ma-news-section--artists" aria-label="Visiting Artists">
+                <div class="ma-news-section__heading">
+                    <p>Residencies</p>
+                    <h2>Visiting Artists</h2>
+                </div>
+                <?php echo self::news_cards_html($visiting_artists, true); ?>
+            </section>
+
+            <section class="ma-news-section" aria-label="Blog News">
+                <div class="ma-news-section__heading">
+                    <p>Blog</p>
+                    <h2>Blog News</h2>
+                </div>
+                <?php echo self::news_cards_html($blog_news, false); ?>
+            </section>
+        </article>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function news_posts_for_category(string $slug, int $limit): array {
+        return get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'tax_query' => [[
+                'taxonomy' => 'category',
+                'field' => 'slug',
+                'terms' => [$slug],
+            ]],
+        ]);
+    }
+
+    private static function news_cards_html(array $posts, bool $featured_first): string {
+        if (!$posts) {
+            return '<p class="ma-news-empty">No posts are available yet.</p>';
+        }
+
+        ob_start();
+        echo '<div class="ma-news-grid' . ($featured_first ? ' ma-news-grid--featured' : '') . '">';
+        foreach ($posts as $index => $post) {
+            $post_id = (int) $post->ID;
+            $is_featured = $featured_first && $index === 0;
+            $image = get_the_post_thumbnail($post_id, $is_featured ? 'large' : 'medium_large', ['loading' => $index < 3 ? 'eager' : 'lazy']);
+            if (!$image) {
+                $image = '<div class="ma-news-card__placeholder" aria-hidden="true"></div>';
+            }
+            $excerpt = self::text(get_the_excerpt($post_id));
+            if (!$excerpt) {
+                $excerpt = wp_trim_words(self::clean_bio_text((string) get_post_field('post_content', $post_id)), 28);
+            }
+            $terms = wp_get_post_terms($post_id, 'category', ['fields' => 'names']);
+            $label = is_array($terms) && $terms ? implode(' / ', array_slice($terms, 0, 2)) : 'News';
+            ?>
+            <article class="ma-news-card<?php echo $is_featured ? ' ma-news-card--featured' : ''; ?>">
+                <a class="ma-news-card__image" href="<?php echo esc_url(get_permalink($post_id)); ?>" aria-label="<?php echo esc_attr(get_the_title($post_id)); ?>">
+                    <?php echo $image; ?>
+                </a>
+                <div class="ma-news-card__body">
+                    <p class="ma-news-card__meta"><?php echo esc_html($label); ?> · <?php echo esc_html(get_the_date('M j, Y', $post_id)); ?></p>
+                    <h3><a href="<?php echo esc_url(get_permalink($post_id)); ?>"><?php echo esc_html(get_the_title($post_id)); ?></a></h3>
+                    <?php if ($excerpt) : ?>
+                        <p class="ma-news-card__excerpt"><?php echo esc_html($excerpt); ?></p>
+                    <?php endif; ?>
+                </div>
+            </article>
+            <?php
+        }
+        echo '</div>';
         return (string) ob_get_clean();
     }
 
