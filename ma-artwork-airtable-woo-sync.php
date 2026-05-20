@@ -32,6 +32,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('rest_api_init', [__CLASS__, 'register_rest_routes']);
         add_action('admin_menu', [__CLASS__, 'add_admin_page']);
         add_action('admin_init', [__CLASS__, 'register_settings']);
+        add_action('init', [__CLASS__, 'register_artist_profile_rewrites'], 5);
         add_action('init', [__CLASS__, 'ensure_runtime_setup'], 20);
         add_action('save_post_post', [__CLASS__, 'sync_artist_post_to_products'], 20, 3);
         add_action('event_tickets_rsvp_attendee_created', [__CLASS__, 'sync_rsvp_attendee_created'], 20, 4);
@@ -51,6 +52,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
         add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
+        add_action('template_redirect', [__CLASS__, 'redirect_dated_artist_profile_urls'], 3);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
@@ -58,6 +60,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
         add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
+        add_filter('post_link', [__CLASS__, 'filter_artist_profile_permalink'], 20, 3);
         add_filter('wp_resource_hints', [__CLASS__, 'filter_frontend_resource_hints'], 20, 2);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
@@ -84,6 +87,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         wp_clear_scheduled_hook(self::CRON_HOOK);
     }
 
+    public static function register_artist_profile_rewrites(): void {
+        add_rewrite_rule('^artist/([^/]+)/?$', 'index.php?name=$matches[1]', 'top');
+    }
+
     public static function ensure_runtime_setup(): void {
         $options = self::options();
         $changed = false;
@@ -104,6 +111,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!wp_next_scheduled(self::CRON_HOOK)) {
             wp_schedule_event(time() + 1800, 'ma_artwork_every_thirty_minutes', self::CRON_HOOK);
         }
+
+        $rewrite_version = 'artist-profile-v1';
+        if (get_option('ma_artwork_rewrite_version') !== $rewrite_version) {
+            self::register_artist_profile_rewrites();
+            flush_rewrite_rules(false);
+            update_option('ma_artwork_rewrite_version', $rewrite_version, false);
+        }
+    }
+
+    public static function filter_artist_profile_permalink(string $permalink, WP_Post $post, bool $leavename): string {
+        if ($post->post_type !== 'post' || !self::is_artist_profile_post((int) $post->ID, (string) $post->post_title)) {
+            return $permalink;
+        }
+        $slug = $leavename ? '%postname%' : $post->post_name;
+        return home_url(user_trailingslashit('artist/' . $slug));
     }
 
     public static function enqueue_public_fix_styles(): void {
@@ -2472,6 +2494,29 @@ final class MA_Artwork_Airtable_Woo_Sync {
         echo '</main>';
         get_footer();
         exit;
+    }
+
+    public static function redirect_dated_artist_profile_urls(): void {
+        if (!is_single() || is_admin()) {
+            return;
+        }
+        $post = get_queried_object();
+        if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+            return;
+        }
+        if (!self::is_artist_profile_post((int) $post->ID, (string) $post->post_title)) {
+            return;
+        }
+        $target = get_permalink($post);
+        if (!$target) {
+            return;
+        }
+        $current_path = trailingslashit((string) wp_parse_url(home_url(add_query_arg([])), PHP_URL_PATH));
+        $target_path = trailingslashit((string) wp_parse_url($target, PHP_URL_PATH));
+        if ($current_path !== $target_path) {
+            wp_safe_redirect($target, 301);
+            exit;
+        }
     }
 
     private static function news_page_html(): string {
