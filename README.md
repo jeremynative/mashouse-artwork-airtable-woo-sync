@@ -8,7 +8,7 @@ This plugin is intended to be managed from GitHub and deployed to SiteGround wit
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the GitHub repository setup, required secrets, and rollback workflow.
 
-Last deployment wiring check: 2026-05-20.
+Last deployment wiring check: 2026-05-20 direct SiteGround host.
 
 ## Install
 
