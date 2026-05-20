@@ -44,9 +44,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_shop_on_view_section'], 4);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
+        add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
@@ -2446,6 +2448,70 @@ final class MA_Artwork_Airtable_Woo_Sync {
         wp_reset_postdata();
         wp_cache_set($cache_key, $best, 'ma_artwork_sync', 300);
         return $best;
+    }
+
+    public static function render_global_site_polish_css(): void {
+        if (is_admin()) {
+            return;
+        }
+        echo '<style id="ma-global-site-polish-css">.elementor-location-header,.elementor-location-header>.elementor-section,.elementor-location-header>.elementor-element,.elementor-location-header .elementor-section,.elementor-location-header .elementor-container,.elementor-location-header .elementor-widget-wrap,header.site-header,.site-header,.site-header .elementor-section,.site-header .elementor-container{border:0!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after{display:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}</style>';
+    }
+
+    public static function optimize_frontend_product_assets(): void {
+        if (is_admin() || !function_exists('is_product') || !is_product()) {
+            return;
+        }
+        if ((function_exists('is_cart') && is_cart()) || (function_exists('is_checkout') && is_checkout()) || (function_exists('is_account_page') && is_account_page())) {
+            return;
+        }
+
+        $script_handles = [
+            'wp-block-editor',
+            'wp-blocks',
+            'wp-components',
+            'wp-compose',
+            'wp-data',
+            'wp-date',
+            'wp-dom-ready',
+            'wp-edit-post',
+            'wp-editor',
+            'wp-format-library',
+            'wp-hooks',
+            'wp-keycodes',
+            'wp-notices',
+            'wp-rich-text',
+            'wp-server-side-render',
+            'wp-token-list',
+            'lodash',
+            'moment',
+            'wc-stripe-blocks-integration',
+            'wc-stripe-express-checkout',
+            'wc-stripe-payment-request',
+            'wc-stripe-upe-classic',
+            'woocommerce_stripe',
+            'stripe',
+            'ppcp-button',
+            'ppcp-button-js',
+            'ppcp-button-js-button',
+            'ppcp-smart-buttons',
+            'paypal-checkout',
+        ];
+        foreach ($script_handles as $handle) {
+            wp_dequeue_script($handle);
+            wp_deregister_script($handle);
+        }
+
+        $style_handles = [
+            'wp-edit-blocks',
+            'wp-block-editor',
+            'wp-components',
+            'wp-format-library',
+            'wp-block-library-theme',
+        ];
+        foreach ($style_handles as $handle) {
+            wp_dequeue_style($handle);
+            wp_deregister_style($handle);
+        }
     }
 
     public static function render_artist_profile_css(): void {
