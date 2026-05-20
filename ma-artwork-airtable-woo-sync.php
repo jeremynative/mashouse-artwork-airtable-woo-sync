@@ -3262,7 +3262,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $sponsorship_form_ids = array_values(array_filter(array_map('absint', explode(',', (string) $atts['forms']))));
         $sponsors = self::givewp_public_sponsors($sponsorship_form_ids, absint($atts['limit']), 500.0);
         $heading = 'Past Sponsors';
-        $note = 'Pulled from GiveWP records for sponsorship forms and non-anonymous gifts of $500 or more.';
 
         if (!$sponsors) {
             return '<section class="ma-past-sponsors"><h2>Past Sponsors</h2><p>Sponsors will appear here as GiveWP sponsorship records are completed.</p></section>';
@@ -3273,7 +3272,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         <section class="ma-past-sponsors" aria-label="<?php echo esc_attr($heading); ?>">
             <div class="ma-past-sponsors__intro">
                 <h2><?php echo esc_html($heading); ?></h2>
-                <p><?php echo esc_html($note); ?></p>
             </div>
             <div class="ma-past-sponsors__grid">
                 <?php foreach ($sponsors as $sponsor) : ?>
