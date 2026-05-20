@@ -46,7 +46,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
+        add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
+        add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
@@ -2460,6 +2462,20 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         echo '<style id="ma-global-site-polish-css">body .hfg_header.site-header,body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after,.hfg_header.site-header:before,.hfg_header.site-header:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:158px!important}body.page-id-377 .nv-single-page-wrap,body.page-id-377 .elementor-page-377{margin-top:0!important}@media(max-width:760px){body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:126px!important}}</style>';
+    }
+
+    public static function render_staff_page_spacing_css(): void {
+        if (!is_page(377)) {
+            return;
+        }
+        echo '<style id="ma-staff-page-spacing-css" data-no-optimize="1" data-cfasync="false">body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:158px!important}body.page-id-377 .hfg_header.site-header{box-shadow:none!important;border:0!important}@media(max-width:760px){body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:126px!important}}</style>';
+    }
+
+    public static function render_staff_page_spacing_fallback(): void {
+        if (!is_page(377)) {
+            return;
+        }
+        echo '<script id="ma-staff-page-spacing-fallback" data-no-optimize="1" data-cfasync="false">(function(){var apply=function(){var main=document.querySelector("#content.neve-main,main.neve-main");if(main){main.style.setProperty("padding-top",window.innerWidth<=760?"126px":"158px","important");}var header=document.querySelector(".hfg_header.site-header");if(header){header.style.setProperty("box-shadow","none","important");header.style.setProperty("border","0","important");}};apply();if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",apply,{once:true});}window.addEventListener("load",apply,{once:true});}());</script>';
     }
 
     public static function optimize_frontend_product_assets(): void {
