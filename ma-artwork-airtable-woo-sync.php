@@ -2096,34 +2096,27 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function single_product_artwork_panel_html(WC_Product $product): string {
         $rows = self::product_detail_rows($product);
         $profile_url = esc_url(self::text(get_post_meta($product->get_id(), 'ma_artist_profile_url', true)));
-        $exhibits = self::product_exhibits($product->get_id());
-        if (!$rows && !$exhibits) {
+        if (!$rows) {
             return '';
         }
 
         ob_start();
         echo '<section class="ma-product-artwork-panel" aria-label="Artwork details">';
-        if ($rows) {
-            echo '<div class="ma-product-artwork-panel__details">';
-            foreach ($rows as $row) {
-                $label = self::text($row['label'] ?? '');
-                $value = self::text($row['value'] ?? '');
-                if (!$label || !$value) {
-                    continue;
-                }
-                if ($label === 'Artist' && $profile_url) {
-                    $value_html = '<a href="' . $profile_url . '">' . esc_html($value) . '</a>';
-                } else {
-                    $value_html = esc_html($value);
-                }
-                echo '<div class="ma-product-artwork-panel__row"><span>' . esc_html($label) . '</span><strong>' . $value_html . '</strong></div>';
+        echo '<div class="ma-product-artwork-panel__details">';
+        foreach ($rows as $row) {
+            $label = self::text($row['label'] ?? '');
+            $value = self::text($row['value'] ?? '');
+            if (!$label || !$value) {
+                continue;
             }
-            echo '</div>';
+            if ($label === 'Artist' && $profile_url) {
+                $value_html = '<a href="' . $profile_url . '">' . esc_html($value) . '</a>';
+            } else {
+                $value_html = esc_html($value);
+            }
+            echo '<div class="ma-product-artwork-panel__row"><span>' . esc_html($label) . '</span><strong>' . $value_html . '</strong></div>';
         }
-        $exhibit_card = self::product_exhibit_card($exhibits, $product);
-        if ($exhibit_card) {
-            echo $exhibit_card;
-        }
+        echo '</div>';
         echo '</section>';
         return (string) ob_get_clean();
     }
@@ -2137,21 +2130,28 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         $html = self::single_product_artwork_panel_html($product);
-        if (!$html) {
-            return;
-        }
+        $exhibit_html = self::product_exhibit_body_section_html($product);
         ?>
+        <?php if ($html) : ?>
         <template id="ma-product-artwork-panel-template"><?php echo $html; ?></template>
+        <?php endif; ?>
+        <?php if ($exhibit_html) : ?>
+        <template id="ma-product-exhibit-body-template"><?php echo $exhibit_html; ?></template>
+        <?php endif; ?>
         <script>
         (function(){
+            function summaryColumn(){
+                var rightColumn = document.querySelector('.elementor-widget-woocommerce-product-title') &&
+                    document.querySelector('.elementor-widget-woocommerce-product-title').closest('.elementor-widget-wrap');
+                if (rightColumn) rightColumn.classList.add('ma-product-summary-column');
+                return rightColumn;
+            }
             function placePanel(){
+                var rightColumn = summaryColumn();
                 if (document.querySelector('.ma-product-artwork-panel')) return;
                 var template = document.getElementById('ma-product-artwork-panel-template');
                 if (!template || !template.content) return;
                 var panel = template.content.firstElementChild.cloneNode(true);
-                var rightColumn = document.querySelector('.elementor-widget-woocommerce-product-title') &&
-                    document.querySelector('.elementor-widget-woocommerce-product-title').closest('.elementor-widget-wrap');
-                if (rightColumn) rightColumn.classList.add('ma-product-summary-column');
                 var price = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-price');
                 var addToCart = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-add-to-cart');
                 var meta = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-meta');
@@ -2163,10 +2163,33 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     meta.parentNode.insertBefore(panel, meta);
                 }
             }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', placePanel, {once:true});
-            } else {
+            function placeExhibit(){
+                if (document.querySelector('.ma-product-exhibit-section')) return;
+                var template = document.getElementById('ma-product-exhibit-body-template');
+                if (!template || !template.content) return;
+                var section = template.content.firstElementChild.cloneNode(true);
+                var artistProfile = document.querySelector('.ma-artist-profile');
+                if (artistProfile && artistProfile.parentNode) {
+                    artistProfile.parentNode.insertBefore(section, artistProfile);
+                    return;
+                }
+                var productContent = document.querySelector('.elementor-widget-woocommerce-product-content, .woocommerce-product-details__short-description, .entry-summary');
+                if (productContent && productContent.parentNode) {
+                    productContent.parentNode.insertBefore(section, productContent.nextSibling);
+                    return;
+                }
+                var product = document.querySelector('main .product, div.product');
+                if (product) product.appendChild(section);
+            }
+            function boot(){
+                summaryColumn();
                 placePanel();
+                placeExhibit();
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot, {once:true});
+            } else {
+                boot();
             }
         }());
         </script>
@@ -2229,6 +2252,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return self::text(get_the_title($venue_id));
         }
         return '';
+    }
+
+    private static function product_exhibit_body_section_html(WC_Product $product): string {
+        $card = self::product_exhibit_card(self::product_exhibits($product->get_id()), $product);
+        if (!$card) {
+            return '';
+        }
+        return '<section class="ma-product-exhibit-section" aria-label="Exhibition information"><h2>Exhibition</h2>' . $card . '</section>';
     }
 
     private static function product_exhibit_card(array $exhibits, WC_Product $product): string {
@@ -2343,6 +2374,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         echo '<style id="ma-artist-profile-css">body.single-product div.product .summary.entry-summary,.ma-product-summary-column{box-sizing:border-box;padding:0 0 0 28px!important;background:transparent;border:0;box-shadow:none}body.single-product div.product .summary.entry-summary .product_title,body.single-product .elementor-widget-woocommerce-product-title .product_title{margin:0 0 14px!important;color:#050505!important;font-size:30px!important;line-height:1.14!important;font-weight:650!important;letter-spacing:0!important;text-align:left!important}body.single-product div.product .summary.entry-summary .price,body.single-product .elementor-widget-woocommerce-product-price .price{margin:0 0 20px!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:21px!important;line-height:1.2!important;font-weight:400!important;text-align:left!important}body.single-product .elementor-widget-woocommerce-product-price .price .amount{font:inherit!important;color:inherit!important}body.single-product div.product .summary.entry-summary .woocommerce-product-details__short-description{margin:0 0 22px!important;color:#222;font-size:15px;line-height:1.55}.ma-product-artwork-panel{display:grid;gap:20px;margin:20px 0!important;padding:18px 0 20px!important;border-top:1px solid rgba(0,0,0,.12);border-bottom:1px solid rgba(0,0,0,.12);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-artwork-panel__details{display:grid;gap:10px}.ma-product-artwork-panel__row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:baseline}.ma-product-artwork-panel__row span{color:#686868;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-artwork-panel__row strong{color:#111;font-size:14px;line-height:1.35;font-weight:500}.ma-product-artwork-panel__row a{color:#111;text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;align-items:center;margin-top:2px;padding:0;color:#111;text-decoration:none;background:transparent;border:0}.ma-product-exhibit-card:hover h3{text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card__image{min-height:74px;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:contain}.ma-product-exhibit-card__body{align-self:center}.ma-product-exhibit-card__body span{display:block;margin:0 0 6px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-card__body h3{margin:0 0 7px!important;color:#111!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-card__body p{margin:0 0 3px;color:#333;font-size:13px;line-height:1.35}.ma-product-summary-column .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}.ma-product-summary-column .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}.ma-product-summary-column .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}.ma-product-summary-column .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}.ma-product-summary-column .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}.ma-artist-profile{clear:both;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;align-items:start;margin:34px 0 0;padding-top:28px;border-top:1px solid #ddd;color:#111}.ma-artist-profile__portrait{width:180px;aspect-ratio:4/5;background:#f2eee8;overflow:hidden}.ma-artist-profile__portrait a,.ma-artist-profile__portrait img{display:block;width:100%;height:100%}.ma-artist-profile__portrait img{object-fit:cover}.ma-artist-profile h3{margin:0 0 10px;font-size:22px;line-height:1.2}.ma-artist-profile h3 a{color:inherit;text-decoration:none}.ma-artist-profile p{margin:0 0 12px;line-height:1.6}.ma-artist-page{max-width:1120px;margin:0 auto}.ma-artist-page__portrait{max-width:420px;margin:0 0 28px}.ma-artist-page__portrait img{display:block;width:100%;height:auto}.ma-artist-page__bio{max-width:780px}.ma-artist-page__facts{margin:26px 0}.ma-artist-page__facts ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ma-artist-artworks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}.ma-artist-artwork img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.ma-artist-artwork h3{font-size:18px;line-height:1.25;margin:10px 0 4px}.ma-artist-artwork a{color:inherit;text-decoration:none}.ma-artist-artwork__meta,.ma-artist-artwork__price{font-size:14px;margin:0;color:#333}@media(max-width:760px){body.single-product div.product .summary.entry-summary,.ma-product-summary-column{padding:0!important}.ma-product-artwork-panel__row{grid-template-columns:82px minmax(0,1fr)}.ma-product-exhibit-card{grid-template-columns:86px minmax(0,1fr)}.ma-artist-profile{display:block}.ma-artist-profile__portrait{width:150px;margin:0 0 18px}.ma-artist-artworks{grid-template-columns:1fr}}</style>';
+        echo '<style id="ma-product-exhibit-body-css">.ma-product-exhibit-section{clear:both;max-width:900px;margin:38px 0 0;padding:28px 0;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.08);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-exhibit-section h2{margin:0 0 18px!important;color:#111!important;font-size:22px!important;line-height:1.2!important;font-weight:650!important}.ma-product-exhibit-section .ma-product-exhibit-card{display:grid!important;grid-template-columns:170px minmax(0,1fr)!important;gap:24px!important;align-items:start!important;margin:0!important;color:#111!important;text-decoration:none!important;background:transparent!important;border:0!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{min-height:0!important;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-section .ma-product-exhibit-card__image img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-section .ma-product-exhibit-card__body span{display:block;margin:0 0 8px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-section .ma-product-exhibit-card__body h3{margin:0 0 8px!important;color:#111!important;font-size:19px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-section .ma-product-exhibit-card__body p{margin:0 0 5px;color:#333;font-size:14px;line-height:1.45}@media(max-width:760px){.ma-product-exhibit-section{margin-top:28px;padding:24px 0}.ma-product-exhibit-section .ma-product-exhibit-card{grid-template-columns:1fr!important;gap:14px!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{max-width:260px}}</style>';
     }
 
     public static function artist_artworks_shortcode(array $atts): string {
