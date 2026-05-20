@@ -59,8 +59,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
         add_filter('wp_resource_hints', [__CLASS__, 'filter_frontend_resource_hints'], 20, 2);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
+        add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
+        add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
     }
 
     public static function activate(): void {
@@ -2318,6 +2320,109 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return $content . $exhibit_html;
     }
 
+    public static function replace_sponsorship_page_content(string $content): string {
+        if (is_admin() || !is_page('sponsorship') || !in_the_loop() || !is_main_query()) {
+            return $content;
+        }
+
+        return self::sponsorship_page_html();
+    }
+
+    private static function sponsorship_page_html(): string {
+        $hero = 'https://www.mashouse.studio/wp-content/uploads/2024/08/20230921_170434-scaled-e1723729988554-1024x498.jpg';
+        $tiers = [
+            [
+                'price' => '$500',
+                'name' => 'Workshop',
+                'summary' => 'Sponsor one hands-on community workshop led by a Shinnecock artist or current artist-in-residence.',
+                'url' => 'https://www.mashouse.studio/donations/mas-house-workshop-sponsorship/',
+                'cta' => 'Sponsor a Workshop',
+                'benefits' => [
+                    '1 complimentary ticket to the upcoming annual Ma\'s House Friendraiser.',
+                    'Name or business name listed on the webpage for the upcoming Friendraiser.',
+                    'Invitation to attend the sponsored workshop for you and 1 guest.',
+                    'Listing on the webpage, emails, and social media content related to the sponsored workshop.',
+                ],
+            ],
+            [
+                'price' => '$1,000',
+                'name' => 'Residency',
+                'summary' => 'Sponsor one week-long Ma\'s House residency for a BIPOC artist-in-residence.',
+                'url' => 'https://www.mashouse.studio/donations/mas-house-residency-sponsorship/',
+                'cta' => 'Sponsor a Residency',
+                'benefits' => [
+                    '2 complimentary tickets to the upcoming annual Friendraiser.',
+                    'Name or business name listed on the webpage for the upcoming Friendraiser.',
+                    'Verbal recognition during the Friendraiser program.',
+                    'Invitation for you and 4 guests to attend events related to the sponsored residency, when applicable.',
+                    'Listing on webpage, emails, and social media content related to the sponsored residency.',
+                ],
+            ],
+            [
+                'price' => '$2,500',
+                'name' => 'Exhibition',
+                'summary' => 'Sponsor a single exhibition at Ma\'s House.',
+                'url' => 'https://www.mashouse.studio/donations/mas-house-exhibit-sponsorship/',
+                'cta' => 'Sponsor an Exhibition',
+                'benefits' => [
+                    '4 complimentary tickets to the upcoming Friendraiser.',
+                    'Prominent placement of name or business logo on the Friendraiser webpage.',
+                    'Verbal recognition during the Friendraiser program.',
+                    'Company logo or donor name on gallery wall and printed content related to the sponsored exhibition.',
+                    'Prominent listing on webpage, emails, social media content, and press release related to the sponsored exhibition.',
+                    'Invitation for you and up to 6 guests to attend the opening for the sponsored exhibition.',
+                ],
+            ],
+        ];
+
+        ob_start();
+        ?>
+        <article class="ma-sponsorship-page">
+            <section class="ma-sponsorship-hero">
+                <img src="<?php echo esc_url($hero); ?>" alt="Community gathering at Ma's House" loading="eager">
+                <div class="ma-sponsorship-hero__copy">
+                    <p>Sponsorship</p>
+                    <h1>Support workshops, residencies, and exhibitions at Ma's House.</h1>
+                    <div class="ma-sponsorship-hero__actions">
+                        <a href="#sponsorship-levels">View Opportunities</a>
+                        <a href="https://www.mashouse.studio/donate/">General Donation</a>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sponsorship-levels" class="ma-sponsorship-section">
+                <div class="ma-sponsorship-section__intro">
+                    <h2>Sponsorship Opportunities &amp; Benefits</h2>
+                    <p>Sponsors help keep Ma's House active as a space for Indigenous artists, community programs, exhibitions, and public gatherings.</p>
+                </div>
+                <div class="ma-sponsorship-grid">
+                    <?php foreach ($tiers as $tier) : ?>
+                        <article class="ma-sponsorship-tier">
+                            <div>
+                                <p class="ma-sponsorship-tier__price"><?php echo esc_html($tier['price']); ?></p>
+                                <h3><?php echo esc_html($tier['name']); ?></h3>
+                                <p class="ma-sponsorship-tier__summary"><?php echo esc_html($tier['summary']); ?></p>
+                            </div>
+                            <div>
+                                <h4>Benefits</h4>
+                                <ul>
+                                    <?php foreach ($tier['benefits'] as $benefit) : ?>
+                                        <li><?php echo esc_html($benefit); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <a class="ma-sponsorship-tier__cta" href="<?php echo esc_url($tier['url']); ?>"><?php echo esc_html($tier['cta']); ?></a>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+
+            <?php echo do_shortcode('[ma_past_sponsors]'); ?>
+        </article>
+        <?php
+        return (string) ob_get_clean();
+    }
+
     private static function product_exhibits(int $product_id): array {
         $json = (string) get_post_meta($product_id, self::META_PREFIX . 'exhibits_json', true);
         $records = $json ? json_decode($json, true) : [];
@@ -3031,6 +3136,95 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $html .= '</div>';
         return $html;
+    }
+
+    public static function past_sponsors_shortcode(array $atts = []): string {
+        $atts = shortcode_atts([
+            'limit' => 48,
+            'forms' => '7700,7705,7709',
+        ], $atts, 'ma_past_sponsors');
+
+        $sponsorship_form_ids = array_values(array_filter(array_map('absint', explode(',', (string) $atts['forms']))));
+        $sponsors = self::givewp_public_sponsors($sponsorship_form_ids, absint($atts['limit']));
+        $heading = 'Past Sponsors';
+        $note = 'Pulled from GiveWP sponsorship records. Anonymous gifts are kept private.';
+
+        if (!$sponsors) {
+            $sponsors = self::givewp_public_sponsors([], absint($atts['limit']));
+            $heading = 'Past Sponsors & Supporters';
+            $note = 'Pulled from public GiveWP records. Anonymous gifts are kept private.';
+        }
+
+        if (!$sponsors) {
+            return '<section class="ma-past-sponsors"><h2>Past Sponsors</h2><p>Sponsors will appear here as GiveWP sponsorship records are completed.</p></section>';
+        }
+
+        ob_start();
+        ?>
+        <section class="ma-past-sponsors" aria-label="<?php echo esc_attr($heading); ?>">
+            <div class="ma-past-sponsors__intro">
+                <h2><?php echo esc_html($heading); ?></h2>
+                <p><?php echo esc_html($note); ?></p>
+            </div>
+            <div class="ma-past-sponsors__grid">
+                <?php foreach ($sponsors as $sponsor) : ?>
+                    <article class="ma-past-sponsor">
+                        <h3><?php echo esc_html($sponsor['name']); ?></h3>
+                        <?php if (!empty($sponsor['form_title'])) : ?>
+                            <p><?php echo esc_html($sponsor['form_title']); ?></p>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function givewp_public_sponsors(array $form_ids, int $limit): array {
+        $limit = max(1, min(120, $limit ?: 48));
+        $query = [
+            'post_type' => 'give_payment',
+            'post_status' => 'any',
+            'posts_per_page' => 240,
+            'fields' => 'ids',
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
+        if ($form_ids) {
+            $query['meta_query'] = [[
+                'key' => '_give_payment_form_id',
+                'value' => array_map('strval', $form_ids),
+                'compare' => 'IN',
+            ]];
+        }
+
+        $seen = [];
+        $sponsors = [];
+        foreach (get_posts($query) as $payment_id) {
+            if (self::text(get_post_meta($payment_id, '_give_anonymous_donation', true)) === '1') {
+                continue;
+            }
+            $first = self::text(get_post_meta($payment_id, '_give_donor_billing_first_name', true));
+            $last = self::text(get_post_meta($payment_id, '_give_donor_billing_last_name', true));
+            $name = trim($first . ' ' . $last);
+            if (!$name) {
+                continue;
+            }
+            $key = strtolower($name);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $sponsors[] = [
+                'name' => $name,
+                'form_title' => self::text(get_post_meta($payment_id, '_give_payment_form_title', true)),
+            ];
+            if (count($sponsors) >= $limit) {
+                break;
+            }
+        }
+        return $sponsors;
     }
 
     public static function add_scale_product_tab(array $tabs): array {
