@@ -43,6 +43,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_main_content', [__CLASS__, 'render_shop_on_view_section'], 25);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_shop_on_view_section'], 4);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
@@ -97,6 +98,22 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!wp_next_scheduled(self::CRON_HOOK)) {
             wp_schedule_event(time() + 1800, 'ma_artwork_every_thirty_minutes', self::CRON_HOOK);
         }
+    }
+
+    public static function enqueue_public_fix_styles(): void {
+        if (is_admin()) {
+            return;
+        }
+        $path = plugin_dir_path(__FILE__) . 'assets/ma-public-fixes.css';
+        if (!file_exists($path)) {
+            return;
+        }
+        wp_enqueue_style(
+            'ma-artwork-public-fixes',
+            plugins_url('assets/ma-public-fixes.css', __FILE__),
+            [],
+            (string) filemtime($path)
+        );
     }
 
     public static function add_cron_schedule(array $schedules): array {

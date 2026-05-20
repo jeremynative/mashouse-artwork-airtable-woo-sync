@@ -1,0 +1,21 @@
+body .hfg_header.site-header {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body.page-id-377 #content.neve-main,
+body.page-id-377 main.neve-main {
+  padding-top: 158px !important;
+}
+
+body.page-id-377 .nv-single-page-wrap,
+body.page-id-377 .elementor-page-377 {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 760px) {
+  body.page-id-377 #content.neve-main,
+  body.page-id-377 main.neve-main {
+    padding-top: 126px !important;
+  }
+}
