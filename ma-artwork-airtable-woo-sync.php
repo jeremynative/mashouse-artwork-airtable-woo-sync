@@ -42,6 +42,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
+        add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
@@ -2089,14 +2090,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$product instanceof WC_Product) {
             return;
         }
+        echo self::single_product_artwork_panel_html($product);
+    }
 
+    private static function single_product_artwork_panel_html(WC_Product $product): string {
         $rows = self::product_detail_rows($product);
         $profile_url = esc_url(self::text(get_post_meta($product->get_id(), 'ma_artist_profile_url', true)));
         $exhibits = self::product_exhibits($product->get_id());
         if (!$rows && !$exhibits) {
-            return;
+            return '';
         }
 
+        ob_start();
         echo '<section class="ma-product-artwork-panel" aria-label="Artwork details">';
         if ($rows) {
             echo '<div class="ma-product-artwork-panel__details">';
@@ -2120,6 +2125,52 @@ final class MA_Artwork_Airtable_Woo_Sync {
             echo $exhibit_card;
         }
         echo '</section>';
+        return (string) ob_get_clean();
+    }
+
+    public static function render_single_product_artwork_panel_fallback(): void {
+        if (!is_product() || !class_exists('WooCommerce')) {
+            return;
+        }
+        $product = wc_get_product((int) get_queried_object_id());
+        if (!$product instanceof WC_Product) {
+            return;
+        }
+        $html = self::single_product_artwork_panel_html($product);
+        if (!$html) {
+            return;
+        }
+        ?>
+        <template id="ma-product-artwork-panel-template"><?php echo $html; ?></template>
+        <script>
+        (function(){
+            function placePanel(){
+                if (document.querySelector('.ma-product-artwork-panel')) return;
+                var template = document.getElementById('ma-product-artwork-panel-template');
+                if (!template || !template.content) return;
+                var panel = template.content.firstElementChild.cloneNode(true);
+                var rightColumn = document.querySelector('.elementor-widget-woocommerce-product-title') &&
+                    document.querySelector('.elementor-widget-woocommerce-product-title').closest('.elementor-widget-wrap');
+                if (rightColumn) rightColumn.classList.add('ma-product-summary-column');
+                var price = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-price');
+                var addToCart = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-add-to-cart');
+                var meta = rightColumn && rightColumn.querySelector('.elementor-widget-woocommerce-product-meta');
+                if (addToCart && addToCart.parentNode) {
+                    addToCart.parentNode.insertBefore(panel, addToCart);
+                } else if (price && price.parentNode) {
+                    price.parentNode.insertBefore(panel, price.nextSibling);
+                } else if (meta && meta.parentNode) {
+                    meta.parentNode.insertBefore(panel, meta);
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', placePanel, {once:true});
+            } else {
+                placePanel();
+            }
+        }());
+        </script>
+        <?php
     }
 
     private static function product_exhibits(int $product_id): array {
@@ -2246,7 +2297,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!is_product() && !$is_artist_post) {
             return;
         }
-        echo '<style id="ma-artist-profile-css">body.single-product div.product .summary.entry-summary{box-sizing:border-box;padding:28px 30px!important;background:#fff;border:1px solid rgba(0,0,0,.12);box-shadow:0 14px 34px rgba(0,0,0,.06)}body.single-product div.product .summary.entry-summary .product_title{margin:0 0 14px!important;color:#050505;font-size:34px!important;line-height:1.12!important;font-weight:700!important;letter-spacing:0!important}body.single-product div.product .summary.entry-summary .price{margin:0 0 22px!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:24px!important;line-height:1.2!important;font-weight:500!important}body.single-product div.product .summary.entry-summary .woocommerce-product-details__short-description{margin:0 0 22px!important;color:#222;font-size:15px;line-height:1.55}.ma-product-artwork-panel{display:grid;gap:22px;margin:22px 0!important;padding:22px 0!important;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.14);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-artwork-panel__details{display:grid;gap:10px}.ma-product-artwork-panel__row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:baseline}.ma-product-artwork-panel__row span{color:#686868;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-artwork-panel__row strong{color:#111;font-size:14px;line-height:1.35;font-weight:500}.ma-product-artwork-panel__row a{color:#111;text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card{display:grid;grid-template-columns:104px minmax(0,1fr);gap:16px;align-items:stretch;margin-top:2px;padding:12px;color:#111;text-decoration:none;background:#f7f5f1;border:1px solid rgba(0,0,0,.08)}.ma-product-exhibit-card:hover h3{text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card__image{min-height:94px;background:#e9e4dc;overflow:hidden}.ma-product-exhibit-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-card__body{align-self:center}.ma-product-exhibit-card__body span{display:block;margin:0 0 6px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-card__body h3{margin:0 0 7px!important;color:#111!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-card__body p{margin:0 0 3px;color:#333;font-size:13px;line-height:1.35}.ma-artist-profile{clear:both;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;align-items:start;margin:34px 0 0;padding-top:28px;border-top:1px solid #ddd;color:#111}.ma-artist-profile__portrait{width:180px;aspect-ratio:4/5;background:#f2eee8;overflow:hidden}.ma-artist-profile__portrait a,.ma-artist-profile__portrait img{display:block;width:100%;height:100%}.ma-artist-profile__portrait img{object-fit:cover}.ma-artist-profile h3{margin:0 0 10px;font-size:22px;line-height:1.2}.ma-artist-profile h3 a{color:inherit;text-decoration:none}.ma-artist-profile p{margin:0 0 12px;line-height:1.6}.ma-artist-page{max-width:1120px;margin:0 auto}.ma-artist-page__portrait{max-width:420px;margin:0 0 28px}.ma-artist-page__portrait img{display:block;width:100%;height:auto}.ma-artist-page__bio{max-width:780px}.ma-artist-page__facts{margin:26px 0}.ma-artist-page__facts ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ma-artist-artworks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}.ma-artist-artwork img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.ma-artist-artwork h3{font-size:18px;line-height:1.25;margin:10px 0 4px}.ma-artist-artwork a{color:inherit;text-decoration:none}.ma-artist-artwork__meta,.ma-artist-artwork__price{font-size:14px;margin:0;color:#333}@media(max-width:760px){body.single-product div.product .summary.entry-summary{padding:22px 18px!important}.ma-product-artwork-panel__row{grid-template-columns:82px minmax(0,1fr)}.ma-product-exhibit-card{grid-template-columns:86px minmax(0,1fr)}.ma-artist-profile{display:block}.ma-artist-profile__portrait{width:150px;margin:0 0 18px}.ma-artist-artworks{grid-template-columns:1fr}}</style>';
+        echo '<style id="ma-artist-profile-css">body.single-product div.product .summary.entry-summary,.ma-product-summary-column{box-sizing:border-box;padding:28px 30px!important;background:#fff;border:1px solid rgba(0,0,0,.12);box-shadow:0 14px 34px rgba(0,0,0,.06)}body.single-product div.product .summary.entry-summary .product_title,body.single-product .elementor-widget-woocommerce-product-title .product_title{margin:0 0 14px!important;color:#050505!important;font-size:34px!important;line-height:1.12!important;font-weight:700!important;letter-spacing:0!important}body.single-product div.product .summary.entry-summary .price,body.single-product .elementor-widget-woocommerce-product-price .price{margin:0 0 22px!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:24px!important;line-height:1.2!important;font-weight:500!important;text-align:left!important}body.single-product .elementor-widget-woocommerce-product-price .price .amount{font:inherit!important;color:inherit!important}body.single-product div.product .summary.entry-summary .woocommerce-product-details__short-description{margin:0 0 22px!important;color:#222;font-size:15px;line-height:1.55}.ma-product-artwork-panel{display:grid;gap:22px;margin:22px 0!important;padding:22px 0!important;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.14);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-artwork-panel__details{display:grid;gap:10px}.ma-product-artwork-panel__row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:baseline}.ma-product-artwork-panel__row span{color:#686868;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-artwork-panel__row strong{color:#111;font-size:14px;line-height:1.35;font-weight:500}.ma-product-artwork-panel__row a{color:#111;text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card{display:grid;grid-template-columns:104px minmax(0,1fr);gap:16px;align-items:stretch;margin-top:2px;padding:12px;color:#111;text-decoration:none;background:#f7f5f1;border:1px solid rgba(0,0,0,.08)}.ma-product-exhibit-card:hover h3{text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card__image{min-height:94px;background:#e9e4dc;overflow:hidden}.ma-product-exhibit-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-card__body{align-self:center}.ma-product-exhibit-card__body span{display:block;margin:0 0 6px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-card__body h3{margin:0 0 7px!important;color:#111!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-card__body p{margin:0 0 3px;color:#333;font-size:13px;line-height:1.35}.ma-product-summary-column .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}.ma-product-summary-column .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}.ma-product-summary-column .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}.ma-product-summary-column .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}.ma-product-summary-column .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}.ma-artist-profile{clear:both;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;align-items:start;margin:34px 0 0;padding-top:28px;border-top:1px solid #ddd;color:#111}.ma-artist-profile__portrait{width:180px;aspect-ratio:4/5;background:#f2eee8;overflow:hidden}.ma-artist-profile__portrait a,.ma-artist-profile__portrait img{display:block;width:100%;height:100%}.ma-artist-profile__portrait img{object-fit:cover}.ma-artist-profile h3{margin:0 0 10px;font-size:22px;line-height:1.2}.ma-artist-profile h3 a{color:inherit;text-decoration:none}.ma-artist-profile p{margin:0 0 12px;line-height:1.6}.ma-artist-page{max-width:1120px;margin:0 auto}.ma-artist-page__portrait{max-width:420px;margin:0 0 28px}.ma-artist-page__portrait img{display:block;width:100%;height:auto}.ma-artist-page__bio{max-width:780px}.ma-artist-page__facts{margin:26px 0}.ma-artist-page__facts ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ma-artist-artworks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}.ma-artist-artwork img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.ma-artist-artwork h3{font-size:18px;line-height:1.25;margin:10px 0 4px}.ma-artist-artwork a{color:inherit;text-decoration:none}.ma-artist-artwork__meta,.ma-artist-artwork__price{font-size:14px;margin:0;color:#333}@media(max-width:760px){body.single-product div.product .summary.entry-summary,.ma-product-summary-column{padding:22px 18px!important}.ma-product-artwork-panel__row{grid-template-columns:82px minmax(0,1fr)}.ma-product-exhibit-card{grid-template-columns:86px minmax(0,1fr)}.ma-artist-profile{display:block}.ma-artist-profile__portrait{width:150px;margin:0 0 18px}.ma-artist-artworks{grid-template-columns:1fr}}</style>';
     }
 
     public static function artist_artworks_shortcode(array $atts): string {
