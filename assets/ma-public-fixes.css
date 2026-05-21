@@ -47,6 +47,33 @@ body.page-id-32 .entry-content {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+body.home .give-embed-form-wrapper.is-hide,
+body.home .give-embed-form-wrapper.is-hide .modal-content,
+body.home .give-embed-form-wrapper.is-hide .iframe-loader {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+body.home .js-give-embed-form-modal-launcher-wrap {
+  display: flex !important;
+  justify-content: center;
+}
+
+body.home button.js-give-embed-form-modal-opener {
+  margin: 12px auto 0 !important;
+}
+
+body.home .elementor-element-bb41249 {
+  margin-bottom: 0 !important;
+}
+
 body.home .elementor-element-e4f132f,
 body.page-id-97 .elementor-element-e4f132f {
   margin: 26px auto 10px !important;
