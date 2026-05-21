@@ -53,6 +53,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
         add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
         add_action('template_redirect', [__CLASS__, 'redirect_dated_artist_profile_urls'], 3);
+        add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
@@ -142,6 +143,33 @@ final class MA_Artwork_Airtable_Woo_Sync {
             [],
             (string) filemtime($path)
         );
+    }
+
+    public static function render_home_donation_button_redirect(): void {
+        if (!is_front_page() && !is_home()) {
+            return;
+        }
+        ?>
+        <script id="ma-home-donation-button-redirect">
+        document.addEventListener('DOMContentLoaded', function () {
+            var selectors = [
+                '.elementor-element-bb41249 button.js-give-embed-form-modal-opener',
+                '.elementor-element-6060d11 button.js-give-embed-form-modal-opener'
+            ];
+            selectors.forEach(function (selector) {
+                document.querySelectorAll(selector).forEach(function (button) {
+                    button.type = 'button';
+                    button.setAttribute('aria-label', 'Go to the Ma\'s House donation page');
+                    button.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        window.location.href = '<?php echo esc_js(home_url('/donate/')); ?>';
+                    }, true);
+                });
+            });
+        });
+        </script>
+        <?php
     }
 
     public static function add_cron_schedule(array $schedules): array {
