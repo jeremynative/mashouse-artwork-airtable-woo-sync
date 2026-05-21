@@ -3266,6 +3266,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin()) {
             return;
         }
+        if (self::is_give_embed_endpoint()) {
+            return;
+        }
 
         $allow_payment_assets = self::allow_payment_assets_on_current_request();
         $allow_donation_assets = self::allow_donation_assets_on_current_request();
@@ -3436,6 +3439,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function allow_donation_assets_on_current_request(): bool {
+        if (self::is_give_embed_endpoint()) {
+            return true;
+        }
         $request_path = trim(strtolower((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH)), '/');
         if (strpos($request_path, 'donations/') === 0 || strpos($request_path, 'give/') === 0) {
             return true;
@@ -3465,6 +3471,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
     private static function allow_marketing_assets_on_current_request(): bool {
         return self::allow_payment_assets_on_current_request() || self::allow_donation_assets_on_current_request() || self::current_page_slug_matches(['subscribe']);
+    }
+
+    private static function is_give_embed_endpoint(): bool {
+        return isset($_GET['give-embed']) && self::text(wp_unslash($_GET['give-embed'])) !== '';
     }
 
     private static function is_give_sponsorship_request(): bool {
