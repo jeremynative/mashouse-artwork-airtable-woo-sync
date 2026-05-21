@@ -55,6 +55,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
         add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
         add_action('template_redirect', [__CLASS__, 'redirect_dated_artist_profile_urls'], 3);
+        add_action('pre_get_posts', [__CLASS__, 'exclude_artist_profiles_from_home_news']);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
@@ -74,6 +75,27 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
+    }
+
+    public static function exclude_artist_profiles_from_home_news(WP_Query $query): void {
+        if (is_admin() || !(function_exists('is_front_page') && is_front_page())) {
+            return;
+        }
+        if ($query->is_main_query()) {
+            return;
+        }
+        $post_type = $query->get('post_type');
+        $is_post_query = !$post_type || $post_type === 'post' || (is_array($post_type) && in_array('post', $post_type, true));
+        if (!$is_post_query) {
+            return;
+        }
+        $artists = get_term_by('slug', 'artists', 'category');
+        if (!$artists instanceof WP_Term) {
+            return;
+        }
+        $excluded = array_map('intval', (array) $query->get('category__not_in'));
+        $excluded[] = (int) $artists->term_id;
+        $query->set('category__not_in', array_values(array_unique(array_filter($excluded))));
     }
 
     public static function activate(): void {
