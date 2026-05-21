@@ -237,7 +237,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-3388 .elementor-element-96b776d{display:none!important}
             body.page-id-3388 .single-page-container{max-width:1240px}
             body.page-id-3388 .nv-page-title-wrap{margin:54px 0 28px!important}
-            body.page-id-3388 .nv-page-title h1{margin:0!important;color:#111!important;font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(38px,5vw,68px)!important;line-height:.95!important;font-weight:800!important}
+            body.page-id-3388 .nv-page-title h1{margin:0!important;color:#111!important;font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(34px,4vw,48px)!important;line-height:1.05!important;font-weight:720!important}
             body.page-id-3388 .elementor-3388{font-family:Arial,Helvetica,sans-serif;color:#111}
             body.page-id-3388 .elementor-element-e2f87cd>.elementor-container{display:grid!important;grid-template-columns:minmax(0,.95fr) minmax(360px,1.05fr)!important;gap:42px!important;align-items:start!important}
             body.page-id-3388 .elementor-element-e2f87cd .elementor-column{width:auto!important}
@@ -255,6 +255,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-3388 .elementor-element-c5860aa .elementor-button{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:50px!important;margin:0 auto!important;border-radius:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:15px!important;font-weight:800!important;line-height:1.2!important;text-align:center!important;text-transform:none!important}
             body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open{background:#111!important;color:#fff!important}
             body.page-id-3388 .elementor-element-c5860aa .elementor-button{background:#fff!important;color:#111!important;border:1px solid #111!important}
+            body.page-id-3388 .elementor-element-52863ee h2{margin:0 0 22px!important;color:#111!important;font-size:clamp(26px,3vw,34px)!important;line-height:1.15!important;font-weight:720!important;text-align:left!important}
+            body.page-id-3388 .give-donor-wall-shortcode-wrap .give-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important;align-items:start!important}
+            body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-container{display:grid!important;grid-template-columns:46px minmax(0,1fr)!important;grid-template-areas:"avatar name" "amount amount" "comment comment"!important;gap:12px 14px!important;padding:20px!important}
+            body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-details{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:12px!important;padding-top:12px!important;border-top:1px solid #ece7df!important;text-align:left!important}
             @media(max-width:920px){body.page-id-3388 .elementor-element-e2f87cd>.elementor-container{grid-template-columns:1fr!important;gap:28px!important}}
         </style>
         <?php

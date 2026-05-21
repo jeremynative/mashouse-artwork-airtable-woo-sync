@@ -59,9 +59,9 @@ body.page-id-3388 .nv-page-title h1 {
   margin: 0 !important;
   color: #111 !important;
   font-family: Arial, Helvetica, sans-serif !important;
-  font-size: clamp(38px, 5vw, 68px) !important;
-  line-height: .95 !important;
-  font-weight: 800 !important;
+  font-size: clamp(34px, 4vw, 48px) !important;
+  line-height: 1.05 !important;
+  font-weight: 720 !important;
   letter-spacing: 0 !important;
 }
 
@@ -206,10 +206,70 @@ body.page-id-3388 .elementor-element-52863ee {
 body.page-id-3388 .elementor-element-52863ee h2 {
   margin: 0 0 22px !important;
   color: #111 !important;
-  font-size: clamp(30px, 4vw, 46px) !important;
-  line-height: 1.05 !important;
-  font-weight: 800 !important;
+  font-size: clamp(26px, 3vw, 34px) !important;
+  line-height: 1.15 !important;
+  font-weight: 720 !important;
   text-align: left !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor.give-card {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-container {
+  grid-template-columns: 46px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "avatar name"
+    "amount amount"
+    "comment comment" !important;
+  gap: 12px 14px !important;
+  padding: 20px !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-container-variation__name {
+  font-size: 17px !important;
+  line-height: 1.2 !important;
+  overflow-wrap: anywhere;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-details {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid #ece7df !important;
+  text-align: left !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-details__wrapper,
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-details__wrapper span {
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-details__total {
+  flex: 0 0 auto;
+  font-size: 16px !important;
+  white-space: nowrap !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-content {
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-content__comment {
+  color: #222 !important;
+  font-size: 14px !important;
+  font-style: normal !important;
 }
 
 body.home .elementor-element-c8e0c2e {
