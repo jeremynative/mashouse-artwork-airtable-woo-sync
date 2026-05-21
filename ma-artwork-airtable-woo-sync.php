@@ -70,6 +70,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
         add_filter('the_content', [__CLASS__, 'replace_about_page_content'], 36);
         add_filter('the_content', [__CLASS__, 'replace_news_page_content'], 37);
+        add_filter('the_content', [__CLASS__, 'replace_subscribe_page_content'], 38);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -2623,6 +2624,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::news_page_html();
     }
 
+    public static function replace_subscribe_page_content(string $content): string {
+        if (is_admin() || !is_page('subscribe')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 3374) {
+            return $content;
+        }
+
+        return self::subscribe_page_html();
+    }
+
     public static function render_news_posts_page_template(): void {
         if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
             return;
@@ -2698,6 +2711,48 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 <?php echo self::news_cards_html($blog_news, false); ?>
             </section>
         </article>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function subscribe_page_html(): string {
+        $settings = get_option('klaviyo_settings');
+        $list_id = self::text(is_array($settings) ? ($settings['klaviyo_newsletter_list_id'] ?? '') : '');
+        if (!$list_id) {
+            $list_id = 'RKZXbT';
+        }
+
+        ob_start();
+        ?>
+        <article class="ma-subscribe-page">
+            <section class="ma-subscribe-hero">
+                <p>Newsletter</p>
+                <h1>Stay connected with Ma's House.</h1>
+                <div>
+                    <p>Get updates about upcoming exhibitions, visiting artists, workshops, library news, and ways to support the space.</p>
+                </div>
+            </section>
+            <section class="ma-subscribe-card" aria-label="Newsletter signup">
+                <form id="ma-klaviyo-subscribe-form" class="ma-klaviyo-form" action="https://manage.kmail-lists.com/subscriptions/subscribe" data-ajax-submit="https://manage.kmail-lists.com/ajax/subscriptions/subscribe" method="GET" target="_blank" novalidate>
+                    <input type="hidden" name="g" value="<?php echo esc_attr($list_id); ?>">
+                    <label for="ma-klaviyo-email">Email address</label>
+                    <div class="ma-klaviyo-form__row">
+                        <input id="ma-klaviyo-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+                        <button type="submit">Sign Up</button>
+                    </div>
+                    <div class="klaviyo_messages" aria-live="polite">
+                        <div class="success_message" style="display:none;"></div>
+                        <div class="error_message" style="display:none;"></div>
+                    </div>
+                </form>
+            </section>
+        </article>
+        <script src="https://www.klaviyo.com/media/js/public/klaviyo_subscribe.js" data-no-optimize="1" data-cfasync="false"></script>
+        <script data-no-optimize="1" data-cfasync="false">
+        if (window.KlaviyoSubscribe) {
+            window.KlaviyoSubscribe.attachToForms('#ma-klaviyo-subscribe-form', {hide_form_on_success: true});
+        }
+        </script>
         <?php
         return (string) ob_get_clean();
     }
@@ -3356,6 +3411,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $html = preg_replace('~<a\b(?=[^>]*\beventDisplay=past\b)[\s\S]*?</a>~i', '', $html) ?? $html;
             $html = str_replace('&#038;#038;', '&#038;', $html);
         }
+        if (self::is_give_sponsorship_request()) {
+            $html = self::eager_load_give_iframes($html);
+        }
         if (!function_exists('is_product') || !is_product()) {
             $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*<style\s+type=(["\'])text/css\2>\s*body\s+\.gmwqp_inq_addtocart:hover[\s\S]*?</style>~i', '', $html) ?? $html;
             $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*~i', '', $html) ?? $html;
@@ -3405,7 +3463,35 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function allow_marketing_assets_on_current_request(): bool {
-        return self::allow_payment_assets_on_current_request() || self::allow_donation_assets_on_current_request();
+        return self::allow_payment_assets_on_current_request() || self::allow_donation_assets_on_current_request() || self::current_page_slug_matches(['subscribe']);
+    }
+
+    private static function is_give_sponsorship_request(): bool {
+        $request_path = trim(strtolower((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH)), '/');
+        return strpos($request_path, 'donations/mas-house-workshop-sponsorship') === 0
+            || strpos($request_path, 'donations/mas-house-residency-sponsorship') === 0
+            || strpos($request_path, 'donations/mas-house-exhibit-sponsorship') === 0;
+    }
+
+    private static function eager_load_give_iframes(string $html): string {
+        $html = preg_replace_callback('~<iframe\b(?=[^>]*\bname=(["\'])give-embed-form\1)[^>]*>~i', static function (array $match): string {
+            $tag = $match[0];
+            if (preg_match('~\sdata-lazy-src=(["\'])(.*?)\1~i', $tag, $src_match)) {
+                $src = $src_match[2];
+                if (preg_match('~\ssrc=(["\'])(.*?)\1~i', $tag)) {
+                    $tag = preg_replace('~\ssrc=(["\'])(.*?)\1~i', ' src="' . esc_url($src) . '"', $tag, 1) ?? $tag;
+                } else {
+                    $tag = preg_replace('~<iframe\b~i', '<iframe src="' . esc_url($src) . '"', $tag, 1) ?? $tag;
+                }
+            }
+            $tag = preg_replace('~\sdata-lazy-src=(["\'])(.*?)\1~i', '', $tag) ?? $tag;
+            $tag = preg_replace('~\sdata-rocket-lazyload=(["\'])(.*?)\1~i', '', $tag) ?? $tag;
+            $tag = preg_replace('~\sloading=(["\'])lazy\1~i', ' loading="eager"', $tag) ?? $tag;
+            $tag = str_replace('visibility: hidden;', 'visibility: visible;', $tag);
+            return $tag;
+        }, $html) ?? $html;
+        $html = preg_replace('~<noscript>\s*<iframe\b(?=[\s\S]*?giveDonationFormInIframe=1)[\s\S]*?</iframe>\s*</noscript>~i', '', $html) ?? $html;
+        return $html;
     }
 
     private static function current_page_slug_matches(array $slugs): bool {
