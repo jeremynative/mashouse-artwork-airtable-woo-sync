@@ -277,7 +277,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 button.addEventListener('click', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
-                    window.location.href = '<?php echo esc_js(home_url('/give/generalfund/')); ?>';
+                    window.location.href = '<?php echo esc_js(home_url('/donations/generalfund/')); ?>';
                 }, true);
             });
         });
@@ -2624,6 +2624,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
             return;
         }
+        $request_path = trim((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH), '/');
+        if (strpos($request_path, 'give/') === 0) {
+            return;
+        }
         if ((int) get_option('page_for_posts') !== 32) {
             return;
         }
@@ -3347,6 +3351,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!class_exists('WooCommerce')) {
             return false;
         }
+        if (self::allow_donation_assets_on_current_request()) {
+            return true;
+        }
         if ((function_exists('is_cart') && is_cart()) || (function_exists('is_checkout') && is_checkout()) || (function_exists('is_account_page') && is_account_page())) {
             return true;
         }
@@ -3354,6 +3361,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function allow_donation_assets_on_current_request(): bool {
+        $request_path = trim(strtolower((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH)), '/');
+        if (strpos($request_path, 'donations/') === 0 || strpos($request_path, 'give/') === 0) {
+            return true;
+        }
         if (self::current_page_slug_matches(['donate', 'donation', 'donations', 'support'])) {
             return true;
         }
