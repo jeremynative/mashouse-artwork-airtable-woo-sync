@@ -213,6 +213,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-1115 .tribe-events-calendar-list__event-venue{margin:0 0 10px!important;color:#111!important;font-size:13px!important;line-height:1.4!important}
             body.page-id-1115 .tribe-events-calendar-list__event-description{display:block!important;visibility:visible!important;color:#111!important;font-size:14px!important;line-height:1.6!important;max-width:720px!important}
             body.page-id-1115 .tribe-events-calendar-list__event-description p{margin:0!important}
+            body.page-id-1115 a[href*="eventDisplay=past"],
+            body.page-id-1115 .tribe-events-c-top-bar__nav-link--prev,
+            body.page-id-1115 .tribe-events-c-nav__prev{display:none!important}
             @media(max-width:760px){
                 body.page-id-1115 .elementor-1115>.elementor-section{padding:22px 16px 48px!important}
                 body.page-id-1115 .tribe-events-calendar-list__event-row{grid-template-columns:52px minmax(0,1fr)!important;gap:12px!important}
@@ -3343,6 +3346,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if (self::current_page_slug_matches(['donate'])) {
             $html = str_replace('President &amp; Lead Artist', 'Founder', $html);
+            $html = preg_replace(
+                '~<form\b(?=[^>]*\baction=(["\'])https://www\.paypal\.com/cgi-bin/webscr\1)(?=[\s\S]*?<input\b[^>]*\bname=(["\'])cmd\2[^>]*\bvalue=(["\'])_xclick\3)(?=[\s\S]*?<input\b[^>]*\bname=(["\'])business\4[^>]*\bvalue=(["\'])\5)(?=[\s\S]*?<span\b[^>]*class=(["\'])elementor-button-text\6[^>]*>\s*Buy Now\s*</span>)[\s\S]*?</form>~i',
+                '',
+                $html
+            ) ?? $html;
+        }
+        if (self::current_page_slug_matches(['events'])) {
+            $html = preg_replace('~<a\b(?=[^>]*\beventDisplay=past\b)[\s\S]*?</a>~i', '', $html) ?? $html;
+            $html = str_replace('&#038;#038;', '&#038;', $html);
+        }
+        if (!function_exists('is_product') || !is_product()) {
+            $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*<style\s+type=(["\'])text/css\2>\s*body\s+\.gmwqp_inq_addtocart:hover[\s\S]*?</style>~i', '', $html) ?? $html;
+            $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*~i', '', $html) ?? $html;
         }
         return $html;
     }
@@ -3365,7 +3381,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (strpos($request_path, 'donations/') === 0 || strpos($request_path, 'give/') === 0) {
             return true;
         }
-        if (self::current_page_slug_matches(['donate', 'donation', 'donations', 'support'])) {
+        if (self::current_page_slug_matches(['donate', 'donation', 'donations', 'support', 'donor-dashboard'])) {
             return true;
         }
         $post = get_post();
