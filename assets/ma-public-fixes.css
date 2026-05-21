@@ -66,7 +66,17 @@ body.home .js-give-embed-form-modal-launcher-wrap {
   justify-content: center;
 }
 
+body.home .elementor-element-bb41249 > .elementor-widget-container,
+body.home .elementor-element-6060d11 > .elementor-widget-container {
+  display: flex !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
 body.home button.js-give-embed-form-modal-opener {
+  display: inline-flex !important;
+  justify-content: center !important;
   margin: 12px auto 0 !important;
 }
 
@@ -78,10 +88,26 @@ body.home .elementor-element-5647690,
 body.page-id-3388 .elementor-element-5647690 {
   min-height: 0 !important;
   padding: 56px 24px !important;
+}
+
+body.home .elementor-element-5647690 {
+  background-color: #ede8df !important;
+  background-image: url("https://www.mashouse.studio/wp-content/uploads/2020/09/20200617_130544-scaled.jpg") !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+}
+
+body.page-id-3388 .elementor-element-5647690 {
   background: #f7f5f1 !important;
 }
 
-body.home .elementor-element-5647690 > .elementor-background-overlay,
+body.home .elementor-element-5647690 > .elementor-background-overlay {
+  display: block !important;
+  background: linear-gradient(90deg, rgba(247, 245, 241, .94) 0%, rgba(247, 245, 241, .84) 58%, rgba(247, 245, 241, .68) 100%) !important;
+  opacity: 1 !important;
+}
+
 body.page-id-3388 .elementor-element-5647690 > .elementor-background-overlay {
   display: none !important;
 }
