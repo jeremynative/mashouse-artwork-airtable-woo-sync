@@ -118,8 +118,16 @@ body.page-id-3388 .elementor-element-802371a img {
 
 body.page-id-3388 .elementor-element-36b9c4a,
 body.page-id-3388 .elementor-element-c5860aa {
-  max-width: 420px;
+  width: 100% !important;
+  max-width: 420px !important;
   margin: 16px auto 0 !important;
+}
+
+body.page-id-3388 .elementor-element-36b9c4a .elementor-widget-container,
+body.page-id-3388 .elementor-element-c5860aa .elementor-widget-container,
+body.page-id-3388 .elementor-element-c5860aa form {
+  width: 100% !important;
+  margin: 0 !important;
 }
 
 body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open,
