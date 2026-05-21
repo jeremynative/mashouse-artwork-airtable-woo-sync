@@ -47,6 +47,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
+        add_action('wp_head', [__CLASS__, 'render_events_page_first_paint_css'], 2);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
@@ -169,6 +170,59 @@ final class MA_Artwork_Airtable_Woo_Sync {
             });
         });
         </script>
+        <?php
+    }
+
+    public static function render_events_page_first_paint_css(): void {
+        if (!is_page('events')) {
+            return;
+        }
+        ?>
+        <style id="ma-events-first-paint-css" data-no-optimize="1" data-cfasync="false">
+            body.page-id-1115 #content.neve-main{padding-top:0!important}
+            body.page-id-1115 .elementor-1115{font-family:Arial,Helvetica,sans-serif;color:#111}
+            body.page-id-1115 .elementor-1115>.elementor-section{padding:34px 22px 70px!important}
+            body.page-id-1115 .elementor-1115 .elementor-container{max-width:1180px!important;margin:0 auto!important}
+            body.page-id-1115 .tribe-events{width:100%;font-family:Arial,Helvetica,sans-serif!important;color:#111}
+            body.page-id-1115 .tribe-events .tribe-events-l-container{max-width:1180px!important;margin:0 auto!important;padding:0!important}
+            body.page-id-1115 .tribe-events-header{margin:0 0 30px!important}
+            body.page-id-1115 .tribe-events-header__events-bar,
+            body.page-id-1115 .tribe-events-c-events-bar{display:flex!important;align-items:center!important;gap:14px!important;min-height:52px!important;border:1px solid #ddd!important;background:#fff!important;padding:8px 12px!important}
+            body.page-id-1115 .tribe-events-c-search__input-group{display:flex!important;align-items:center!important;gap:10px!important}
+            body.page-id-1115 .tribe-events-c-search__input{height:38px!important;border:1px solid #d7d7d7!important;padding:8px 10px!important;font-size:14px!important}
+            body.page-id-1115 .tribe-events-c-search__button{height:38px!important;border:0!important;background:#111!important;color:#fff!important;padding:0 16px!important;font-weight:700!important}
+            body.page-id-1115 .tribe-events-c-top-bar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;margin:0 0 24px!important}
+            body.page-id-1115 .tribe-events-c-top-bar__datepicker-button{display:inline-flex!important;align-items:center!important;gap:8px!important;color:#111!important;background:transparent!important;border:0!important;font-size:22px!important;font-weight:700!important}
+            body.page-id-1115 .tribe-events-calendar-list{display:block!important;margin:0!important;padding:0!important;list-style:none!important}
+            body.page-id-1115 .tribe-events-calendar-list__month-separator{display:flex!important;align-items:center!important;gap:18px!important;margin:34px 0 22px!important}
+            body.page-id-1115 .tribe-events-calendar-list__month-separator:after{content:"";height:1px;background:#d9d9d9;flex:1}
+            body.page-id-1115 .tribe-events-calendar-list__month-separator h3{margin:0!important;font-size:14px!important;font-weight:500!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-row{display:grid!important;grid-template-columns:76px minmax(0,1fr)!important;gap:18px!important;margin:0 0 42px!important;padding:0!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-date-tag{width:auto!important;text-align:center!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-date-tag-weekday{display:block!important;color:#666!important;font-size:10px!important;font-weight:700!important;line-height:1.1!important;text-transform:uppercase!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-date-tag-daynum{display:block!important;color:#111!important;font-size:28px!important;font-weight:800!important;line-height:1.05!important}
+            body.page-id-1115 .tribe-events-calendar-list__event{display:grid!important;grid-template-columns:minmax(0,1fr) 220px!important;gap:34px!important;align-items:start!important;margin:0!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper{grid-column:2!important;grid-row:1!important;width:220px!important;margin:0!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-featured-image{display:block!important;width:220px!important;aspect-ratio:1/1!important;height:auto!important;object-fit:cover!important;border-radius:0!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:1!important;width:auto!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-title{margin:6px 0 12px!important;font-size:24px!important;line-height:1.25!important;font-weight:800!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-title-link{color:#111!important;text-decoration:none!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-datetime-wrapper,
+            body.page-id-1115 .tribe-events-calendar-list__event-venue{margin:0 0 10px!important;color:#111!important;font-size:13px!important;line-height:1.4!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-description{display:block!important;visibility:visible!important;color:#111!important;font-size:14px!important;line-height:1.6!important;max-width:720px!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-description p{margin:0!important}
+            @media(max-width:760px){
+                body.page-id-1115 .elementor-1115>.elementor-section{padding:22px 16px 48px!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-row{grid-template-columns:52px minmax(0,1fr)!important;gap:12px!important}
+                body.page-id-1115 .tribe-events-calendar-list__event{grid-template-columns:1fr!important;gap:14px!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper,
+                body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:auto!important;width:100%!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-featured-image{width:100%!important;aspect-ratio:4/3!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:20px!important}
+                body.page-id-1115 .tribe-events-header__events-bar,
+                body.page-id-1115 .tribe-events-c-events-bar{display:none!important}
+            }
+        </style>
         <?php
     }
 
