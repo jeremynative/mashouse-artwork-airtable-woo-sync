@@ -256,8 +256,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-3388 .elementor-element-c5860aa .elementor-widget-container,
             body.page-id-3388 .elementor-element-c5860aa form{width:100%!important;margin:0!important}
             body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open,
+            body.page-id-3388 .elementor-element-36b9c4a .ma-donate-direct-link,
             body.page-id-3388 .elementor-element-c5860aa .elementor-button{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:50px!important;margin:0 auto!important;border-radius:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:15px!important;font-weight:800!important;line-height:1.2!important;text-align:center!important;text-transform:none!important}
-            body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open{background:#111!important;color:#fff!important}
+            body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open,
+            body.page-id-3388 .elementor-element-36b9c4a .ma-donate-direct-link{background:#111!important;color:#fff!important;text-decoration:none!important}
+            body.page-id-3388 .elementor-element-36b9c4a .give-embed-form-wrapper,
+            body.page-id-3388 .elementor-element-36b9c4a .iframe-loader,
+            body.page-id-3388 .elementor-element-c5860aa,
+            body.page-id-3388 .elementor-element-96b776d{display:none!important}
             body.page-id-3388 .elementor-element-c5860aa .elementor-button{background:#fff!important;color:#111!important;border:1px solid #111!important}
             body.page-id-3388 .elementor-element-52863ee h2{margin:0 0 22px!important;color:#111!important;font-size:clamp(26px,3vw,34px)!important;line-height:1.15!important;font-weight:720!important;text-align:left!important}
             body.page-id-3388 .give-donor-wall-shortcode-wrap .give-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important;align-items:start!important}
@@ -3404,6 +3410,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if (self::current_page_slug_matches(['donate'])) {
             $html = str_replace('President &amp; Lead Artist', 'Founder', $html);
+            $donation_url = esc_url(home_url('/donations/generalfund/'));
+            $html = preg_replace(
+                '~<button\b(?=[^>]*\bclass=(["\'])[^"\']*js-give-embed-form-modal-opener[^"\']*\1)[^>]*>\s*Continue to Donate\s*</button>~i',
+                '<a class="js-give-embed-form-modal-opener givewp-donation-form-modal__open ma-donate-direct-link" href="' . $donation_url . '">Continue to Donate</a>',
+                $html
+            ) ?? $html;
             $html = preg_replace(
                 '~<form\b(?=[^>]*\baction=(["\'])https://www\.paypal\.com/cgi-bin/webscr\1)(?=[\s\S]*?<input\b[^>]*\bname=(["\'])cmd\2[^>]*\bvalue=(["\'])_xclick\3)(?=[\s\S]*?<input\b[^>]*\bname=(["\'])business\4[^>]*\bvalue=(["\'])\5)(?=[\s\S]*?<span\b[^>]*class=(["\'])elementor-button-text\6[^>]*>\s*Buy Now\s*</span>)[\s\S]*?</form>~i',
                 '',
@@ -3412,15 +3424,33 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if (self::current_page_slug_matches(['events'])) {
             $html = preg_replace('~<a\b(?=[^>]*\beventDisplay=past\b)[\s\S]*?</a>~i', '', $html) ?? $html;
+            $html = preg_replace('~"prev_url"\s*:\s*"[^"]*eventDisplay=past[^"]*"~i', '"prev_url":""', $html) ?? $html;
+            $html = preg_replace('~"show_latest_past"\s*:\s*true~i', '"show_latest_past":false', $html) ?? $html;
             $html = str_replace('&#038;#038;', '&#038;', $html);
+            if (strpos($html, 'ma-events-past-link-guard') === false) {
+                $guard = '<script id="ma-events-past-link-guard" data-no-optimize="1" data-cfasync="false">(function(){function clean(){document.querySelectorAll(\'a[href*="eventDisplay=past"],a[href*="/upcoming/list/"]\').forEach(function(a){if((a.href||"").indexOf("eventDisplay=past")!==-1){a.removeAttribute("href");a.setAttribute("aria-disabled","true");a.style.display="none";}});}document.addEventListener("DOMContentLoaded",clean);window.addEventListener("load",clean);new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true});}());</script>';
+                $html = str_ireplace('</body>', $guard . '</body>', $html);
+            }
+        }
+        if (function_exists('is_front_page') && is_front_page()) {
+            $html = str_replace(
+                '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut elit tellus, luctus nec ullamcorper mattis, pulvinar dapibus leo.</p>',
+                '<p>Current exhibitions, upcoming programs, workshops, and off-site partnerships from Ma\'s House.</p>',
+                $html
+            );
         }
         if (self::is_direct_give_embed_request()) {
             $html = self::eager_load_give_iframes($html);
             $html = self::add_direct_give_embed_guard_css($html);
         }
         if (!function_exists('is_product') || !is_product()) {
+            $html = preg_replace('~\s*<style[^>]*>[^<]*\.gmwqp_popup_op\{[\s\S]*?</style>~i', '', $html) ?? $html;
             $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*<style\s+type=(["\'])text/css\2>\s*body\s+\.gmwqp_inq_addtocart:hover[\s\S]*?</style>~i', '', $html) ?? $html;
             $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*~i', '', $html) ?? $html;
+        }
+        if (function_exists('is_product') && is_product()) {
+            $html = preg_replace('~<p>\s*hi\s*</p>\s*~i', '', $html) ?? $html;
+            $html = str_replace('>ENQUIRY!<', '>Enquire<', $html);
         }
         return $html;
     }
@@ -4050,10 +4080,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     if (widget) widget.classList.add('ma-hide-featured-store-section');
                 });
             }
+            function hideContradictoryEmptyStates(){
+                if (!document.querySelector('.ma-custom-store-grid')) return;
+                document.querySelectorAll('.woocommerce-info,.woocommerce-no-products-found,p').forEach(function(el){
+                    var text = (el.textContent || '').trim().toLowerCase();
+                    if (text === 'no items match those filters.' || text === 'no products were found matching your selection.') {
+                        el.style.display = 'none';
+                        el.setAttribute('aria-hidden', 'true');
+                    }
+                });
+            }
             function decorate(){
                 hideFeaturedSection();
                 buildCustomGrid();
                 applyCustomFilters();
+                hideContradictoryEmptyStates();
                 document.querySelectorAll('ul.products').forEach(function(list){ list.classList.add('ma-shop-catalog-grid'); });
                 document.querySelectorAll('li.product, div.product').forEach(function(card){
                     var idClass = Array.prototype.find.call(card.classList, function(c){return /^post-\d+$/.test(c);});
@@ -4195,11 +4236,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     hideFeaturedSection();
                     decorate();
                     cleanFilters();
+                    hideContradictoryEmptyStates();
                 }, 120);
             }
             decorate();
             hideFeaturedSection();
             cleanFilters();
+            hideContradictoryEmptyStates();
             document.addEventListener('change', function(event){
                 if (event.target && event.target.closest && event.target.closest('.wpfFilterWrapper')) {
                     window.setTimeout(function(){ cleanFilters(); refreshFilteredCatalog(); }, 50);
@@ -4287,6 +4330,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'status' => 'publish',
             'limit' => -1,
             'return' => 'objects',
+            'tax_query' => [[
+                'taxonomy' => 'product_cat',
+                'field' => 'slug',
+                'terms' => ['artwork'],
+                'include_children' => true,
+                'operator' => 'IN',
+            ]],
             'meta_query' => [[
                 'key' => self::META_PREFIX . 'exhibits_json',
                 'compare' => 'EXISTS',
@@ -4295,6 +4345,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $items = [];
         foreach ($products as $product) {
             if (!$product instanceof WC_Product) {
+                continue;
+            }
+            if (!self::product_is_artwork($product->get_id())) {
                 continue;
             }
             $exhibit = self::current_product_exhibit($product->get_id());
@@ -4306,6 +4359,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return strcmp((string) ($a['exhibit']['end_date'] ?? ''), (string) ($b['exhibit']['end_date'] ?? ''));
         });
         return $items;
+    }
+
+    private static function product_is_artwork(int $product_id): bool {
+        return has_term('artwork', 'product_cat', $product_id);
     }
 
     private static function current_product_exhibit(int $product_id): array {
@@ -4414,7 +4471,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'orderby' => 'date',
             'order' => 'DESC',
         ];
-        $tax_query = [];
+        $tax_query = [[
+            'taxonomy' => 'product_cat',
+            'field' => 'slug',
+            'terms' => ['artwork'],
+            'include_children' => true,
+            'operator' => 'IN',
+        ]];
         $artist_terms = self::catalog_filter_terms($filters['artist'] ?? []);
         if ($artist_terms) {
             $tax_query[] = [
@@ -4574,6 +4637,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return false;
         }
         if (function_exists('is_shop') && is_shop()) {
+            return true;
+        }
+        if (function_exists('is_search') && is_search() && self::text($_GET['post_type'] ?? '') === 'product') {
             return true;
         }
         if (function_exists('is_product_category') && is_product_category()) {
