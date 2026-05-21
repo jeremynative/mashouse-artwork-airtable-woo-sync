@@ -272,6 +272,13 @@ body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-content__comment {
   font-style: normal !important;
 }
 
+.builder-item--header_search input.search-field,
+.builder-item--header_search textarea.search-field,
+.site-header input[type="search"],
+.site-header textarea {
+  resize: none !important;
+}
+
 body.home .elementor-element-c8e0c2e {
   padding-top: 0 !important;
   padding-bottom: 28px !important;
