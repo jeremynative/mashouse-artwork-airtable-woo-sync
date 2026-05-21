@@ -48,6 +48,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_events_page_first_paint_css'], 2);
+        add_action('wp_head', [__CLASS__, 'render_donate_page_first_paint_css'], 3);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
@@ -222,6 +223,35 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 body.page-id-1115 .tribe-events-header__events-bar,
                 body.page-id-1115 .tribe-events-c-events-bar{display:none!important}
             }
+        </style>
+        <?php
+    }
+
+    public static function render_donate_page_first_paint_css(): void {
+        if (!is_page('donate')) {
+            return;
+        }
+        ?>
+        <style id="ma-donate-first-paint-css" data-no-optimize="1" data-cfasync="false">
+            body.page-id-3388 .elementor-element-96b776d{display:none!important}
+            body.page-id-3388 .single-page-container{max-width:1240px}
+            body.page-id-3388 .nv-page-title-wrap{margin:54px 0 28px!important}
+            body.page-id-3388 .nv-page-title h1{margin:0!important;color:#111!important;font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(38px,5vw,68px)!important;line-height:.95!important;font-weight:800!important}
+            body.page-id-3388 .elementor-3388{font-family:Arial,Helvetica,sans-serif;color:#111}
+            body.page-id-3388 .elementor-element-e2f87cd>.elementor-container{display:grid!important;grid-template-columns:minmax(0,.95fr) minmax(360px,1.05fr)!important;gap:42px!important;align-items:start!important}
+            body.page-id-3388 .elementor-element-e2f87cd .elementor-column{width:auto!important}
+            body.page-id-3388 .elementor-element-5c67db9>.elementor-element-populated,
+            body.page-id-3388 .elementor-element-de6b01a>.elementor-element-populated{padding:0!important}
+            body.page-id-3388 .elementor-element-f4fe0be{display:none!important}
+            body.page-id-3388 .elementor-element-2a32835 p{margin:0 0 18px!important;color:#202020!important;font-size:17px!important;line-height:1.62!important}
+            body.page-id-3388 .elementor-element-802371a img{display:block!important;width:100%!important;aspect-ratio:4/3!important;object-fit:cover!important}
+            body.page-id-3388 .elementor-element-36b9c4a,
+            body.page-id-3388 .elementor-element-c5860aa{max-width:420px;margin:16px auto 0!important}
+            body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open,
+            body.page-id-3388 .elementor-element-c5860aa .elementor-button{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:50px!important;margin:0 auto!important;border-radius:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:15px!important;font-weight:800!important;line-height:1.2!important;text-align:center!important;text-transform:none!important}
+            body.page-id-3388 .elementor-element-36b9c4a .givewp-donation-form-modal__open{background:#111!important;color:#fff!important}
+            body.page-id-3388 .elementor-element-c5860aa .elementor-button{background:#fff!important;color:#111!important;border:1px solid #111!important}
+            @media(max-width:920px){body.page-id-3388 .elementor-element-e2f87cd>.elementor-container{grid-template-columns:1fr!important;gap:28px!important}}
         </style>
         <?php
     }
@@ -3277,6 +3307,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!self::allow_marketing_assets_on_current_request()) {
             $html = preg_replace('~<script\b(?=[^>]*\bsrc=(["\'])[^"\']*klaviyo[^"\']*\1)[^>]*>\s*</script>\s*~i', '', $html) ?? $html;
             $html = preg_replace('~<script\b[^>]*\bid=(["\'])kl-identify-browser-js\1[^>]*>\s*</script>\s*~i', '', $html) ?? $html;
+        }
+        if (self::current_page_slug_matches(['donate'])) {
+            $html = str_replace('President &amp; Lead Artist', 'Founder', $html);
         }
         return $html;
     }
