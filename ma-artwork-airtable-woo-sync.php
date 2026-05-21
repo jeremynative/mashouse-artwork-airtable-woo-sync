@@ -3411,8 +3411,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $html = preg_replace('~<a\b(?=[^>]*\beventDisplay=past\b)[\s\S]*?</a>~i', '', $html) ?? $html;
             $html = str_replace('&#038;#038;', '&#038;', $html);
         }
-        if (self::is_give_sponsorship_request()) {
+        if (self::is_direct_give_embed_request()) {
             $html = self::eager_load_give_iframes($html);
+            $html = self::add_direct_give_embed_guard_css($html);
         }
         if (!function_exists('is_product') || !is_product()) {
             $html = preg_replace('~\s*<div\s+class=(["\'])gmwqp_popup_op\1[\s\S]*?</div>\s*<style\s+type=(["\'])text/css\2>\s*body\s+\.gmwqp_inq_addtocart:hover[\s\S]*?</style>~i', '', $html) ?? $html;
@@ -3473,8 +3474,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
             || strpos($request_path, 'donations/mas-house-exhibit-sponsorship') === 0;
     }
 
+    private static function is_direct_give_embed_request(): bool {
+        $request_path = trim(strtolower((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH)), '/');
+        return $request_path === 'donor-dashboard'
+            || strpos($request_path, 'donations/') === 0
+            || self::is_give_sponsorship_request();
+    }
+
     private static function eager_load_give_iframes(string $html): string {
-        $html = preg_replace_callback('~<iframe\b(?=[^>]*\bname=(["\'])give-embed-form\1)[^>]*>~i', static function (array $match): string {
+        $html = preg_replace_callback('~<iframe\b(?=[^>]*\bname=(["\'])(?:give-embed-form|give-embed-donor-profile)\1)[^>]*>~i', static function (array $match): string {
             $tag = $match[0];
             if (preg_match('~\sdata-lazy-src=(["\'])(.*?)\1~i', $tag, $src_match)) {
                 $src = $src_match[2];
@@ -3492,6 +3500,17 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }, $html) ?? $html;
         $html = preg_replace('~<noscript>\s*<iframe\b(?=[\s\S]*?giveDonationFormInIframe=1)[\s\S]*?</iframe>\s*</noscript>~i', '', $html) ?? $html;
         return $html;
+    }
+
+    private static function add_direct_give_embed_guard_css(string $html): string {
+        $css = '<style id="ma-direct-give-embed-guard" data-no-optimize="1">body .give-embed-form-wrapper iframe,body iframe[name="give-embed-form"],body iframe[name="give-embed-donor-profile"]{visibility:visible!important;opacity:1!important;width:100%!important;max-width:100%!important}body .give-embed-form-wrapper>.iframe-loader,body iframe[name="give-embed-donor-profile"]+.iframe-loader{display:none!important}</style>';
+        if (strpos($html, 'ma-direct-give-embed-guard') !== false) {
+            return $html;
+        }
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('~</head>~i', $css . '</head>', $html, 1) ?? $html;
+        }
+        return $css . $html;
     }
 
     private static function current_page_slug_matches(array $slugs): bool {
