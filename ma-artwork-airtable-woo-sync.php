@@ -221,6 +221,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         ?>
         <style id="ma-events-first-paint-css" data-no-optimize="1" data-cfasync="false">
+            body.page-id-1115 .hfg_header.site-header,
+            body.page-id-1115 header.site-header,
+            body.page-id-1115 .elementor-location-header{position:relative!important;z-index:100000!important;pointer-events:auto!important}
+            body.page-id-1115 .header-menu-sidebar,
+            body.page-id-1115 .header-menu-sidebar-overlay,
+            body.page-id-1115 .sub-menu{z-index:100001!important}
+            body.page-id-1115 #content.neve-main,
+            body.page-id-1115 .elementor-1115,
+            body.page-id-1115 .tribe-events{position:relative!important;z-index:1!important}
+            body.page-id-1115 .tribe-events-view-loader.tribe-common-a11y-hidden{pointer-events:none!important}
             body.page-id-1115 #content.neve-main{padding-top:0!important}
             body.page-id-1115 .elementor-1115{font-family:Arial,Helvetica,sans-serif;color:#111}
             body.page-id-1115 .elementor-1115>.elementor-section{padding:34px 22px 70px!important}
