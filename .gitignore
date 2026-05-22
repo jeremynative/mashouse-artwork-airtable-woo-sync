@@ -7,3 +7,4 @@ vendor/
 .env.*
 !.env.example
 .deploy-keys/
+.generated/
