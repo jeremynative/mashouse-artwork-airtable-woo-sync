@@ -4720,6 +4720,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 '<p>Current exhibitions, upcoming programs, workshops, and off-site partnerships from Ma\'s House.</p>',
                 $html
             );
+            if (strpos($html, 'ma-homepage-final-layout-overrides') === false) {
+                $html = str_ireplace('</head>', self::homepage_final_layout_overrides_css() . '</head>', $html);
+            }
         }
         if (self::is_direct_give_embed_request()) {
             $html = self::eager_load_give_iframes($html);
@@ -4735,6 +4738,56 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $html = str_replace('>ENQUIRY!<', '>Enquire<', $html);
         }
         return $html;
+    }
+
+    private static function homepage_final_layout_overrides_css(): string {
+        return <<<'HTML'
+<style id="ma-homepage-final-layout-overrides" data-no-optimize="1" data-cfasync="false">
+body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:34px!important;min-height:0!important}
+body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(560px,1.35fr) minmax(360px,.82fr) minmax(320px,.74fr)!important;gap:clamp(26px,2.7vw,44px)!important;width:min(1520px,calc(100vw - 160px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
+body.home .elementor-element-3dd430f .elementor-column{width:auto!important;max-width:none!important;min-width:0!important}
+body.home .elementor-element-7b56059>.elementor-element-populated,
+body.home .elementor-element-33c8c69>.elementor-element-populated,
+body.home .elementor-element-9c0e721>.elementor-element-populated{padding-top:0!important;align-content:flex-start!important;align-items:flex-start!important}
+body.home .elementor-element-3f664c6,
+body.home .elementor-element-4b2c3f8,
+body.home .elementor-element-18410d1{display:none!important}
+body.home .elementor-element-58eb33a .elementor-heading-title{max-width:680px!important;font-size:clamp(28px,1.8vw,34px)!important;line-height:1.06!important;letter-spacing:0!important}
+body.home .elementor-element-9f214c3{max-width:680px!important}
+body.home .elementor-element-9f214c3 p{font-size:17px!important;line-height:1.42!important;margin-bottom:22px!important}
+body.home .elementor-element-525dad1,
+body.home .elementor-element-0a7cc4a{width:100%!important;margin-top:0!important}
+body.home .elementor-element-525dad1 img,
+body.home .elementor-element-0a7cc4a .swiper-slide-image{display:block!important;width:100%!important;height:clamp(300px,22vw,380px)!important;object-fit:cover!important}
+body.home .elementor-element-0a7cc4a .swiper,
+body.home .elementor-element-0a7cc4a .swiper-wrapper,
+body.home .elementor-element-0a7cc4a .swiper-slide,
+body.home .elementor-element-0a7cc4a figure{height:clamp(300px,22vw,380px)!important}
+body.home .elementor-element-8203c65,
+body.home .elementor-element-e18ab85{width:100%!important;margin-top:12px!important}
+body.home .elementor-element-8203c65 p,
+body.home .elementor-element-e18ab85 .elementor-heading-title{font-size:15px!important;line-height:1.3!important}
+body.home .ma-home-events-custom__title,
+body.home .ma-home-events-custom__title a,
+body.home .ma-home-events-custom__title *{font-size:16px!important;line-height:1.34!important;font-weight:500!important;letter-spacing:0!important}
+body.home .ma-home-events-custom__date strong{font-size:22px!important;font-weight:650!important}
+body.home .ma-home-events-custom__venue{font-weight:500!important}
+@media(max-width:1180px){
+body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:minmax(0,1fr) minmax(260px,.82fr)!important;width:min(1040px,calc(100vw - 48px))!important}
+body.home .elementor-element-9c0e721{grid-column:2!important}
+}
+@media(max-width:900px){
+body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:1fr!important;width:min(680px,calc(100vw - 32px))!important}
+body.home .elementor-element-9c0e721{grid-column:auto!important}
+body.home .elementor-element-525dad1 img,
+body.home .elementor-element-0a7cc4a .swiper-slide-image,
+body.home .elementor-element-0a7cc4a .swiper,
+body.home .elementor-element-0a7cc4a .swiper-wrapper,
+body.home .elementor-element-0a7cc4a .swiper-slide,
+body.home .elementor-element-0a7cc4a figure{height:auto!important}
+}
+</style>
+HTML;
     }
 
     private static function filter_public_copy_text(string $html): string {
