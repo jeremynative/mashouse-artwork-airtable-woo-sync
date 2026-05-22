@@ -3656,6 +3656,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Lead Artist &amp; President of Ma&#8217;s House' => 'Founder &amp; Board Member',
             'The Ma&#8217;s House project is being led by artist and photographer Jeremy Dennis.' => 'Ma&#8217;s House was founded by artist and photographer Jeremy Dennis.',
             'The Ma&#8217;s House project is being led by artist and photographer Jeremy Dennis' => 'Ma&#8217;s House was founded by artist and photographer Jeremy Dennis',
+            'Visits by appointment only' => 'Visits Thurs &amp; Sun 10 am to 5 pm weekly or by appointment',
         ];
         $html = str_replace(array_keys($replacements), array_values($replacements), $html);
 
