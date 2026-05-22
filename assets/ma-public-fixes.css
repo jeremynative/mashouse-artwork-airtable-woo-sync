@@ -1909,6 +1909,11 @@ body.page-id-198 .entry-content {
   border-bottom: 1px solid #ddd;
 }
 
+.ma-residency-faq {
+  padding: 38px 0;
+  border-bottom: 1px solid #ddd;
+}
+
 .ma-residency-section-heading {
   display: grid;
   grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
@@ -1921,6 +1926,68 @@ body.page-id-198 .entry-content {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 26px 22px;
+}
+
+.ma-residency-faq__list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.ma-residency-faq details {
+  border-top: 1px solid #d8d8d8;
+}
+
+.ma-residency-faq details:last-child {
+  border-bottom: 1px solid #d8d8d8;
+}
+
+.ma-residency-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 58px;
+  padding: 17px 0;
+  color: #111;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  list-style: none;
+}
+
+.ma-residency-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.ma-residency-faq summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: #777;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.ma-residency-faq details[open] summary::after {
+  content: "-";
+}
+
+.ma-residency-faq details > div {
+  max-width: 820px;
+  padding: 0 0 22px;
+}
+
+.ma-residency-faq p {
+  margin: 0;
+  color: #333;
+  font-size: 15px;
+  line-height: 1.62;
+}
+
+.ma-residency-faq p + p {
+  margin-top: 12px;
 }
 
 .ma-residency-actions {

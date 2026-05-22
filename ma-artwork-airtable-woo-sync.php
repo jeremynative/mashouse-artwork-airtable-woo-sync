@@ -2935,6 +2935,76 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'body' => 'Artists should plan for travel to Southampton, New York. Local transportation needs can be discussed after selection.',
             ],
         ];
+        $faqs = [
+            [
+                'question' => 'Who is eligible?',
+                'answer' => [
+                    'The Ma\'s House Artist Residency supports BIPOC artists 21+ working across visual art, media and new genres, performance, architecture, film and video, literature, interdisciplinary arts, music composition, research, and related practices.',
+                    'Applicants are considered based on the strength of their proposal, artistic merit, feasibility, and how the artist may benefit from time at Ma\'s House and on Shinnecock Territory.',
+                ],
+            ],
+            [
+                'question' => 'How long is the residency?',
+                'answer' => [
+                    'Residencies are scheduled by mutual agreement between accepted artists and Ma\'s House. Most residencies are short stays, with timing shaped by the project, season, and availability.',
+                    'Artists from federally recognized tribes may be considered for longer residency periods when the project and schedule allow.',
+                ],
+            ],
+            [
+                'question' => 'What is required of resident artists?',
+                'answer' => [
+                    'Residents participate in at least one public program during their stay. This may be an open rehearsal, workshop, studio visit, lecture, artist talk, reading, performance, screening, or another public-facing format.',
+                    'Engaging with or researching Shinnecock artists, East End artists, and local art institutions is strongly encouraged before arrival.',
+                ],
+            ],
+            [
+                'question' => 'What does it cost?',
+                'answer' => [
+                    'There is no fee to apply and no fee to attend. Residents are responsible for their own groceries and meals.',
+                    'Ma\'s House offers $250 weekly stipends for residency artists, or about $35.70 per day for stays shorter or longer than a week.',
+                ],
+            ],
+            [
+                'question' => 'What is the residency experience like?',
+                'answer' => [
+                    'Ma\'s House is located in a quiet part of the Shinnecock Indian Reservation. Artists should expect a retreat-style residency with time for focused work, rest, and community connection.',
+                    'Founder and board member Jeremy Dennis also lives at Ma\'s House.',
+                ],
+            ],
+            [
+                'question' => 'What should artists know about visiting Shinnecock?',
+                'answer' => [
+                    'Ma\'s House is located on the Shinnecock Indian Reservation, a sovereign self-governing nation in Southampton, New York.',
+                    'Being in residence is a privilege of being a guest of the nation. Residents are asked to respect the privacy and space of others on the reservation and not wander alone through the territory.',
+                ],
+            ],
+            [
+                'question' => 'How do artists get there?',
+                'answer' => [
+                    'Ma\'s House is in Southampton, New York, about two hours from New York City. Artists may travel by Long Island Rail Road, Hampton Jitney, or personal vehicle.',
+                    'Pickup and drop-off at the Southampton train station or bus stop can be arranged. Uber, Lyft, and car rentals are also available nearby.',
+                ],
+            ],
+            [
+                'question' => 'What facilities are available?',
+                'answer' => [
+                    'Ma\'s House has woodworking tools and basic art materials including tempera paints, brushes, scissors, colored pencils, crayons, glue sticks, hot glue guns, X-Acto knives, beads, and related supplies.',
+                    'At this time, Ma\'s House does not have a ceramic kiln, metalworking tools, 3D printing, or a formal dance platform.',
+                ],
+            ],
+            [
+                'question' => 'Can groups apply?',
+                'answer' => [
+                    'At the moment, Ma\'s House can host one artist in residence at a time. Resident artists may invite collaborators for day trips or public program support, but overnight collaborator stays are not currently available.',
+                ],
+            ],
+            [
+                'question' => 'When do applications open?',
+                'answer' => [
+                    'The residency application is currently closed. The open call returns each December.',
+                ],
+            ],
+        ];
 
         ob_start();
         ?>
@@ -3011,6 +3081,25 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     <h2>Homebody Fellowship</h2>
                 </div>
                 <p>Recent special residency support has included the Homebody Fellowship for QTBIPOC artists based in the San Francisco Bay Area, made possible by the Homebody Fund at the East Bay Community Foundation.</p>
+            </section>
+
+            <section class="ma-residency-faq">
+                <div class="ma-residency-section-heading">
+                    <p>Q+A</p>
+                    <h2>Residency questions</h2>
+                </div>
+                <div class="ma-residency-faq__list">
+                    <?php foreach ($faqs as $faq) : ?>
+                        <details>
+                            <summary><?php echo esc_html($faq['question']); ?></summary>
+                            <div>
+                                <?php foreach ($faq['answer'] as $paragraph) : ?>
+                                    <p><?php echo esc_html($paragraph); ?></p>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+                    <?php endforeach; ?>
+                </div>
             </section>
 
             <section class="ma-residency-cta">
