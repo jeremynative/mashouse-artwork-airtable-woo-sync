@@ -2753,13 +2753,20 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $exhibit_html = self::product_exhibit_body_section_html($product);
         if (!$exhibit_html) {
-            return $content;
+            return strpos($content, 'ma-contextual-related-products') === false
+                ? $content . self::contextual_related_products_section($product)
+                : $content;
         }
         $artist_pos = strpos($content, '<section class="ma-artist-profile');
         if ($artist_pos !== false) {
-            return substr($content, 0, $artist_pos) . $exhibit_html . substr($content, $artist_pos);
+            $content = substr($content, 0, $artist_pos) . $exhibit_html . substr($content, $artist_pos);
+        } else {
+            $content .= $exhibit_html;
         }
-        return $content . $exhibit_html;
+        if (strpos($content, 'ma-contextual-related-products') === false) {
+            $content .= self::contextual_related_products_section($product);
+        }
+        return $content;
     }
 
     public static function replace_sponsorship_page_content(string $content): string {
@@ -4971,6 +4978,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         echo '<style id="ma-product-price-font-final-css">body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important;font-weight:500!important}</style>';
         echo '<style id="ma-product-system-font-css">body.single-product .elementor-element-923ecf0,body.single-product .elementor-element-923ecf0 *:not(.dashicons):not(.eicon):not([class*="icon"]){font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-style:normal!important;font-weight:500!important}</style>';
         echo '<style id="ma-product-purchase-note-css">body.single-product .ma-product-purchase-note{max-width:520px;margin:0 0 14px!important;color:#444!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:12px!important;line-height:1.45!important;font-weight:400!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock+.ma-product-purchase-note{margin-top:0!important}</style>';
+        echo '<style id="ma-contextual-related-products-css">body.single-product .elementor-element-058532c,body.single-product .elementor-element-6c0ca08{display:none!important}.ma-contextual-related-products{clear:both;margin:48px 0 0;padding-top:28px;border-top:1px solid rgba(0,0,0,.14);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#111}.ma-contextual-related-products header{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:0 0 20px}.ma-contextual-related-products h2{margin:0!important;font-size:24px!important;line-height:1.2!important;font-weight:700!important;letter-spacing:0!important;color:#111!important}.ma-contextual-related-products header p{max-width:360px;margin:0;color:#666;font-size:13px;line-height:1.45}.ma-contextual-related-products__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}.ma-contextual-related-products__item a{color:inherit;text-decoration:none}.ma-contextual-related-products__item img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;margin:0 0 12px}.ma-contextual-related-products__item h3{margin:0 0 7px!important;font-size:16px!important;line-height:1.25!important;font-weight:650!important;letter-spacing:0!important;color:#111!important}.ma-contextual-related-products__item p{margin:0 0 7px;color:#555;font-size:12px;line-height:1.35}.ma-contextual-related-products__price{font-size:14px;font-weight:650;color:#111}.ma-contextual-related-products__price .amount{color:inherit}@media(max-width:900px){.ma-contextual-related-products__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ma-contextual-related-products header{display:block}.ma-contextual-related-products header p{margin-top:8px}}@media(max-width:560px){.ma-contextual-related-products__grid{grid-template-columns:1fr}}</style>';
         echo '<style id="ma-product-image-emphasis-css">body.single-product .elementor-element-923ecf0>.elementor-container{display:flex!important;gap:42px!important;justify-content:flex-start!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b{width:54%!important;max-width:650px!important;flex:0 1 54%!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:46%!important;max-width:560px!important;flex:0 1 46%!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-images,body.single-product .elementor-element-923ecf0 .elementor-element-f5de331{width:100%!important;max-width:640px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__wrapper,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery img{width:100%!important;max-width:640px!important;height:auto!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b>.elementor-widget-wrap{padding-left:0!important}@media(max-width:900px){body.single-product .elementor-element-923ecf0>.elementor-container{display:block!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b,body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:100%!important;max-width:none!important}}</style>';
         echo '<style id="ma-product-image-fill-css">body.single-product .elementor-element-923ecf0 .elementor-element-f5de331{padding-right:0!important;margin-right:0!important;width:100%!important;max-width:650px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery{display:block!important;width:100%!important;max-width:650px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__wrapper,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image a,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image img{display:block!important;width:100%!important;max-width:650px!important;height:auto!important}</style>';
         echo '<style id="ma-product-exhibit-body-css">body.single-product .ma-product-summary-column>.ma-product-exhibit-card,body.single-product .ma-product-artwork-panel .ma-product-exhibit-card{display:none!important}.ma-product-exhibit-section{clear:both;width:min(1120px,calc(100% - 48px));max-width:1120px;margin:44px auto 0!important;padding:28px 0;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.08);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-exhibit-section h2{margin:0 0 18px!important;color:#111!important;font-size:22px!important;line-height:1.2!important;font-weight:650!important}.ma-product-exhibit-section .ma-product-exhibit-card{display:grid!important;max-width:820px;grid-template-columns:170px minmax(0,1fr)!important;gap:24px!important;align-items:start!important;margin:0!important;color:#111!important;text-decoration:none!important;background:transparent!important;border:0!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{min-height:0!important;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-section .ma-product-exhibit-card__image img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-section .ma-product-exhibit-card__body span{display:block;margin:0 0 8px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-section .ma-product-exhibit-card__body h3{margin:0 0 8px!important;color:#111!important;font-size:19px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-section .ma-product-exhibit-card__body p{margin:0 0 5px;color:#333;font-size:14px;line-height:1.45}@media(max-width:760px){.ma-product-exhibit-section{width:calc(100% - 32px);margin-top:28px!important;padding:24px 0}.ma-product-exhibit-section .ma-product-exhibit-card{grid-template-columns:1fr!important;gap:14px!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{max-width:260px}}</style>';
@@ -5817,6 +5825,49 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'medium' => self::product_detail_value($product, 'Medium') ?: self::product_detail_value($product, 'Series'),
             'rows' => self::product_detail_rows($product),
         ];
+    }
+
+    private static function contextual_related_products_section(WC_Product $product): string {
+        $ids = self::filter_contextual_related_products([], $product->get_id(), ['posts_per_page' => 4]);
+        if (!$ids) {
+            return '';
+        }
+        $artist = self::text(get_post_meta($product->get_id(), 'ma_artist_name', true)) ?: self::product_detail_value($product, 'Artist');
+        $heading = $artist ? 'Other works by ' . $artist : 'Related works and products';
+        ob_start();
+        ?>
+        <section class="ma-contextual-related-products" aria-label="<?php echo esc_attr($heading); ?>">
+            <header>
+                <h2><?php echo esc_html($heading); ?></h2>
+                <p>Selected from the same artist, material, series, or collection.</p>
+            </header>
+            <div class="ma-contextual-related-products__grid">
+                <?php foreach ($ids as $id) :
+                    $related = wc_get_product((int) $id);
+                    if (!$related) {
+                        continue;
+                    }
+                    $item = self::catalog_item_for_product($related);
+                    ?>
+                    <article class="ma-contextual-related-products__item">
+                        <a href="<?php echo esc_url($item['url']); ?>">
+                            <?php if ($item['image']) : ?>
+                                <img src="<?php echo esc_url($item['image']); ?>" alt="<?php echo esc_attr($item['title']); ?>" loading="lazy">
+                            <?php endif; ?>
+                            <h3><?php echo esc_html($item['title']); ?></h3>
+                        </a>
+                        <?php if ($item['artist'] || $item['medium']) : ?>
+                            <p><?php echo esc_html(implode(' · ', array_filter([$item['artist'], $item['medium']]))); ?></p>
+                        <?php endif; ?>
+                        <?php if ($item['price_html']) : ?>
+                            <div class="ma-contextual-related-products__price"><?php echo wp_kses_post($item['price_html']); ?></div>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php
+        return (string) ob_get_clean();
     }
 
     public static function filter_contextual_related_products(array $related_posts, int $product_id, array $args): array {
