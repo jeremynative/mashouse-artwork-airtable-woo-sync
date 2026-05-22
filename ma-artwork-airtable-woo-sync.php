@@ -45,6 +45,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_main_content', [__CLASS__, 'render_shop_on_view_section'], 25);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_shop_on_view_section'], 4);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
+        add_filter('woocommerce_related_products', [__CLASS__, 'filter_contextual_related_products'], 20, 3);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
         add_action('wp_head', [__CLASS__, 'render_single_post_cover_spacing_css'], 1);
@@ -5816,6 +5817,85 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'medium' => self::product_detail_value($product, 'Medium') ?: self::product_detail_value($product, 'Series'),
             'rows' => self::product_detail_rows($product),
         ];
+    }
+
+    public static function filter_contextual_related_products(array $related_posts, int $product_id, array $args): array {
+        if (is_admin() || !function_exists('wc_get_product')) {
+            return $related_posts;
+        }
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            return $related_posts;
+        }
+
+        $limit = max(1, (int) ($args['posts_per_page'] ?? count($related_posts) ?: 4));
+        $artist = self::text(get_post_meta($product_id, 'ma_artist_name', true)) ?: self::product_detail_value($product, 'Artist');
+        $medium = self::text(get_post_meta($product_id, 'material', true)) ?: self::product_detail_value($product, 'Medium');
+        $series = self::text(get_post_meta($product_id, 'ma_artwork_series', true)) ?: self::product_detail_value($product, 'Series');
+
+        $ids = [];
+        if ($artist) {
+            $ids = array_merge($ids, self::related_product_ids_by_meta($product_id, 'ma_artist_name', $artist, $limit));
+        }
+        if (count($ids) < $limit && $medium) {
+            $ids = array_merge($ids, self::related_product_ids_by_meta($product_id, 'material', $medium, $limit));
+        }
+        if (count($ids) < $limit && $series) {
+            $ids = array_merge($ids, self::related_product_ids_by_meta($product_id, 'ma_artwork_series', $series, $limit));
+        }
+        if (count($ids) < $limit) {
+            $ids = array_merge($ids, self::related_product_ids_by_category($product_id, $limit));
+        }
+
+        $ids = array_values(array_diff(array_unique(array_map('intval', $ids)), [$product_id]));
+        return $ids ? array_slice($ids, 0, $limit) : $related_posts;
+    }
+
+    private static function related_product_ids_by_meta(int $product_id, string $key, string $value, int $limit): array {
+        $value = self::text($value);
+        if (!$value) {
+            return [];
+        }
+        return get_posts([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'fields' => 'ids',
+            'post__not_in' => [$product_id],
+            'orderby' => ['date' => 'DESC', 'ID' => 'DESC'],
+            'meta_query' => [[
+                'key' => $key,
+                'value' => $value,
+                'compare' => '=',
+            ]],
+        ]);
+    }
+
+    private static function related_product_ids_by_category(int $product_id, int $limit): array {
+        $terms = wp_get_post_terms($product_id, 'product_cat', ['fields' => 'ids']);
+        if (is_wp_error($terms) || !$terms) {
+            return [];
+        }
+        $uncategorized = get_term_by('slug', 'uncategorized', 'product_cat');
+        if ($uncategorized instanceof WP_Term) {
+            $terms = array_values(array_diff(array_map('intval', $terms), [(int) $uncategorized->term_id]));
+        }
+        if (!$terms) {
+            return [];
+        }
+        return get_posts([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'fields' => 'ids',
+            'post__not_in' => [$product_id],
+            'orderby' => ['date' => 'DESC', 'ID' => 'DESC'],
+            'tax_query' => [[
+                'taxonomy' => 'product_cat',
+                'field' => 'term_id',
+                'terms' => $terms,
+            ]],
+        ]);
     }
 
     private static function product_detail_value(WC_Product $product, string $label): string {
