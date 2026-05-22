@@ -724,7 +724,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
         $artist_directory = [];
         if (!$dry_run) {
-            $artist_directory = self::sync_community_artist_records(80);
+            $artist_directory = self::sync_community_artist_records(180);
         }
 
         $summary = [
@@ -2001,6 +2001,24 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 if (!$record_id) {
                     continue;
                 }
+                if (!empty($artist['is_resident_source'])) {
+                    $profile_artist = [
+                        'name' => $artist['name'],
+                        'bio' => $bio,
+                        'portrait_url' => $artist['image'],
+                        'record_id' => $record_id,
+                        'residency_period' => $artist['residency_period'] ?? '',
+                        'website' => $artist['website'] ?? '',
+                        'instagram' => $artist['social'] ?? '',
+                        'mediums' => implode(', ', $artist['mediums']),
+                        'roles' => implode(', ', $artist['roles']),
+                    ];
+                    $profile_id = self::ensure_artist_profile_post($profile_artist, []);
+                    if ($profile_id) {
+                        $post_id = $profile_id;
+                        $artist['url'] = get_permalink($profile_id) ?: $artist['url'];
+                    }
+                }
                 $events = self::artist_event_labels($artist['name']);
                 $product_context = self::artist_product_context($artist['name']);
                 $payload = [
@@ -2014,7 +2032,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     'Public Profile URL' => $artist['url'],
                 ];
                 if ($post_id) {
-                    $residency = self::text(get_post_meta($post_id, 'ma_artist_residency_period', true));
+                    $residency = self::text($artist['residency_period'] ?? '') ?: self::text(get_post_meta($post_id, 'ma_artist_residency_period', true));
                     if ($residency) {
                         $payload['Residency Dates'] = $residency;
                     }
@@ -2225,7 +2243,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return 0;
         }
         $existing = get_page_by_path(sanitize_title($name), OBJECT, 'post');
-        return $existing ? (int) $existing->ID : 0;
+        if ($existing instanceof WP_Post && self::is_artist_profile_post((int) $existing->ID, $name)) {
+            return (int) $existing->ID;
+        }
+        return 0;
     }
 
     private static function ensure_post_category(string $name): int {
@@ -3420,19 +3441,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function community_artist_cards_data(): array {
+        $cards = [];
         $category = get_term_by('slug', 'artists', 'category') ?: get_term_by('name', 'Artists', 'category');
-        if (!$category instanceof WP_Term) {
-            return [];
-        }
-        $posts = get_posts([
+        $posts = $category instanceof WP_Term ? get_posts([
             'post_type' => 'post',
             'post_status' => 'publish',
             'posts_per_page' => 300,
             'orderby' => 'title',
             'order' => 'ASC',
             'category__in' => [(int) $category->term_id],
-        ]);
-        $cards = [];
+        ]) : [];
         foreach ($posts as $post) {
             $post_id = (int) $post->ID;
             $name = self::text(get_post_meta($post_id, 'ma_artist_name', true)) ?: self::text($post->post_title);
@@ -3468,8 +3486,120 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'social' => $social,
             ];
         }
+        foreach (self::resident_artist_cards_data() as $resident) {
+            $key = strtolower($resident['name']);
+            $existing_index = null;
+            foreach ($cards as $index => $card) {
+                if (strtolower($card['name']) === $key) {
+                    $existing_index = $index;
+                    break;
+                }
+            }
+            if ($existing_index !== null) {
+                $roles = array_values(array_unique(array_merge($cards[$existing_index]['roles'], ['Residency Artist'])));
+                $cards[$existing_index]['roles'] = array_values(array_intersect(self::artist_role_choices(), $roles));
+                $cards[$existing_index]['residency_period'] = self::merge_residency_periods(
+                    self::text($cards[$existing_index]['residency_period'] ?? ''),
+                    self::text($resident['residency_period'] ?? '')
+                );
+                if (empty($cards[$existing_index]['bio'])) {
+                    $cards[$existing_index]['bio'] = $resident['bio'];
+                }
+                if (empty($cards[$existing_index]['image'])) {
+                    $cards[$existing_index]['image'] = $resident['image'];
+                }
+                continue;
+            }
+            $cards[] = $resident;
+        }
         usort($cards, static fn($a, $b) => strcasecmp($a['name'], $b['name']));
         return $cards;
+    }
+
+    private static function resident_artist_cards_data(): array {
+        $category = get_term_by('slug', 'resident-artists', 'category') ?: get_term_by('name', 'Resident Artists', 'category');
+        if (!$category instanceof WP_Term) {
+            return [];
+        }
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => 250,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'category__in' => [(int) $category->term_id],
+        ]);
+        $cards = [];
+        $seen = [];
+        foreach ($posts as $post) {
+            $post_id = (int) $post->ID;
+            [$name, $period] = self::resident_artist_name_and_period((string) $post->post_title, (string) $post->post_date);
+            if (!$name) {
+                continue;
+            }
+            $key = strtolower($name);
+            $bio = self::bio_from_text_for_artist($name, (string) $post->post_content) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
+            $image = has_post_thumbnail($post_id) ? (get_the_post_thumbnail_url($post_id, 'medium_large') ?: '') : '';
+            $mediums = self::infer_artist_mediums($bio);
+            if (isset($seen[$key])) {
+                $index = $seen[$key];
+                $cards[$index]['residency_period'] = self::merge_residency_periods($cards[$index]['residency_period'], $period);
+                if (!$cards[$index]['bio'] && $bio) {
+                    $cards[$index]['bio'] = $bio;
+                }
+                if (!$cards[$index]['image'] && $image) {
+                    $cards[$index]['image'] = self::public_image_url($image);
+                }
+                $cards[$index]['mediums'] = array_values(array_unique(array_merge($cards[$index]['mediums'], $mediums)));
+                continue;
+            }
+            $seen[$key] = count($cards);
+            $cards[] = [
+                'post_id' => 0,
+                'source_post_id' => $post_id,
+                'is_resident_source' => true,
+                'name' => $name,
+                'url' => home_url('/artist/' . sanitize_title($name) . '/'),
+                'image' => self::public_image_url($image),
+                'bio' => $bio,
+                'mediums' => $mediums,
+                'roles' => ['Residency Artist'],
+                'residency_period' => $period,
+                'website' => '',
+                'social' => '',
+            ];
+        }
+        return $cards;
+    }
+
+    private static function resident_artist_name_and_period(string $title, string $post_date): array {
+        $title = trim(wp_strip_all_tags($title));
+        $months = '(January|February|March|April|May|June|July|August|September|Sept|October|November|December)';
+        $name = $title;
+        $period = '';
+        if (preg_match('/^(.*?)\s*[-–—]\s*' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
+            $name = trim($match[1]);
+            $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
+        } elseif (preg_match('/^(.*?)\s+' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
+            $name = trim($match[1]);
+            $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
+        }
+        if (!$period && $post_date) {
+            $timestamp = strtotime($post_date);
+            if ($timestamp) {
+                $period = gmdate('F Y', $timestamp);
+            }
+        }
+        return [self::text($name), self::text($period)];
+    }
+
+    private static function normalize_month_name(string $month): string {
+        return strtolower($month) === 'sept' ? 'September' : ucfirst(strtolower($month));
+    }
+
+    private static function merge_residency_periods(string $existing, string $period): string {
+        $periods = array_values(array_unique(array_filter(array_merge(self::split_list(str_replace("\n", ',', $existing)), self::split_list($period)))));
+        return implode(', ', $periods);
     }
 
     private static function artist_product_context(string $artist_name): array {
