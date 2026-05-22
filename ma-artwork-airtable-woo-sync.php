@@ -3501,9 +3501,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $bio = self::bio_from_artist_post_id($post_id) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
             $product_context = self::artist_product_context($name);
             $mediums = self::split_list(self::text(get_post_meta($post_id, 'ma_artist_mediums', true)));
-            if (!$mediums) {
-                $mediums = self::infer_artist_mediums($bio . ' ' . $product_context['mediums']);
-            }
+            $mediums = array_values(array_unique(array_merge($mediums, self::infer_artist_mediums($bio . ' ' . $product_context['mediums']))));
             $mediums = self::correct_artist_mediums($name, $mediums);
             $stored_roles = self::valid_artist_roles(self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true))));
             $roles = self::reconcile_artist_roles($stored_roles ?: self::infer_artist_roles($post_id, $name, $bio, $product_context), $name, $bio, $post_id);
@@ -3817,8 +3815,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Performance Artist' => ['performance', 'performer'],
             'Writer' => ['writer', 'poet', 'poetry', 'literature', 'author'],
             'Filmmaker' => ['film', 'filmmaker', 'video artist', 'moving image'],
-            'Sound Artist' => ['sound artist', 'audio'],
-            'Digital Artist' => ['digital', 'new media', 'media art'],
+            'Sound Artist' => ['sound artist', 'sound art', 'sound,', 'sound and', 'sound.', 'sound-based', 'audio'],
+            'Digital Artist' => ['digital', 'digital fabrication', 'new media', 'media art', 'technology design', 'technology-based'],
             'Curator' => ['curator', 'curatorial'],
             'Educator' => ['educator', 'teaching artist', 'teacher'],
             'Designer' => ['designer', 'design'],
