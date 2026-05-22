@@ -64,6 +64,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
+        add_action('send_headers', [__CLASS__, 'send_front_page_public_cache_headers'], 999);
+        add_filter('wp_headers', [__CLASS__, 'filter_public_cache_headers'], 999);
+        add_filter('woocommerce_set_cookie_enabled', [__CLASS__, 'filter_woocommerce_cookie_enabled'], 20, 5);
         add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
         add_filter('post_link', [__CLASS__, 'filter_artist_profile_permalink'], 20, 3);
@@ -3358,6 +3361,41 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
     }
 
+    public static function filter_woocommerce_cookie_enabled(bool $enabled, string $name, string $value, int $expire, bool $secure): bool {
+        if (!$enabled || is_admin() || wp_doing_ajax() || is_user_logged_in()) {
+            return $enabled;
+        }
+        if (strpos($name, 'wp_woocommerce_session_') !== 0 && strpos($name, 'woocommerce_') !== 0 && strpos($name, 'wc_') !== 0) {
+            return $enabled;
+        }
+        return self::allow_woocommerce_session_on_current_request();
+    }
+
+    public static function filter_public_cache_headers(array $headers): array {
+        if (is_admin() || wp_doing_ajax() || is_user_logged_in() || !function_exists('is_front_page') || !is_front_page()) {
+            return $headers;
+        }
+        if (self::allow_woocommerce_session_on_current_request() || self::is_direct_give_embed_request()) {
+            return $headers;
+        }
+        $headers['Cache-Control'] = 'public, max-age=600, s-maxage=1800, stale-while-revalidate=300';
+        unset($headers['Pragma'], $headers['Expires']);
+        return $headers;
+    }
+
+    public static function send_front_page_public_cache_headers(): void {
+        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || !function_exists('is_front_page') || !is_front_page()) {
+            return;
+        }
+        if (self::allow_woocommerce_session_on_current_request() || self::is_direct_give_embed_request()) {
+            return;
+        }
+        header_remove('Cache-Control');
+        header_remove('Pragma');
+        header_remove('Expires');
+        header('Cache-Control: public, max-age=600, s-maxage=1800, stale-while-revalidate=300', true);
+    }
+
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
         if (is_admin()) {
             return $tag;
@@ -3500,6 +3538,28 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return true;
         }
         return self::current_page_slug_matches(['cart', 'checkout', 'my-account', 'order-pay']);
+    }
+
+    private static function allow_woocommerce_session_on_current_request(): bool {
+        $request_path = trim(strtolower((string) wp_parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH)), '/');
+        if ($request_path === '') {
+            return false;
+        }
+        if (strpos($request_path, 'wp-admin') === 0 || strpos($request_path, 'wp-json') === 0 || strpos($request_path, 'wc-api') === 0) {
+            return true;
+        }
+        foreach (['cart', 'checkout', 'my-account', 'order-pay', 'order-received', 'product/', 'store', 'collection/artwork', 'artwork'] as $path) {
+            if ($request_path === trim($path, '/') || strpos($request_path, trim($path, '/') . '/') === 0) {
+                return true;
+            }
+        }
+        if (isset($_GET['add-to-cart']) || isset($_GET['wc-ajax']) || isset($_POST['add-to-cart'])) {
+            return true;
+        }
+        if ((function_exists('is_cart') && is_cart()) || (function_exists('is_checkout') && is_checkout()) || (function_exists('is_account_page') && is_account_page()) || (function_exists('is_product') && is_product()) || (function_exists('is_shop') && is_shop()) || (function_exists('is_product_taxonomy') && is_product_taxonomy())) {
+            return true;
+        }
+        return false;
     }
 
     private static function allow_donation_assets_on_current_request(): bool {
