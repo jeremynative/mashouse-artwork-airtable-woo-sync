@@ -3832,6 +3832,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ];
         $remove = [
             'beau bree rhee' => ['Beadworker'],
+            'jacoub reyes' => ['Performance Artist'],
             'stephen longoria' => ['Craft Artist'],
         ];
         foreach ($add[$key] ?? [] as $medium) {
