@@ -4758,11 +4758,11 @@ body.home .elementor-element-9f214c3 p{font-size:17px!important;line-height:1.42
 body.home .elementor-element-525dad1,
 body.home .elementor-element-0a7cc4a{width:100%!important;margin-top:0!important}
 body.home .elementor-element-525dad1 img,
-body.home .elementor-element-0a7cc4a .swiper-slide-image{display:block!important;width:100%!important;height:clamp(300px,22vw,380px)!important;object-fit:cover!important}
+body.home .elementor-element-0a7cc4a .swiper-slide-image{display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
 body.home .elementor-element-0a7cc4a .swiper,
 body.home .elementor-element-0a7cc4a .swiper-wrapper,
 body.home .elementor-element-0a7cc4a .swiper-slide,
-body.home .elementor-element-0a7cc4a figure{height:clamp(300px,22vw,380px)!important}
+body.home .elementor-element-0a7cc4a figure{height:auto!important;min-height:0!important}
 body.home .elementor-element-8203c65,
 body.home .elementor-element-e18ab85{width:100%!important;margin-top:12px!important}
 body.home .elementor-element-8203c65 p,

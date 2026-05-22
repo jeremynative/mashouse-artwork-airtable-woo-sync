@@ -513,15 +513,17 @@ body.home .elementor-element-525dad1 img,
 body.home .elementor-element-0a7cc4a .swiper-slide-image {
   display: block !important;
   width: 100% !important;
-  height: clamp(330px, 27vw, 440px) !important;
-  object-fit: cover !important;
+  height: auto !important;
+  max-height: none !important;
+  object-fit: contain !important;
 }
 
 body.home .elementor-element-0a7cc4a .swiper,
 body.home .elementor-element-0a7cc4a .swiper-wrapper,
 body.home .elementor-element-0a7cc4a .swiper-slide,
 body.home .elementor-element-0a7cc4a figure {
-  height: clamp(330px, 27vw, 440px) !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 body.home .elementor-element-0a7cc4a .swiper-slide-image {
