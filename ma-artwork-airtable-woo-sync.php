@@ -47,6 +47,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
+        add_action('wp_head', [__CLASS__, 'render_single_post_cover_spacing_css'], 1);
         add_action('wp_head', [__CLASS__, 'render_events_page_first_paint_css'], 2);
         add_action('wp_head', [__CLASS__, 'render_donate_page_first_paint_css'], 3);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
@@ -3232,6 +3233,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         echo '<style id="ma-global-site-polish-css">body .hfg_header.site-header,body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after,.hfg_header.site-header:before,.hfg_header.site-header:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:158px!important}body.page-id-377 .nv-single-page-wrap,body.page-id-377 .elementor-page-377{margin-top:0!important}@media(max-width:760px){body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:126px!important}}</style>';
+    }
+
+    public static function render_single_post_cover_spacing_css(): void {
+        if (is_admin() || !is_single() || (function_exists('is_product') && is_product())) {
+            return;
+        }
+        echo '<style id="ma-single-post-cover-spacing-css" data-no-optimize="1" data-cfasync="false">body.single-post:not(.single-product) .nv-post-cover{margin-top:86px!important}body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container{margin-top:0!important}@media(max-width:760px){body.single-post:not(.single-product) .nv-post-cover{margin-top:74px!important}}</style>';
     }
 
     public static function render_staff_page_spacing_css(): void {

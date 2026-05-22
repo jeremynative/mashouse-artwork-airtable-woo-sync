@@ -3,6 +3,20 @@ body .hfg_header.site-header {
   box-shadow: none !important;
 }
 
+body.single-post:not(.single-product) .nv-post-cover {
+  margin-top: 86px !important;
+}
+
+body.single-post:not(.single-product) .nv-post-cover + .container.single-post-container {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 760px) {
+  body.single-post:not(.single-product) .nv-post-cover {
+    margin-top: 74px !important;
+  }
+}
+
 body.page-id-377 #content.neve-main,
 body.page-id-377 main.neve-main {
   padding-top: 158px !important;
