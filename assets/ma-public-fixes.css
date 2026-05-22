@@ -19,7 +19,8 @@ body:not(.home):not(.single-product) .elementor-widget-heading h1.elementor-head
 .ma-sponsorship-hero h1,
 .ma-subscribe-hero h1,
 .ma-podcast-hero h1,
-.ma-residency-hero h1 {
+.ma-residency-hero h1,
+.ma-community-artists-hero h1 {
   color: #111 !important;
   font-family: Arial, Helvetica, sans-serif !important;
   font-size: clamp(30px, 3.2vw, 42px) !important;
@@ -63,7 +64,8 @@ body.single-post:not(.single-product) .nv-post-cover + .container.single-post-co
   .ma-sponsorship-hero h1,
   .ma-subscribe-hero h1,
   .ma-podcast-hero h1,
-  .ma-residency-hero h1 {
+  .ma-residency-hero h1,
+  .ma-community-artists-hero h1 {
     font-size: 31px !important;
   }
 
@@ -2018,6 +2020,209 @@ body.page-id-198 .entry-content {
   color: #111 !important;
 }
 
+body.page-id-38875 .nv-page-title-wrap,
+body.page-id-9380 .nv-page-title-wrap,
+body.page-slug-community-artists .nv-page-title-wrap {
+  display: none !important;
+}
+
+.ma-community-artists-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 24px 76px;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ma-community-artists-hero {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) minmax(0, 1fr);
+  gap: 34px;
+  align-items: end;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-community-artists-hero > p {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.ma-community-artists-hero h1 {
+  margin: 0;
+  color: #111;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ma-community-artists-hero div {
+  grid-column: 2;
+}
+
+.ma-community-artists-hero div p {
+  max-width: 720px;
+  margin: 0;
+  color: #333;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.ma-community-artists-controls {
+  display: grid;
+  gap: 18px;
+  padding: 24px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-community-artists-controls div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ma-community-artists-controls span {
+  margin-right: 4px;
+  color: #666;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ma-community-artists-controls button {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #d3d3d3;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ma-community-artists-controls button.is-active {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+
+.ma-community-artists-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px 24px;
+  padding-top: 34px;
+}
+
+.ma-community-artist-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  border-top: 3px solid #ed1c24;
+  padding-top: 14px;
+}
+
+.ma-community-artist-card[hidden] {
+  display: none !important;
+}
+
+.ma-community-artist-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f1eee8;
+  color: #111;
+  text-decoration: none !important;
+}
+
+.ma-community-artist-card__image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ma-community-artist-card__image span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.ma-community-artist-card__body {
+  padding-top: 14px;
+}
+
+.ma-community-artist-card h2 {
+  margin: 0 0 7px;
+  color: #111;
+  font-size: 21px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ma-community-artist-card h2 a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.ma-community-artist-card h2 a:hover {
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
+.ma-community-artist-card__roles,
+.ma-community-artist-card__mediums {
+  margin: 0 0 6px;
+  color: #555;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.ma-community-artist-card__mediums {
+  color: #222;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ma-community-artist-card__bio {
+  margin: 10px 0 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ma-community-artist-card__links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 13px;
+}
+
+.ma-community-artist-card__links a {
+  color: #111 !important;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
 @media (max-width: 920px) {
   body.page-id-3388 .elementor-element-e2f87cd > .elementor-container {
     grid-template-columns: 1fr !important;
@@ -2067,14 +2272,20 @@ body.page-id-198 .entry-content {
   .ma-residency-intro,
   .ma-residency-section-heading,
   .ma-residency-note,
-  .ma-residency-cta {
+  .ma-residency-cta,
+  .ma-community-artists-hero {
     grid-template-columns: 1fr;
     gap: 18px;
   }
 
+  .ma-community-artists-hero div {
+    grid-column: auto;
+  }
+
   .ma-podcast-topics,
   .ma-residency-cards,
-  .ma-residency-detail-grid {
+  .ma-residency-detail-grid,
+  .ma-community-artists-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2186,5 +2397,17 @@ body.page-id-198 .entry-content {
 
   .ma-residency-actions a {
     width: 100%;
+  }
+
+  .ma-community-artists-page {
+    padding: 34px 16px 54px;
+  }
+
+  .ma-community-artists-hero h1 {
+    font-size: 31px !important;
+  }
+
+  .ma-community-artists-controls div {
+    align-items: flex-start;
   }
 }

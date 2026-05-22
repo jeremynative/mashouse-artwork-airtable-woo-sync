@@ -79,6 +79,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_subscribe_page_content'], 38);
         add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
         add_filter('the_content', [__CLASS__, 'replace_residency_page_content'], 40);
+        add_filter('the_content', [__CLASS__, 'replace_community_artists_page_content'], 41);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -721,6 +722,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
             update_option(self::OPTION_KEY, $options, false);
         }
 
+        $artist_directory = [];
+        if (!$dry_run) {
+            $artist_directory = self::sync_community_artist_records(80);
+        }
+
         $summary = [
             'dry_run' => $dry_run,
             'checked' => $checked,
@@ -728,6 +734,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'skipped' => array_slice(array_values(array_unique($skipped)), 0, 12),
             'errors' => $errors,
             'last_sync_at' => $started_at,
+            'artist_directory' => $artist_directory,
         ];
         if ($dry_run) {
             $summary['dry_run_results'] = $dry_run_results;
@@ -1370,27 +1377,46 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         $wanted = [
-            'Portrait Jpeg' => 'multipleAttachments',
-            'Artist Portrait Public URL' => 'url',
+            'Portrait Jpeg' => ['type' => 'multipleAttachments'],
+            'Artist Portrait Public URL' => ['type' => 'url'],
+            'Mediums' => [
+                'type' => 'multipleSelects',
+                'options' => ['choices' => array_map(static fn($name) => ['name' => $name], self::artist_medium_choices())],
+            ],
+            'Artist Roles' => [
+                'type' => 'multipleSelects',
+                'options' => ['choices' => array_map(static fn($name) => ['name' => $name], self::artist_role_choices())],
+            ],
+            'Public Website' => ['type' => 'url'],
+            'Social Media URL' => ['type' => 'url'],
+            'Residency Dates' => ['type' => 'singleLineText'],
+            'Exhibits Involved' => ['type' => 'multilineText'],
+            'Events Led' => ['type' => 'multilineText'],
+            'Donated Works' => ['type' => 'multilineText'],
+            'Public Profile URL' => ['type' => 'url'],
         ];
-        foreach ($wanted as $name => $type) {
+        foreach ($wanted as $name => $config) {
             if (in_array($name, $field_names, true)) {
                 continue;
             }
-            self::create_airtable_field($options, $table_id, $name, $type);
+            self::create_airtable_field($options, $table_id, $name, $config['type'], $config['options'] ?? []);
         }
     }
 
-    private static function create_airtable_field(array $options, string $table_id, string $name, string $type): void {
+    private static function create_airtable_field(array $options, string $table_id, string $name, string $type, array $field_options = []): void {
         $endpoint = sprintf(
             'https://api.airtable.com/v0/meta/bases/%s/tables/%s/fields',
             rawurlencode($options['base_id']),
             rawurlencode($table_id)
         );
+        $payload = ['name' => $name, 'type' => $type];
+        if ($field_options) {
+            $payload['options'] = $field_options;
+        }
         wp_remote_post($endpoint, [
             'timeout' => 30,
             'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token'], 'Content-Type' => 'application/json'],
-            'body' => wp_json_encode(['name' => $name, 'type' => $type]),
+            'body' => wp_json_encode($payload),
         ]);
     }
 
@@ -1525,6 +1551,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'residency_period' => '',
             'website' => '',
             'instagram' => '',
+            'mediums' => '',
+            'roles' => '',
             'profile_url' => '',
             'profile_post_id' => '',
         ];
@@ -1582,6 +1610,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 $artist['residency_period'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('residency_period')));
                 $artist['website'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('website')));
                 $artist['instagram'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('instagram')));
+                $artist['mediums'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('mediums')));
+                $artist['roles'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('roles')));
             }
         } elseif ($allow_side_effects && $artist['name'] && !empty($options['artist_table_id'])) {
             $artist['bio'] = $artist['bio'] ?: self::site_bio_for_artist($artist['name'], $site_bio_source);
@@ -1947,6 +1977,97 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ]);
     }
 
+    public static function sync_community_artist_records(int $limit = 80): array {
+        $options = self::options();
+        if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['artist_table_id'])) {
+            return ['checked' => 0, 'updated' => 0, 'errors' => ['Missing Airtable Artists settings.']];
+        }
+        self::ensure_artist_portrait_airtable_fields($options);
+        $available_fields = self::airtable_table_field_names($options, (string) $options['artist_table_id']);
+        $artists = array_slice(self::community_artist_cards_data(), 0, max(1, $limit));
+        $checked = 0;
+        $updated = 0;
+        $errors = [];
+
+        foreach ($artists as $artist) {
+            $checked++;
+            try {
+                $post_id = (int) ($artist['post_id'] ?? 0);
+                $bio = self::text($artist['bio'] ?? '');
+                $record_id = $post_id ? self::text(get_post_meta($post_id, 'ma_artist_airtable_record_id', true)) : '';
+                if (!$record_id) {
+                    $record_id = self::find_or_create_artist_record($options, $artist['name'], $bio);
+                }
+                if (!$record_id) {
+                    continue;
+                }
+                $events = self::artist_event_labels($artist['name']);
+                $product_context = self::artist_product_context($artist['name']);
+                $payload = [
+                    'Bio' => $bio,
+                    'Mediums' => $artist['mediums'],
+                    'Artist Roles' => $artist['roles'],
+                    'Public Website' => $artist['website'],
+                    'Social Media URL' => $artist['social'],
+                    'Donated Works' => implode("\n", $product_context['works'] ?? []),
+                    'Events Led' => implode("\n", $events),
+                    'Public Profile URL' => $artist['url'],
+                ];
+                if ($post_id) {
+                    $residency = self::text(get_post_meta($post_id, 'ma_artist_residency_period', true));
+                    if ($residency) {
+                        $payload['Residency Dates'] = $residency;
+                    }
+                    update_post_meta($post_id, 'ma_artist_airtable_record_id', $record_id);
+                    update_post_meta($post_id, 'ma_artist_mediums', implode(', ', $artist['mediums']));
+                    update_post_meta($post_id, 'ma_artist_roles', implode(', ', $artist['roles']));
+                    update_post_meta($post_id, 'ma_artist_website', esc_url_raw($artist['website']));
+                    update_post_meta($post_id, 'ma_artist_instagram', esc_url_raw($artist['social']));
+                }
+                if (self::patch_artist_directory_fields($options, $record_id, $payload, $available_fields)) {
+                    $updated++;
+                }
+            } catch (Throwable $error) {
+                $errors[] = $artist['name'] . ': ' . $error->getMessage();
+            }
+        }
+
+        return ['checked' => $checked, 'updated' => $updated, 'errors' => array_slice($errors, 0, 8)];
+    }
+
+    private static function patch_artist_directory_fields(array $options, string $record_id, array $payload, array $available_fields): bool {
+        $fields = [];
+        foreach ($payload as $field => $value) {
+            if (!in_array($field, $available_fields, true)) {
+                continue;
+            }
+            if (is_array($value)) {
+                $value = array_values(array_unique(array_filter(array_map([__CLASS__, 'text'], $value))));
+            } else {
+                $value = self::text($value);
+            }
+            if ($value !== '' && $value !== []) {
+                $fields[$field] = $value;
+            }
+        }
+        if (!$fields) {
+            return false;
+        }
+        $endpoint = sprintf(
+            'https://api.airtable.com/v0/%s/%s/%s',
+            rawurlencode($options['base_id']),
+            rawurlencode($options['artist_table_id']),
+            rawurlencode($record_id)
+        );
+        $response = wp_remote_request($endpoint, [
+            'method' => 'PATCH',
+            'timeout' => 30,
+            'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token'], 'Content-Type' => 'application/json'],
+            'body' => wp_json_encode(['fields' => $fields, 'typecast' => true]),
+        ]);
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) < 300;
+    }
+
     private static function airtable_formula_field(string $field): string {
         return str_replace('}', '\\}', $field);
     }
@@ -1972,9 +2093,45 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'portrait_url' => ['Artist Portrait Public URL', 'Artist Portrait URL', 'Google Drive Portrait URL', 'Public Portrait URL', 'Portrait URL', 'portrait url', 'Headshot URL', 'Artist Image URL', 'Artist Photo URL', 'Google Drive URL', 'LookupArtistPortraitUrl'],
             'residency_period' => ['Residency Period', 'Resident Artist Period', 'Ma\'s House Residency', 'Residency'],
             'website' => ['Artist Website', 'Website', 'URL'],
-            'instagram' => ['Instagram Username (with @)', 'Instagram', 'Instagram Username'],
+            'instagram' => ['Instagram Username (with @)', 'Instagram', 'Instagram Username', 'Social Media URL'],
+            'mediums' => ['Mediums', 'Medium', 'Practice', 'Artist Mediums'],
+            'roles' => ['Artist Roles', 'Roles', 'Artist Type', 'Artist Categories'],
         ];
         return $aliases[$key] ?? [];
+    }
+
+    private static function artist_medium_choices(): array {
+        return [
+            'Painter',
+            'Photographer',
+            'Printmaker',
+            'Beadworker',
+            'Weaver',
+            'Textile Artist',
+            'Sculptor',
+            'Ceramic Artist',
+            'Installation Artist',
+            'Performance Artist',
+            'Writer',
+            'Filmmaker',
+            'Sound Artist',
+            'Digital Artist',
+            'Curator',
+            'Educator',
+            'Designer',
+            'Multidisciplinary Artist',
+            'Traditional Artist',
+            'Craft Artist',
+        ];
+    }
+
+    private static function artist_role_choices(): array {
+        return [
+            'Community Artist',
+            'Exhibiting Artist',
+            'Residency Artist',
+            'Guest Workshop Artist',
+        ];
     }
 
     private static function attachment_or_url_to_public_image($value): string {
@@ -2038,6 +2195,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
         update_post_meta((int) $post_id, 'ma_artist_name', $name);
         update_post_meta((int) $post_id, 'ma_artist_portrait_url', esc_url_raw($artist['portrait_url'] ?? ''));
         update_post_meta((int) $post_id, 'ma_artist_airtable_record_id', self::text($artist['record_id'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_mediums', self::text($artist['mediums'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_roles', self::text($artist['roles'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_website', esc_url_raw($artist['website'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_instagram', self::text($artist['instagram'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_residency_period', self::text($artist['residency_period'] ?? ''));
         update_post_meta((int) $post_id, 'ma_artist_profile_synced_at', gmdate('c'));
         return (int) $post_id;
     }
@@ -2084,6 +2246,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $residency_period = self::text($artist['residency_period'] ?? '');
         $website = self::text($artist['website'] ?? '');
         $instagram = self::text($artist['instagram'] ?? '');
+        $mediums = self::split_list(self::text($artist['mediums'] ?? ''));
+        $roles = self::split_list(self::text($artist['roles'] ?? ''));
         $exhibits = self::artist_exhibit_labels($linked_exhibits);
         $parts = ['<div class="ma-artist-page">'];
 
@@ -2097,6 +2261,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $facts = '';
         if ($residency_period) {
             $facts .= '<li><strong>Ma\'s House residency:</strong> ' . esc_html($residency_period) . '</li>';
+        }
+        if ($roles) {
+            $facts .= '<li><strong>Artist roles:</strong> ' . esc_html(implode(', ', $roles)) . '</li>';
+        }
+        if ($mediums) {
+            $facts .= '<li><strong>Practice:</strong> ' . esc_html(implode(', ', $mediums)) . '</li>';
         }
         if ($exhibits) {
             $facts .= '<li><strong>Exhibitions:</strong> ' . esc_html(implode('; ', $exhibits)) . '</li>';
@@ -2735,6 +2905,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::residency_page_html();
     }
 
+    public static function replace_community_artists_page_content(string $content): string {
+        if (is_admin() || !is_page('community-artists')) {
+            return $content;
+        }
+
+        return self::community_artists_page_html();
+    }
+
     public static function render_news_posts_page_template(): void {
         if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
             return;
@@ -3118,6 +3296,114 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return (string) ob_get_clean();
     }
 
+    private static function community_artists_page_html(): string {
+        $artists = self::community_artist_cards_data();
+        $mediums = [];
+        $roles = [];
+        foreach ($artists as $artist) {
+            foreach ($artist['mediums'] as $medium) {
+                $mediums[$medium] = $medium;
+            }
+            foreach ($artist['roles'] as $role) {
+                $roles[$role] = $role;
+            }
+        }
+        natcasesort($mediums);
+        natcasesort($roles);
+
+        ob_start();
+        ?>
+        <style>body.page .nv-page-title-wrap:has(+ .nv-single-page-wrap .ma-community-artists-page){display:none!important}</style>
+        <article class="ma-community-artists-page">
+            <header class="ma-community-artists-hero">
+                <p>Community Artists</p>
+                <h1>Artists connected to Ma's House</h1>
+                <div>
+                    <p>A growing directory of community artists, exhibiting artists, resident artists, and guest workshop artists connected to Ma's House programs.</p>
+                </div>
+            </header>
+
+            <section class="ma-community-artists-controls" aria-label="Artist filters">
+                <?php if ($roles) : ?>
+                    <div>
+                        <span>Role</span>
+                        <button type="button" class="is-active" data-ma-artist-filter="role" data-value="">All</button>
+                        <?php foreach ($roles as $role) : ?>
+                            <button type="button" data-ma-artist-filter="role" data-value="<?php echo esc_attr(sanitize_title($role)); ?>"><?php echo esc_html($role); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ($mediums) : ?>
+                    <div>
+                        <span>Practice</span>
+                        <button type="button" class="is-active" data-ma-artist-filter="medium" data-value="">All</button>
+                        <?php foreach ($mediums as $medium) : ?>
+                            <button type="button" data-ma-artist-filter="medium" data-value="<?php echo esc_attr(sanitize_title($medium)); ?>"><?php echo esc_html($medium); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <section class="ma-community-artists-grid" aria-label="Artists">
+                <?php foreach ($artists as $artist) : ?>
+                    <article class="ma-community-artist-card" data-role="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['roles']))); ?>" data-medium="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['mediums']))); ?>">
+                        <a class="ma-community-artist-card__image" href="<?php echo esc_url($artist['url']); ?>">
+                            <?php if ($artist['image']) : ?>
+                                <img src="<?php echo esc_url($artist['image']); ?>" alt="<?php echo esc_attr($artist['name'] . ' portrait'); ?>" loading="lazy">
+                            <?php else : ?>
+                                <span><?php echo esc_html(self::initials($artist['name'])); ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <div class="ma-community-artist-card__body">
+                            <h2><a href="<?php echo esc_url($artist['url']); ?>"><?php echo esc_html($artist['name']); ?></a></h2>
+                            <?php if ($artist['roles']) : ?>
+                                <p class="ma-community-artist-card__roles"><?php echo esc_html(implode(', ', $artist['roles'])); ?></p>
+                            <?php endif; ?>
+                            <?php if ($artist['mediums']) : ?>
+                                <p class="ma-community-artist-card__mediums"><?php echo esc_html(implode(', ', $artist['mediums'])); ?></p>
+                            <?php endif; ?>
+                            <?php if ($artist['bio']) : ?>
+                                <p class="ma-community-artist-card__bio"><?php echo esc_html(wp_trim_words($artist['bio'], 28)); ?></p>
+                            <?php endif; ?>
+                            <div class="ma-community-artist-card__links">
+                                <a href="<?php echo esc_url($artist['url']); ?>">Profile</a>
+                                <?php if ($artist['website']) : ?>
+                                    <a href="<?php echo esc_url($artist['website']); ?>">Website</a>
+                                <?php endif; ?>
+                                <?php if ($artist['social']) : ?>
+                                    <a href="<?php echo esc_url($artist['social']); ?>">Social</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </section>
+        </article>
+        <script>
+        document.addEventListener('click', function(event) {
+            var button = event.target.closest('[data-ma-artist-filter]');
+            if (!button) return;
+            var kind = button.getAttribute('data-ma-artist-filter');
+            var controls = button.closest('.ma-community-artists-controls');
+            controls.querySelectorAll('[data-ma-artist-filter="' + kind + '"]').forEach(function(item) {
+                item.classList.remove('is-active');
+            });
+            button.classList.add('is-active');
+            var role = controls.querySelector('[data-ma-artist-filter="role"].is-active');
+            var medium = controls.querySelector('[data-ma-artist-filter="medium"].is-active');
+            var roleValue = role ? role.getAttribute('data-value') : '';
+            var mediumValue = medium ? medium.getAttribute('data-value') : '';
+            document.querySelectorAll('.ma-community-artist-card').forEach(function(card) {
+                var roleOk = !roleValue || card.getAttribute('data-role').split(' ').indexOf(roleValue) !== -1;
+                var mediumOk = !mediumValue || card.getAttribute('data-medium').split(' ').indexOf(mediumValue) !== -1;
+                card.hidden = !(roleOk && mediumOk);
+            });
+        });
+        </script>
+        <?php
+        return (string) ob_get_clean();
+    }
+
     private static function news_posts_for_category(string $slug, int $limit): array {
         return get_posts([
             'post_type' => 'post',
@@ -3131,6 +3417,185 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'terms' => [$slug],
             ]],
         ]);
+    }
+
+    private static function community_artist_cards_data(): array {
+        $category = get_term_by('slug', 'artists', 'category') ?: get_term_by('name', 'Artists', 'category');
+        if (!$category instanceof WP_Term) {
+            return [];
+        }
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => 300,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'category__in' => [(int) $category->term_id],
+        ]);
+        $cards = [];
+        foreach ($posts as $post) {
+            $post_id = (int) $post->ID;
+            $name = self::text(get_post_meta($post_id, 'ma_artist_name', true)) ?: self::text($post->post_title);
+            if (!$name) {
+                continue;
+            }
+            $bio = self::bio_from_artist_post_id($post_id) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
+            $product_context = self::artist_product_context($name);
+            $mediums = self::split_list(self::text(get_post_meta($post_id, 'ma_artist_mediums', true)));
+            if (!$mediums) {
+                $mediums = self::infer_artist_mediums($bio . ' ' . $product_context['mediums']);
+            }
+            $roles = self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true)));
+            if (!$roles) {
+                $roles = self::infer_artist_roles($post_id, $name, $bio, $product_context);
+            }
+            $website = self::text(get_post_meta($post_id, 'ma_artist_website', true));
+            $instagram = self::text(get_post_meta($post_id, 'ma_artist_instagram', true));
+            $social = self::artist_social_url($instagram);
+            $image = self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true));
+            if (!$image && has_post_thumbnail($post_id)) {
+                $image = get_the_post_thumbnail_url($post_id, 'medium_large') ?: '';
+            }
+            $cards[] = [
+                'post_id' => $post_id,
+                'name' => $name,
+                'url' => get_permalink($post_id) ?: home_url('/artist/' . sanitize_title($name) . '/'),
+                'image' => self::public_image_url($image),
+                'bio' => $bio,
+                'mediums' => $mediums,
+                'roles' => $roles ?: ['Community Artist'],
+                'website' => $website ? esc_url_raw($website) : '',
+                'social' => $social,
+            ];
+        }
+        usort($cards, static fn($a, $b) => strcasecmp($a['name'], $b['name']));
+        return $cards;
+    }
+
+    private static function artist_product_context(string $artist_name): array {
+        if (!$artist_name || !class_exists('WooCommerce')) {
+            return ['count' => 0, 'mediums' => '', 'works' => []];
+        }
+        $ids = get_posts([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => 40,
+            'fields' => 'ids',
+            'meta_query' => [[
+                'key' => 'ma_artist_name',
+                'value' => $artist_name,
+                'compare' => '=',
+            ]],
+        ]);
+        $mediums = [];
+        $works = [];
+        foreach ($ids as $id) {
+            $product = wc_get_product((int) $id);
+            if (!$product) {
+                continue;
+            }
+            $medium = self::product_detail_value($product, 'Medium');
+            if ($medium) {
+                $mediums[] = $medium;
+            }
+            $sku = $product->get_sku();
+            $works[] = trim($product->get_name() . ($sku ? ' #' . $sku : ''));
+        }
+        return ['count' => count($ids), 'mediums' => implode(', ', $mediums), 'works' => $works];
+    }
+
+    private static function infer_artist_roles(int $post_id, string $name, string $bio, array $product_context): array {
+        $roles = [];
+        if (!empty($product_context['count'])) {
+            $roles[] = 'Exhibiting Artist';
+        }
+        if (get_post_meta($post_id, 'ma_artist_residency_period', true) || preg_match('/\b(resident|residency|artist-in-residence|artist in residence)\b/i', $bio)) {
+            $roles[] = 'Residency Artist';
+        }
+        if (self::artist_event_labels($name)) {
+            $roles[] = 'Guest Workshop Artist';
+        }
+        $roles[] = 'Community Artist';
+        return array_values(array_intersect(self::artist_role_choices(), array_values(array_unique($roles))));
+    }
+
+    private static function infer_artist_mediums(string $text): array {
+        $text = strtolower($text);
+        $map = [
+            'Printmaker' => ['printmaker', 'printmaking', 'print maker', 'linocut', 'linoleum', 'copperplate', 'etching', 'screenprint', 'screen print', 'woodcut', 'lithograph'],
+            'Painter' => ['painter', 'painting', 'paintings', 'acrylic', 'oil paint', 'watercolor', 'gouache'],
+            'Photographer' => ['photographer', 'photography', 'photo-based', 'lens-based', 'cyanotype', 'anthotype'],
+            'Beadworker' => ['beadwork', 'bead worker', 'beadworker', 'beading', 'wampum'],
+            'Weaver' => ['weaver', 'weaving', 'woven', 'basketry'],
+            'Textile Artist' => ['textile', 'fiber', 'fabric', 'quilting', 'embroidery', 'sewing'],
+            'Sculptor' => ['sculptor', 'sculpture', 'carving', 'woodworking', 'woodworker'],
+            'Ceramic Artist' => ['ceramic', 'clay', 'pottery'],
+            'Installation Artist' => ['installation'],
+            'Performance Artist' => ['performance', 'performer'],
+            'Writer' => ['writer', 'poet', 'poetry', 'literature', 'author'],
+            'Filmmaker' => ['film', 'filmmaker', 'video artist', 'moving image'],
+            'Sound Artist' => ['sound artist', 'audio'],
+            'Digital Artist' => ['digital', 'new media', 'media art'],
+            'Curator' => ['curator', 'curatorial'],
+            'Educator' => ['educator', 'teaching artist', 'teacher'],
+            'Designer' => ['designer', 'design'],
+            'Traditional Artist' => ['traditional', 'indigenous arts', 'regalia'],
+            'Craft Artist' => ['craft', 'maker'],
+            'Multidisciplinary Artist' => ['multidisciplinary', 'interdisciplinary', 'mixed media', 'multi-media', 'multimedia'],
+        ];
+        $found = [];
+        foreach ($map as $medium => $needles) {
+            foreach ($needles as $needle) {
+                if (strpos($text, $needle) !== false) {
+                    $found[$medium] = $medium;
+                    break;
+                }
+            }
+        }
+        if (!$found && trim($text)) {
+            $found['Multidisciplinary Artist'] = 'Multidisciplinary Artist';
+        }
+        return array_values($found);
+    }
+
+    private static function artist_event_labels(string $artist_name): array {
+        if (!$artist_name) {
+            return [];
+        }
+        $events = get_posts([
+            'post_type' => ['tribe_events'],
+            'post_status' => 'publish',
+            'posts_per_page' => 12,
+            's' => $artist_name,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+        $labels = [];
+        foreach ($events as $event) {
+            $labels[] = self::text($event->post_title);
+        }
+        return array_values(array_unique(array_filter($labels)));
+    }
+
+    private static function artist_social_url(string $value): string {
+        $value = trim($value);
+        if (!$value) {
+            return '';
+        }
+        if (preg_match('~^https?://~i', $value)) {
+            return esc_url_raw($value);
+        }
+        $handle = ltrim($value, '@');
+        return $handle ? esc_url_raw('https://www.instagram.com/' . $handle) : '';
+    }
+
+    private static function initials(string $name): string {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $letters = '';
+        foreach (array_slice($parts, 0, 2) as $part) {
+            $letters .= strtoupper(substr($part, 0, 1));
+        }
+        return $letters ?: 'A';
     }
 
     private static function news_cards_html(array $posts, bool $featured_first): string {
@@ -5179,6 +5644,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return trim(implode(', ', $parts));
         }
         return trim((string) $value);
+    }
+
+    private static function split_list(string $value): array {
+        if (!$value) {
+            return [];
+        }
+        $parts = preg_split('/[,;|]+/', $value) ?: [];
+        $clean = [];
+        foreach ($parts as $part) {
+            $part = trim((string) $part);
+            if ($part) {
+                $clean[$part] = $part;
+            }
+        }
+        return array_values($clean);
     }
 
     private static function money($value): string {
