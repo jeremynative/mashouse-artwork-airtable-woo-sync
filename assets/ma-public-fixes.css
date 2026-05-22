@@ -3,6 +3,44 @@ body .hfg_header.site-header {
   box-shadow: none !important;
 }
 
+body:not(.home):not(.single-product) .nv-page-title h1,
+body:not(.home):not(.single-product) .entry-title,
+body:not(.home):not(.single-product) .elementor-widget-heading h1.elementor-heading-title {
+  color: #111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: clamp(30px, 3.2vw, 42px) !important;
+  line-height: 1.08 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.ma-news-hero h1,
+.ma-about-hero h1,
+.ma-sponsorship-hero h1,
+.ma-subscribe-hero h1,
+.ma-podcast-hero h1 {
+  color: #111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: clamp(30px, 3.2vw, 42px) !important;
+  line-height: 1.08 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.ma-news-section__heading h2,
+.ma-about-intro__lead h2,
+.ma-about-people h2,
+.ma-sponsorship-section__intro h2,
+.ma-past-sponsors__intro h2,
+body.page-id-3388 .elementor-element-52863ee h2 {
+  color: #111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: clamp(24px, 2.4vw, 32px) !important;
+  line-height: 1.14 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
 body.single-post:not(.single-product) .nv-post-cover {
   margin-top: 86px !important;
 }
@@ -12,6 +50,17 @@ body.single-post:not(.single-product) .nv-post-cover + .container.single-post-co
 }
 
 @media (max-width: 760px) {
+  body:not(.home):not(.single-product) .nv-page-title h1,
+  body:not(.home):not(.single-product) .entry-title,
+  body:not(.home):not(.single-product) .elementor-widget-heading h1.elementor-heading-title,
+  .ma-news-hero h1,
+  .ma-about-hero h1,
+  .ma-sponsorship-hero h1,
+  .ma-subscribe-hero h1,
+  .ma-podcast-hero h1 {
+    font-size: 31px !important;
+  }
+
   body.single-post:not(.single-product) .nv-post-cover {
     margin-top: 74px !important;
   }
@@ -73,9 +122,9 @@ body.page-id-3388 .nv-page-title h1 {
   margin: 0 !important;
   color: #111 !important;
   font-family: Arial, Helvetica, sans-serif !important;
-  font-size: clamp(34px, 4vw, 48px) !important;
-  line-height: 1.05 !important;
-  font-weight: 720 !important;
+  font-size: clamp(30px, 3.2vw, 42px) !important;
+  line-height: 1.08 !important;
+  font-weight: 700 !important;
   letter-spacing: 0 !important;
 }
 
@@ -1279,11 +1328,11 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__read-more {
 
 .ma-sponsorship-hero h1 {
   margin: 0;
-  max-width: 11ch;
+  max-width: 18ch;
   color: #111;
-  font-size: clamp(36px, 5vw, 64px);
-  line-height: .98;
-  font-weight: 750;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -1470,10 +1519,11 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__read-more {
 
 .ma-subscribe-hero h1 {
   margin: 0;
-  max-width: 12ch;
+  max-width: 18ch;
   color: #111;
-  font-size: clamp(34px, 5vw, 58px);
-  line-height: 1;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -1575,8 +1625,9 @@ body.page-id-2652 .nv-page-title-wrap {
   margin: 0;
   max-width: 760px;
   color: #111;
-  font-size: clamp(34px, 4.1vw, 54px);
-  line-height: 1.03;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -1769,7 +1820,7 @@ body.page-id-2652 .nv-page-title-wrap {
   }
 
   .ma-sponsorship-hero h1 {
-    font-size: 35px;
+    font-size: 31px !important;
   }
 
   .ma-past-sponsors__grid {
@@ -1797,7 +1848,7 @@ body.page-id-2652 .nv-page-title-wrap {
   }
 
   .ma-podcast-hero h1 {
-    font-size: 34px;
+    font-size: 31px !important;
   }
 
   .ma-podcast-hero p {
