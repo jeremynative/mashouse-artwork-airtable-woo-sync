@@ -2289,6 +2289,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if ($name) {
             $parts[] = '<header class="ma-artist-page__heading"><h1>' . esc_html($name) . '</h1></header>';
         }
+        $parts[] = self::artist_page_back_and_tags_html($roles, $mediums);
 
         if ($portrait_url) {
             $parts[] = '<figure class="ma-artist-page__portrait"><img src="' . esc_url($portrait_url) . '" alt="' . esc_attr($name . ' portrait') . '" loading="lazy"></figure>';
@@ -2339,6 +2340,36 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
         }
         return array_values($labels);
+    }
+
+    private static function artist_page_back_and_tags_html(array $roles, array $mediums): string {
+        $roles = self::valid_artist_roles($roles);
+        $mediums = self::correct_artist_mediums('', $mediums);
+        $back_url = self::artist_directory_back_url();
+        $tags = [];
+        foreach ($roles as $role) {
+            $tags[] = '<a href="' . esc_url(add_query_arg(['role' => sanitize_title($role)], home_url('/community-artists/'))) . '">' . esc_html($role) . '</a>';
+        }
+        foreach ($mediums as $medium) {
+            $tags[] = '<a href="' . esc_url(add_query_arg(['medium' => sanitize_title($medium)], home_url('/community-artists/'))) . '">' . esc_html($medium) . '</a>';
+        }
+        if (!$tags && !$back_url) {
+            return '';
+        }
+        return '<nav class="ma-artist-page__nav" aria-label="Artist directory navigation"><a class="ma-artist-page__back" href="' . esc_url($back_url) . '">Back to Community Artists</a>' . ($tags ? '<div class="ma-artist-page__tags">' . implode('', $tags) . '</div>' : '') . '</nav>';
+    }
+
+    private static function artist_directory_back_url(): string {
+        $role = sanitize_title(self::text($_GET['role'] ?? ''));
+        $medium = sanitize_title(self::text($_GET['medium'] ?? ''));
+        if (!$role && !$medium) {
+            $referrer = wp_get_referer();
+            $ref_path = $referrer ? trim((string) wp_parse_url($referrer, PHP_URL_PATH), '/') : '';
+            if ($ref_path === 'community-artists') {
+                return esc_url_raw($referrer);
+            }
+        }
+        return add_query_arg(array_filter(['role' => $role, 'medium' => $medium]), home_url('/community-artists/'));
     }
 
     private static function inline_exhibit_from_fields(array $fields, array $options): array {
@@ -2977,7 +3008,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$title) {
             return $content;
         }
-        return '<header class="ma-artist-content-header"><h1>' . esc_html($title) . '</h1></header>' . $content;
+        $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
+        $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
+        return '<header class="ma-artist-content-header"><h1>' . esc_html($title) . '</h1></header>' . self::artist_page_back_and_tags_html($roles, $mediums) . $content;
     }
 
     public static function render_news_posts_page_template(): void {
@@ -3450,25 +3483,62 @@ final class MA_Artwork_Airtable_Woo_Sync {
             </section>
         </article>
         <script>
-        document.addEventListener('click', function(event) {
-            var button = event.target.closest('[data-ma-artist-filter]');
-            if (!button) return;
-            var kind = button.getAttribute('data-ma-artist-filter');
-            var controls = button.closest('.ma-community-artists-controls');
-            controls.querySelectorAll('[data-ma-artist-filter="' + kind + '"]').forEach(function(item) {
-                item.classList.remove('is-active');
+        (function(){
+            function controlsRoot(){
+                return document.querySelector('.ma-community-artists-controls');
+            }
+            function activeValues(){
+                var controls = controlsRoot();
+                if (!controls) return {role:'', medium:''};
+                var role = controls.querySelector('[data-ma-artist-filter="role"].is-active');
+                var medium = controls.querySelector('[data-ma-artist-filter="medium"].is-active');
+                return {
+                    role: role ? role.getAttribute('data-value') : '',
+                    medium: medium ? medium.getAttribute('data-value') : ''
+                };
+            }
+            function setActive(kind, value){
+                var controls = controlsRoot();
+                if (!controls) return;
+                controls.querySelectorAll('[data-ma-artist-filter="' + kind + '"]').forEach(function(item) {
+                    item.classList.toggle('is-active', item.getAttribute('data-value') === value);
+                });
+            }
+            function updateProfileLinks(values){
+                document.querySelectorAll('.ma-community-artist-card__image, .ma-community-artist-card__body h2 a, .ma-community-artist-card__links a:first-child').forEach(function(link) {
+                    if (!link.href) return;
+                    var url = new URL(link.href, window.location.origin);
+                    if (values.role) url.searchParams.set('role', values.role); else url.searchParams.delete('role');
+                    if (values.medium) url.searchParams.set('medium', values.medium); else url.searchParams.delete('medium');
+                    link.href = url.toString();
+                });
+            }
+            function applyFilters(updateUrl){
+                var values = activeValues();
+                document.querySelectorAll('.ma-community-artist-card').forEach(function(card) {
+                    var roleOk = !values.role || card.getAttribute('data-role').split(' ').indexOf(values.role) !== -1;
+                    var mediumOk = !values.medium || card.getAttribute('data-medium').split(' ').indexOf(values.medium) !== -1;
+                    card.hidden = !(roleOk && mediumOk);
+                });
+                updateProfileLinks(values);
+                if (updateUrl) {
+                    var url = new URL(window.location.href);
+                    if (values.role) url.searchParams.set('role', values.role); else url.searchParams.delete('role');
+                    if (values.medium) url.searchParams.set('medium', values.medium); else url.searchParams.delete('medium');
+                    window.history.replaceState({}, '', url.toString());
+                }
+            }
+            document.addEventListener('click', function(event) {
+                var button = event.target.closest('[data-ma-artist-filter]');
+                if (!button) return;
+                setActive(button.getAttribute('data-ma-artist-filter'), button.getAttribute('data-value'));
+                applyFilters(true);
             });
-            button.classList.add('is-active');
-            var role = controls.querySelector('[data-ma-artist-filter="role"].is-active');
-            var medium = controls.querySelector('[data-ma-artist-filter="medium"].is-active');
-            var roleValue = role ? role.getAttribute('data-value') : '';
-            var mediumValue = medium ? medium.getAttribute('data-value') : '';
-            document.querySelectorAll('.ma-community-artist-card').forEach(function(card) {
-                var roleOk = !roleValue || card.getAttribute('data-role').split(' ').indexOf(roleValue) !== -1;
-                var mediumOk = !mediumValue || card.getAttribute('data-medium').split(' ').indexOf(mediumValue) !== -1;
-                card.hidden = !(roleOk && mediumOk);
-            });
-        });
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('role')) setActive('role', params.get('role'));
+            if (params.has('medium')) setActive('medium', params.get('medium'));
+            applyFilters(false);
+        }());
         </script>
         <?php
         return (string) ob_get_clean();
@@ -4970,6 +5040,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if ($is_artist_post) {
             echo '<style id="ma-artist-page-header-clearance-css">body.single-post .nv-post-cover{display:none!important}body.single-post #content.neve-main,body.single-post main.neve-main{padding-top:0!important}body.single-post .single-post-container,body.single-post .nv-single-post-wrap{margin-top:0!important;padding-top:54px!important}.ma-artist-content-header,.ma-artist-page__heading{max-width:1120px;margin:0 auto 24px}.ma-artist-content-header h1,.ma-artist-page__heading h1{margin:0;color:#111;font-family:' . esc_html(self::font_stack()) . ';font-size:34px;line-height:1.15;font-weight:700;letter-spacing:0}.ma-artist-page{padding-top:0!important}.ma-artist-page__portrait{margin-top:0!important}@media(max-width:760px){body.single-post .single-post-container,body.single-post .nv-single-post-wrap{padding-top:32px!important}.ma-artist-content-header h1,.ma-artist-page__heading h1{font-size:28px}}</style>';
+            echo '<style id="ma-artist-page-tags-css">.ma-artist-page__nav{max-width:1120px;margin:0 auto 24px;display:grid;gap:14px;font-family:' . esc_html(self::font_stack()) . '}.ma-artist-page__back{display:inline-flex;width:max-content;align-items:center;color:#111!important;text-decoration:none!important;font-size:14px;font-weight:650}.ma-artist-page__back:before{content:"←";margin-right:8px}.ma-artist-page__back:hover{text-decoration:underline!important;text-underline-offset:3px}.ma-artist-page__tags{display:flex;flex-wrap:wrap;gap:8px}.ma-artist-page__tags a{display:inline-flex;align-items:center;border:1px solid rgba(0,0,0,.18);padding:6px 10px;color:#111!important;background:#fff;text-decoration:none!important;font-size:12px;line-height:1;font-weight:650}.ma-artist-page__tags a:hover{background:#f3f1ed}</style>';
         }
         echo '<style id="ma-artist-profile-css">body.single-product div.product .summary.entry-summary,.ma-product-summary-column{box-sizing:border-box;padding:0 0 0 28px!important;background:transparent;border:0;box-shadow:none}body.single-product div.product .summary.entry-summary .product_title,body.single-product .elementor-widget-woocommerce-product-title .product_title{margin:0 0 14px!important;color:#050505!important;font-size:30px!important;line-height:1.14!important;font-weight:650!important;letter-spacing:0!important;text-align:left!important}body.single-product div.product .summary.entry-summary .price,body.single-product .elementor-widget-woocommerce-product-price .price{margin:0 0 20px!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:21px!important;line-height:1.2!important;font-weight:400!important;text-align:left!important}body.single-product .elementor-widget-woocommerce-product-price .price .amount{font:inherit!important;color:inherit!important}body.single-product div.product .summary.entry-summary .woocommerce-product-details__short-description{margin:0 0 22px!important;color:#222;font-size:15px;line-height:1.55}.ma-product-artwork-panel{display:grid;gap:20px;margin:20px 0!important;padding:18px 0 20px!important;border-top:1px solid rgba(0,0,0,.12);border-bottom:1px solid rgba(0,0,0,.12);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-artwork-panel__details{display:grid;gap:10px}.ma-product-artwork-panel__row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:baseline}.ma-product-artwork-panel__row span{color:#686868;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-artwork-panel__row strong{color:#111;font-size:14px;line-height:1.35;font-weight:500}.ma-product-artwork-panel__row a{color:#111;text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;align-items:center;margin-top:2px;padding:0;color:#111;text-decoration:none;background:transparent;border:0}.ma-product-exhibit-card:hover h3{text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card__image{min-height:74px;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:contain}.ma-product-exhibit-card__body{align-self:center}.ma-product-exhibit-card__body span{display:block;margin:0 0 6px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-card__body h3{margin:0 0 7px!important;color:#111!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-card__body p{margin:0 0 3px;color:#333;font-size:13px;line-height:1.35}.ma-product-summary-column .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}.ma-product-summary-column .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}.ma-product-summary-column .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}.ma-product-summary-column .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}.ma-product-summary-column .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}.ma-artist-profile{clear:both;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;align-items:start;margin:34px 0 0;padding-top:28px;border-top:1px solid #ddd;color:#111}.ma-artist-profile__portrait{width:180px;aspect-ratio:4/5;background:#f2eee8;overflow:hidden}.ma-artist-profile__portrait a,.ma-artist-profile__portrait img{display:block;width:100%;height:100%}.ma-artist-profile__portrait img{object-fit:cover}.ma-artist-profile h3{margin:0 0 10px;font-size:22px;line-height:1.2}.ma-artist-profile h3 a{color:inherit;text-decoration:none}.ma-artist-profile p{margin:0 0 12px;line-height:1.6}.ma-artist-page{max-width:1120px;margin:0 auto}.ma-artist-page__portrait{max-width:420px;margin:0 0 28px}.ma-artist-page__portrait img{display:block;width:100%;height:auto}.ma-artist-page__bio{max-width:780px}.ma-artist-page__facts{margin:26px 0}.ma-artist-page__facts ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ma-artist-artworks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}.ma-artist-artwork img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.ma-artist-artwork h3{font-size:18px;line-height:1.25;margin:10px 0 4px}.ma-artist-artwork a{color:inherit;text-decoration:none}.ma-artist-artwork__meta,.ma-artist-artwork__price{font-size:14px;margin:0;color:#333}@media(max-width:760px){body.single-product div.product .summary.entry-summary,.ma-product-summary-column{padding:0!important}.ma-product-artwork-panel__row{grid-template-columns:82px minmax(0,1fr)}.ma-product-exhibit-card{grid-template-columns:86px minmax(0,1fr)}.ma-artist-profile{display:block}.ma-artist-profile__portrait{width:150px;margin:0 0 18px}.ma-artist-artworks{grid-template-columns:1fr}}</style>';
         echo '<style id="ma-product-public-parity-css">body.single-product .elementor-widget-woocommerce-product-meta .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}body.single-product .elementor-widget-woocommerce-product-meta .product_meta .ma-product-artwork-panel{width:100%;margin:0 0 18px!important}body.single-product .elementor-widget-woocommerce-product-meta .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}body.single-product .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}body.single-product .elementor-widget-woocommerce-product-add-to-cart .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}</style>';
