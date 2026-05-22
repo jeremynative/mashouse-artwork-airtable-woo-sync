@@ -1389,6 +1389,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             ],
             'Public Website' => ['type' => 'url'],
             'Social Media URL' => ['type' => 'url'],
+            'Based In' => ['type' => 'singleLineText'],
             'Residency Dates' => ['type' => 'singleLineText'],
             'Exhibits Involved' => ['type' => 'multilineText'],
             'Events Led' => ['type' => 'multilineText'],
@@ -1553,6 +1554,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'instagram' => '',
             'mediums' => '',
             'roles' => '',
+            'location' => '',
             'profile_url' => '',
             'profile_post_id' => '',
         ];
@@ -1612,6 +1614,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 $artist['instagram'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('instagram')));
                 $artist['mediums'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('mediums')));
                 $artist['roles'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('roles')));
+                $artist['location'] = self::text(self::first_field_value($artist_fields, self::artist_field_aliases('location')));
             }
         } elseif ($allow_side_effects && $artist['name'] && !empty($options['artist_table_id'])) {
             $artist['bio'] = $artist['bio'] ?: self::site_bio_for_artist($artist['name'], $site_bio_source);
@@ -1630,6 +1633,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if (!$artist['bio']) {
             $artist['bio'] = self::site_bio_for_artist($artist['name'], $site_bio_source);
+        }
+        if (!$artist['location']) {
+            $artist['location'] = self::infer_artist_location($artist['bio']);
         }
         if ($allow_side_effects && !empty($artist['record_id']) && !empty($artist['bio'])) {
             self::maybe_patch_artist_bio($options, $artist['record_id'], $artist['bio']);
@@ -2012,6 +2018,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                         'instagram' => $artist['social'] ?? '',
                         'mediums' => implode(', ', $artist['mediums']),
                         'roles' => implode(', ', $artist['roles']),
+                        'location' => $artist['location'] ?? '',
                     ];
                     $profile_id = self::ensure_artist_profile_post($profile_artist, []);
                     if ($profile_id) {
@@ -2027,6 +2034,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     'Artist Roles' => $artist['roles'],
                     'Public Website' => $artist['website'],
                     'Social Media URL' => $artist['social'],
+                    'Based In' => $artist['location'] ?? '',
                     'Donated Works' => implode("\n", $product_context['works'] ?? []),
                     'Events Led' => implode("\n", $events),
                     'Public Profile URL' => $artist['url'],
@@ -2041,6 +2049,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     update_post_meta($post_id, 'ma_artist_roles', implode(', ', $artist['roles']));
                     update_post_meta($post_id, 'ma_artist_website', esc_url_raw($artist['website']));
                     update_post_meta($post_id, 'ma_artist_instagram', esc_url_raw($artist['social']));
+                    update_post_meta($post_id, 'ma_artist_location', self::text($artist['location'] ?? ''));
                 }
                 if (self::patch_artist_directory_fields($options, $record_id, $payload, $available_fields)) {
                     $updated++;
@@ -2114,6 +2123,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'instagram' => ['Instagram Username (with @)', 'Instagram', 'Instagram Username', 'Social Media URL'],
             'mediums' => ['Mediums', 'Medium', 'Practice', 'Artist Mediums'],
             'roles' => ['Artist Roles', 'Roles', 'Artist Type', 'Artist Categories'],
+            'location' => ['Based In', 'Artist Location', 'Location', 'Based Location', 'City', 'City/State'],
         ];
         return $aliases[$key] ?? [];
     }
@@ -2123,6 +2133,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Painter',
             'Photographer',
             'Printmaker',
+            'Muralist',
             'Beadworker',
             'Weaver',
             'Textile Artist',
@@ -2218,6 +2229,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         update_post_meta((int) $post_id, 'ma_artist_website', esc_url_raw($artist['website'] ?? ''));
         update_post_meta((int) $post_id, 'ma_artist_instagram', self::text($artist['instagram'] ?? ''));
         update_post_meta((int) $post_id, 'ma_artist_residency_period', self::text($artist['residency_period'] ?? ''));
+        update_post_meta((int) $post_id, 'ma_artist_location', self::text($artist['location'] ?? ''));
         update_post_meta((int) $post_id, 'ma_artist_profile_synced_at', gmdate('c'));
         return (int) $post_id;
     }
@@ -2267,6 +2279,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $residency_period = self::text($artist['residency_period'] ?? '');
         $website = self::text($artist['website'] ?? '');
         $instagram = self::text($artist['instagram'] ?? '');
+        $location = self::text($artist['location'] ?? '');
         $mediums = self::split_list(self::text($artist['mediums'] ?? ''));
         $roles = self::split_list(self::text($artist['roles'] ?? ''));
         $exhibits = self::artist_exhibit_labels($linked_exhibits);
@@ -2288,6 +2301,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if ($mediums) {
             $facts .= '<li><strong>Practice:</strong> ' . esc_html(implode(', ', $mediums)) . '</li>';
+        }
+        if ($location) {
+            $facts .= '<li><strong>Based in:</strong> ' . esc_html($location) . '</li>';
         }
         if ($exhibits) {
             $facts .= '<li><strong>Exhibitions:</strong> ' . esc_html(implode('; ', $exhibits)) . '</li>';
@@ -3383,6 +3399,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                             <?php if ($artist['mediums']) : ?>
                                 <p class="ma-community-artist-card__mediums"><?php echo esc_html(implode(', ', $artist['mediums'])); ?></p>
                             <?php endif; ?>
+                            <?php if (!empty($artist['location'])) : ?>
+                                <p class="ma-community-artist-card__location">Based in <?php echo esc_html($artist['location']); ?></p>
+                            <?php endif; ?>
                             <?php if ($artist['bio']) : ?>
                                 <p class="ma-community-artist-card__bio"><?php echo esc_html(wp_trim_words($artist['bio'], 28)); ?></p>
                             <?php endif; ?>
@@ -3469,6 +3488,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $website = self::text(get_post_meta($post_id, 'ma_artist_website', true));
             $instagram = self::text(get_post_meta($post_id, 'ma_artist_instagram', true));
             $social = self::artist_social_url($instagram);
+            $inferred_location = self::infer_artist_location($bio);
+            $location = self::text(get_post_meta($post_id, 'ma_artist_location', true));
+            if (!$location || ($inferred_location && strlen($location) < 8)) {
+                $location = $inferred_location;
+            }
             $image = self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true));
             if (!$image && has_post_thumbnail($post_id)) {
                 $image = get_the_post_thumbnail_url($post_id, 'medium_large') ?: '';
@@ -3481,6 +3505,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'bio' => $bio,
                 'mediums' => $mediums,
                 'roles' => $roles,
+                'location' => $location,
                 'website' => $website ? esc_url_raw($website) : '',
                 'social' => $social,
             ];
@@ -3506,6 +3531,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 }
                 if (empty($cards[$existing_index]['image'])) {
                     $cards[$existing_index]['image'] = $resident['image'];
+                }
+                if (empty($cards[$existing_index]['location'])) {
+                    $cards[$existing_index]['location'] = $resident['location'] ?? '';
                 }
                 $cards[$existing_index]['mediums'] = self::correct_artist_mediums(
                     $cards[$existing_index]['name'],
@@ -3543,6 +3571,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $key = strtolower($name);
             $bio = self::bio_from_text_for_artist($name, (string) $post->post_content) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
             $image = has_post_thumbnail($post_id) ? (get_the_post_thumbnail_url($post_id, 'medium_large') ?: '') : '';
+            $location = self::infer_artist_location($bio);
             $mediums = self::correct_artist_mediums($name, self::infer_artist_mediums($bio));
             if (isset($seen[$key])) {
                 $index = $seen[$key];
@@ -3552,6 +3581,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 }
                 if (!$cards[$index]['image'] && $image) {
                     $cards[$index]['image'] = self::public_image_url($image);
+                }
+                if (empty($cards[$index]['location']) && $location) {
+                    $cards[$index]['location'] = $location;
                 }
                 $cards[$index]['mediums'] = self::correct_artist_mediums($name, array_values(array_unique(array_merge($cards[$index]['mediums'], $mediums))));
                 continue;
@@ -3567,6 +3599,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'bio' => $bio,
                 'mediums' => $mediums,
                 'roles' => ['Residency Artist'],
+                'location' => $location,
                 'residency_period' => $period,
                 'website' => '',
                 'social' => '',
@@ -3709,12 +3742,46 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return (bool) preg_match('/\b(shinnecock|tribal member|tribe member|nation member|community artist|community member|workshop coordinator|teaching artist|ma\'s house staff|staff member|board member)\b/i', $text);
     }
 
+    private static function infer_artist_location(string $bio): string {
+        $text = trim(wp_strip_all_tags($bio));
+        if (!$text) {
+            return '';
+        }
+        if (preg_match('/\bbased in\s+([^.;\n]{2,90})/i', $text, $match)) {
+            return self::clean_artist_location($match[1]);
+        }
+        if (preg_match('/\b([A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))[- ]based\b/', $text, $match)) {
+            return self::clean_artist_location($match[1]);
+        }
+        if (preg_match('/\b([A-Z][A-Za-z.\' -]+)[- ]based\b/', $text, $match)) {
+            $location = self::clean_artist_location($match[1]);
+            return preg_match('/\b(US|U\.S|American|community|place|home|studio|project)\b/i', $location) ? '' : $location;
+        }
+        return '';
+    }
+
+    private static function clean_artist_location(string $location): string {
+        $location = trim(wp_strip_all_tags($location));
+        $location = preg_replace('/\s+/', ' ', $location);
+        $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter)\b.*$/i', '', $location);
+        $location = trim($location, " \t\n\r\0\x0B,.;:-");
+        $aliases = [
+            'NYC' => 'New York, NY',
+            'New York City' => 'New York, NY',
+            'Brooklyn' => 'Brooklyn, NY',
+            'Bronx' => 'Bronx, NY',
+            'Central and South Florida' => 'Central and South Florida',
+        ];
+        return $aliases[$location] ?? $location;
+    }
+
     private static function infer_artist_mediums(string $text): array {
         $text = strtolower($text);
         $map = [
             'Printmaker' => ['printmaker', 'printmaking', 'print maker', 'linocut', 'linoleum', 'copperplate', 'etching', 'screenprint', 'screen print', 'woodcut', 'lithograph'],
             'Painter' => ['painter', 'painting', 'paintings', 'acrylic', 'oil paint', 'watercolor', 'gouache'],
             'Photographer' => ['photographer', 'photography', 'photo-based', 'lens-based', 'cyanotype', 'anthotype'],
+            'Muralist' => ['muralist', 'mural', 'murals', 'large-scale public art', 'public art'],
             'Beadworker' => ['beadwork', 'bead worker', 'beadworker', 'beading', 'wampum'],
             'Weaver' => ['weaver', 'weaving', 'woven', 'basketry'],
             'Textile Artist' => ['textile', 'fiber', 'fabric', 'quilting', 'embroidery', 'sewing'],
@@ -3760,9 +3827,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
         $add = [
             'denise silva-dennis' => ['Beadworker'],
+            'jacoub reyes' => ['Muralist'],
+            'stephen longoria' => ['Designer', 'Digital Artist', 'Muralist'],
         ];
         $remove = [
             'beau bree rhee' => ['Beadworker'],
+            'stephen longoria' => ['Craft Artist'],
         ];
         foreach ($add[$key] ?? [] as $medium) {
             $normalized[$medium] = $medium;
