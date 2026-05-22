@@ -4769,7 +4769,7 @@ body.home .elementor-element-8203c65 p,
 body.home .elementor-element-e18ab85 .elementor-heading-title{font-size:15px!important;line-height:1.3!important}
 body.home .ma-home-events-custom__title,
 body.home .ma-home-events-custom__title a,
-body.home .ma-home-events-custom__title *{font-size:16px!important;line-height:1.34!important;font-weight:500!important;letter-spacing:0!important}
+body.home .ma-home-events-custom__title *{font-size:16px!important;line-height:1.34!important;font-weight:650!important;letter-spacing:0!important}
 body.home .ma-home-events-custom__date strong{font-size:22px!important;font-weight:650!important}
 body.home .ma-home-events-custom__venue{font-weight:500!important}
 @media(max-width:1180px){

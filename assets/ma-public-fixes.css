@@ -942,7 +942,7 @@ body.home .tribe-common .tribe-events-calendar-list__event-title-link {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
   font-size: 16px !important;
   line-height: 1.34 !important;
-  font-weight: 500 !important;
+  font-weight: 650 !important;
   letter-spacing: 0 !important;
   text-decoration: none !important;
 }
@@ -2509,7 +2509,7 @@ body.page-slug-community-artists .nv-page-title-wrap {
   body.home .tribe-events-calendar-list__event-title-link * {
     font-size: 16px !important;
     line-height: 1.34 !important;
-    font-weight: 500 !important;
+    font-weight: 650 !important;
   }
 
   .ma-podcast-page {
