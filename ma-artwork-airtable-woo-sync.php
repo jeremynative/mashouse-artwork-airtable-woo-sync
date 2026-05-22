@@ -3463,10 +3463,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
             if (!$mediums) {
                 $mediums = self::infer_artist_mediums($bio . ' ' . $product_context['mediums']);
             }
-            $roles = self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true)));
-            if (!$roles) {
-                $roles = self::infer_artist_roles($post_id, $name, $bio, $product_context);
-            }
+            $stored_roles = self::valid_artist_roles(self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true))));
+            $roles = self::reconcile_artist_roles($stored_roles ?: self::infer_artist_roles($post_id, $name, $bio, $product_context), $name, $bio, $post_id);
             $website = self::text(get_post_meta($post_id, 'ma_artist_website', true));
             $instagram = self::text(get_post_meta($post_id, 'ma_artist_instagram', true));
             $social = self::artist_social_url($instagram);
@@ -3481,7 +3479,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'image' => self::public_image_url($image),
                 'bio' => $bio,
                 'mediums' => $mediums,
-                'roles' => $roles ?: ['Community Artist'],
+                'roles' => $roles,
                 'website' => $website ? esc_url_raw($website) : '',
                 'social' => $social,
             ];
@@ -3497,7 +3495,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
             if ($existing_index !== null) {
                 $roles = array_values(array_unique(array_merge($cards[$existing_index]['roles'], ['Residency Artist'])));
-                $cards[$existing_index]['roles'] = array_values(array_intersect(self::artist_role_choices(), $roles));
+                $cards[$existing_index]['roles'] = self::reconcile_artist_roles($roles, $resident['name'], $resident['bio'], (int) ($cards[$existing_index]['post_id'] ?? 0));
                 $cards[$existing_index]['residency_period'] = self::merge_residency_periods(
                     self::text($cards[$existing_index]['residency_period'] ?? ''),
                     self::text($resident['residency_period'] ?? '')
@@ -3645,8 +3643,65 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (self::artist_event_labels($name)) {
             $roles[] = 'Guest Workshop Artist';
         }
-        $roles[] = 'Community Artist';
-        return array_values(array_intersect(self::artist_role_choices(), array_values(array_unique($roles))));
+        if (self::is_community_artist_signal($name, $bio)) {
+            $roles[] = 'Community Artist';
+        }
+        return self::valid_artist_roles($roles);
+    }
+
+    private static function valid_artist_roles(array $roles): array {
+        $allowed = self::artist_role_choices();
+        $valid = [];
+        foreach ($roles as $role) {
+            $role = self::text($role);
+            if (in_array($role, $allowed, true)) {
+                $valid[$role] = $role;
+            }
+        }
+        return array_values($valid);
+    }
+
+    private static function reconcile_artist_roles(array $roles, string $name, string $bio, int $post_id = 0): array {
+        $roles = self::valid_artist_roles($roles);
+        $has_residency = in_array('Residency Artist', $roles, true)
+            || ($post_id && (get_post_meta($post_id, 'ma_artist_residency_period', true) || has_category('resident-artists', $post_id)))
+            || preg_match('/\b(resident|residency|artist-in-residence|artist in residence)\b/i', $bio);
+        if ($has_residency && !in_array('Residency Artist', $roles, true)) {
+            $roles[] = 'Residency Artist';
+        }
+        if (!$has_residency && !$roles) {
+            $roles[] = 'Community Artist';
+        }
+        $community_signal = $has_residency ? self::is_shinnecock_or_manual_community_artist($name, $bio) : self::is_community_artist_signal($name, $bio);
+        if ($community_signal && !in_array('Community Artist', $roles, true)) {
+            $roles[] = 'Community Artist';
+        }
+        if (in_array('Community Artist', $roles, true) && $has_residency && !$community_signal) {
+            $roles = array_values(array_diff($roles, ['Community Artist']));
+        }
+        return self::valid_artist_roles($roles);
+    }
+
+    private static function is_shinnecock_or_manual_community_artist(string $name, string $bio): bool {
+        $text = strtolower($name . ' ' . $bio);
+        $manual_names = [
+            'denise silva-dennis',
+            'jeremy dennis',
+            'kelly dennis',
+            'avery dennis',
+        ];
+        if (in_array(strtolower(trim($name)), $manual_names, true)) {
+            return true;
+        }
+        return (bool) preg_match('/\b(shinnecock\s+(artist|tribal member|tribe member|nation member|member|community member)|enrolled member of the shinnecock|tribal member|tribe member|nation member|workshop coordinator|ma\'s house staff|staff member|board member)\b/i', $text);
+    }
+
+    private static function is_community_artist_signal(string $name, string $bio): bool {
+        if (self::is_shinnecock_or_manual_community_artist($name, $bio)) {
+            return true;
+        }
+        $text = strtolower($name . ' ' . $bio);
+        return (bool) preg_match('/\b(shinnecock|tribal member|tribe member|nation member|community artist|community member|workshop coordinator|teaching artist|ma\'s house staff|staff member|board member)\b/i', $text);
     }
 
     private static function infer_artist_mediums(string $text): array {
