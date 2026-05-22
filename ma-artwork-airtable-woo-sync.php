@@ -3463,6 +3463,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             if (!$mediums) {
                 $mediums = self::infer_artist_mediums($bio . ' ' . $product_context['mediums']);
             }
+            $mediums = self::correct_artist_mediums($name, $mediums);
             $stored_roles = self::valid_artist_roles(self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true))));
             $roles = self::reconcile_artist_roles($stored_roles ?: self::infer_artist_roles($post_id, $name, $bio, $product_context), $name, $bio, $post_id);
             $website = self::text(get_post_meta($post_id, 'ma_artist_website', true));
@@ -3506,6 +3507,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 if (empty($cards[$existing_index]['image'])) {
                     $cards[$existing_index]['image'] = $resident['image'];
                 }
+                $cards[$existing_index]['mediums'] = self::correct_artist_mediums(
+                    $cards[$existing_index]['name'],
+                    array_values(array_unique(array_merge($cards[$existing_index]['mediums'], $resident['mediums'])))
+                );
                 continue;
             }
             $cards[] = $resident;
@@ -3538,7 +3543,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $key = strtolower($name);
             $bio = self::bio_from_text_for_artist($name, (string) $post->post_content) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
             $image = has_post_thumbnail($post_id) ? (get_the_post_thumbnail_url($post_id, 'medium_large') ?: '') : '';
-            $mediums = self::infer_artist_mediums($bio);
+            $mediums = self::correct_artist_mediums($name, self::infer_artist_mediums($bio));
             if (isset($seen[$key])) {
                 $index = $seen[$key];
                 $cards[$index]['residency_period'] = self::merge_residency_periods($cards[$index]['residency_period'], $period);
@@ -3548,7 +3553,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 if (!$cards[$index]['image'] && $image) {
                     $cards[$index]['image'] = self::public_image_url($image);
                 }
-                $cards[$index]['mediums'] = array_values(array_unique(array_merge($cards[$index]['mediums'], $mediums)));
+                $cards[$index]['mediums'] = self::correct_artist_mediums($name, array_values(array_unique(array_merge($cards[$index]['mediums'], $mediums))));
                 continue;
             }
             $seen[$key] = count($cards);
@@ -3741,6 +3746,42 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $found['Multidisciplinary Artist'] = 'Multidisciplinary Artist';
         }
         return array_values($found);
+    }
+
+    private static function correct_artist_mediums(string $name, array $mediums): array {
+        $key = strtolower(trim($name));
+        $normalized = [];
+        foreach ($mediums as $medium) {
+            $medium = self::text($medium);
+            if ($medium) {
+                $normalized[$medium] = $medium;
+            }
+        }
+
+        $add = [
+            'denise silva-dennis' => ['Beadworker'],
+        ];
+        $remove = [
+            'beau bree rhee' => ['Beadworker'],
+        ];
+        foreach ($add[$key] ?? [] as $medium) {
+            $normalized[$medium] = $medium;
+        }
+        foreach ($remove[$key] ?? [] as $medium) {
+            unset($normalized[$medium]);
+        }
+
+        $ordered = [];
+        foreach (self::artist_medium_choices() as $choice) {
+            if (isset($normalized[$choice])) {
+                $ordered[] = $choice;
+                unset($normalized[$choice]);
+            }
+        }
+        foreach ($normalized as $medium) {
+            $ordered[] = $medium;
+        }
+        return array_values(array_unique($ordered));
     }
 
     private static function artist_event_labels(string $artist_name): array {
