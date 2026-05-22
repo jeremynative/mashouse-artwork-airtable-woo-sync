@@ -818,11 +818,33 @@ body.home .elementor-post__title,
 body.home .elementor-post__title a,
 body.home .tribe-events-calendar-list__event-title,
 body.home .tribe-events-calendar-list__event-title-link,
+body.home .tribe-events-calendar-list__event-title-link *,
 body.page-id-97 .elementor-post__title,
 body.page-id-97 .elementor-post__title a {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
   font-weight: 600 !important;
   letter-spacing: 0 !important;
+}
+
+body.home .tribe-events-calendar-list__event-title,
+body.home .tribe-events-calendar-list__event-title a,
+body.home .tribe-events-calendar-list__event-title-link,
+body.home .tribe-events-calendar-list__event-title-link span,
+body.home .tribe-events-calendar-list__event-title-link *,
+body.home .tribe-common .tribe-events-calendar-list__event-title,
+body.home .tribe-common .tribe-events-calendar-list__event-title a,
+body.home .tribe-common .tribe-events-calendar-list__event-title-link {
+  color: #111 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.28 !important;
+  font-weight: 560 !important;
+  letter-spacing: 0 !important;
+  text-decoration: none !important;
+}
+
+body.home .tribe-events-calendar-list__event-title {
+  margin: 4px 0 9px !important;
 }
 
 body.home .elementor-element-efa97c0 .elementor-post__title a,
@@ -2375,6 +2397,14 @@ body.page-slug-community-artists .nv-page-title-wrap {
 
   body.page-id-1115 .tribe-events-calendar-list__event-title {
     font-size: 19px !important;
+  }
+
+  body.home .tribe-events-calendar-list__event-title,
+  body.home .tribe-events-calendar-list__event-title a,
+  body.home .tribe-events-calendar-list__event-title-link,
+  body.home .tribe-events-calendar-list__event-title-link * {
+    font-size: 17px !important;
+    line-height: 1.3 !important;
   }
 
   .ma-podcast-page {
