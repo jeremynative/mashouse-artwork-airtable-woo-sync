@@ -2143,6 +2143,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Ceramic Artist',
             'Installation Artist',
             'Performance Artist',
+            'Comedian',
             'Writer',
             'Filmmaker',
             'Sound Artist',
@@ -3891,6 +3892,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Ceramic Artist' => ['ceramic', 'clay', 'pottery'],
             'Installation Artist' => ['installation'],
             'Performance Artist' => ['performance', 'performer'],
+            'Comedian' => ['comedian', 'comedy', 'comic'],
             'Writer' => ['writer', 'poet', 'poetry', 'literature', 'author'],
             'Filmmaker' => ['film', 'filmmaker', 'video artist', 'moving image'],
             'Sound Artist' => ['sound artist', 'sound art', 'sound,', 'sound and', 'sound.', 'sound-based', 'audio'],
@@ -3928,9 +3930,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         $add = [
+            'aliza gandhi' => ['Comedian'],
             'denise silva-dennis' => ['Beadworker'],
             'jacoub reyes' => ['Muralist'],
             'kris waymire' => ['Ceramic Artist'],
+            'saidah belo-osagie' => ['Comedian'],
             'stephen longoria' => ['Designer', 'Digital Artist', 'Muralist'],
         ];
         $remove = [
