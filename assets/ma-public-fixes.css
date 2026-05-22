@@ -409,14 +409,15 @@ body.page-id-1115 .tribe-events-c-search__input-control-icon-svg {
 
 body.page-id-1115 .tribe-events-c-top-bar__datepicker-button {
   font-size: 21px !important;
-  font-weight: 650 !important;
+  font-weight: 600 !important;
 }
 
 body.page-id-1115 .tribe-events-calendar-list__event-title {
   margin: 6px 0 10px !important;
-  font-size: 21px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 19px !important;
   line-height: 1.32 !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   letter-spacing: 0 !important;
 }
 
@@ -427,7 +428,8 @@ body.page-id-1115 .tribe-events-calendar-list__event-title-link {
 
 body.page-id-1115 .tribe-events-calendar-month__calendar-event-title,
 body.page-id-1115 .tribe-events-calendar-day__event-title {
-  font-weight: 700 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-weight: 600 !important;
   letter-spacing: 0 !important;
 }
 
@@ -690,9 +692,10 @@ body.home .elementor-element-e4f132f .elementor-heading-title,
 body.page-id-97 .elementor-element-e4f132f .elementor-heading-title {
   margin: 0 !important;
   color: #111 !important;
-  font-size: 30px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 27px !important;
   line-height: 1.12 !important;
-  font-weight: 760 !important;
+  font-weight: 650 !important;
   letter-spacing: 0 !important;
 }
 
@@ -727,7 +730,7 @@ body.page-id-97 .elementor-element-a609dea .elementor-heading-title {
   color: #555 !important;
   font-size: 12px !important;
   line-height: 1.2 !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   letter-spacing: .09em !important;
   text-align: left !important;
   text-transform: uppercase;
@@ -804,9 +807,21 @@ body.home .elementor-element-91dee05 .elementor-post__title,
 body.page-id-97 .elementor-element-efa97c0 .elementor-post__title,
 body.page-id-97 .elementor-element-91dee05 .elementor-post__title {
   margin: 0 0 5px !important;
-  font-size: 17px !important;
-  line-height: 1.2 !important;
-  font-weight: 740 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.26 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+body.home .elementor-post__title,
+body.home .elementor-post__title a,
+body.home .tribe-events-calendar-list__event-title,
+body.home .tribe-events-calendar-list__event-title-link,
+body.page-id-97 .elementor-post__title,
+body.page-id-97 .elementor-post__title a {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-weight: 600 !important;
   letter-spacing: 0 !important;
 }
 

@@ -248,7 +248,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-1115 .tribe-events-c-search__input-control-icon-svg{position:absolute!important;left:13px!important;top:50%!important;width:15px!important;height:15px!important;transform:translateY(-50%)!important;color:#666!important;pointer-events:none!important}
             body.page-id-1115 .tribe-events-c-search__button{height:38px!important;border:0!important;background:#111!important;color:#fff!important;padding:0 16px!important;font-weight:700!important}
             body.page-id-1115 .tribe-events-c-top-bar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;margin:0 0 24px!important}
-            body.page-id-1115 .tribe-events-c-top-bar__datepicker-button{display:inline-flex!important;align-items:center!important;gap:8px!important;color:#111!important;background:transparent!important;border:0!important;font-size:21px!important;font-weight:650!important}
+            body.page-id-1115 .tribe-events-c-top-bar__datepicker-button{display:inline-flex!important;align-items:center!important;gap:8px!important;color:#111!important;background:transparent!important;border:0!important;font-size:21px!important;font-weight:600!important}
             body.page-id-1115 .tribe-events-calendar-list{display:block!important;margin:0!important;padding:0!important;list-style:none!important}
             body.page-id-1115 .tribe-events-calendar-list__month-separator{display:flex!important;align-items:center!important;gap:18px!important;margin:34px 0 22px!important}
             body.page-id-1115 .tribe-events-calendar-list__month-separator:after{content:"";height:1px;background:#d9d9d9;flex:1}
@@ -261,10 +261,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper{grid-column:2!important;grid-row:1!important;width:220px!important;margin:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-featured-image{display:block!important;width:220px!important;aspect-ratio:1/1!important;height:auto!important;object-fit:cover!important;border-radius:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:1!important;width:auto!important}
-            body.page-id-1115 .tribe-events-calendar-list__event-title{margin:6px 0 10px!important;font-size:21px!important;line-height:1.32!important;font-weight:700!important;letter-spacing:0!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-title{margin:6px 0 10px!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:19px!important;line-height:1.32!important;font-weight:600!important;letter-spacing:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-title-link{color:#111!important;text-decoration:none!important}
             body.page-id-1115 .tribe-events-calendar-month__calendar-event-title,
-            body.page-id-1115 .tribe-events-calendar-day__event-title{font-weight:700!important;letter-spacing:0!important}
+            body.page-id-1115 .tribe-events-calendar-day__event-title{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-weight:600!important;letter-spacing:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-datetime-wrapper,
             body.page-id-1115 .tribe-events-calendar-list__event-venue{margin:0 0 10px!important;color:#111!important;font-size:13px!important;line-height:1.4!important}
             body.page-id-1115 .tribe-events-calendar-list__event-description{display:block!important;visibility:visible!important;color:#111!important;font-size:14px!important;line-height:1.6!important;max-width:720px!important}
@@ -279,7 +279,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper,
                 body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:auto!important;width:100%!important}
                 body.page-id-1115 .tribe-events-calendar-list__event-featured-image{width:100%!important;aspect-ratio:4/3!important}
-                body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:19px!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:18px!important}
                 body.page-id-1115 .tribe-events-header__events-bar,
                 body.page-id-1115 .tribe-events-c-events-bar{display:none!important}
             }
