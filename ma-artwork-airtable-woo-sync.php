@@ -3854,6 +3854,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $add = [
             'denise silva-dennis' => ['Beadworker'],
             'jacoub reyes' => ['Muralist'],
+            'kris waymire' => ['Ceramic Artist'],
             'stephen longoria' => ['Designer', 'Digital Artist', 'Muralist'],
         ];
         $remove = [
