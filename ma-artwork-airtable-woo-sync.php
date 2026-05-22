@@ -5832,8 +5832,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$ids) {
             return '';
         }
-        $artist = self::text(get_post_meta($product->get_id(), 'ma_artist_name', true)) ?: self::product_detail_value($product, 'Artist');
-        $heading = $artist ? 'Other works by ' . $artist : 'Related works and products';
+        $heading = 'Related Artworks';
         ob_start();
         ?>
         <section class="ma-contextual-related-products" aria-label="<?php echo esc_attr($heading); ?>">
