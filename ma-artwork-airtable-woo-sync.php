@@ -3746,6 +3746,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $text = strtolower($name . ' ' . $bio);
         $manual_names = [
             'denise silva-dennis',
+            'brianna l. hernandez',
+            'brianna l. hernández',
+            'brianna hernandez',
+            'brianna hernández',
             'jeremy dennis',
             'kelly dennis',
             'avery dennis',
