@@ -2561,14 +2561,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function about_page_html(): string {
         $hero = 'https://www.mashouse.studio/wp-content/uploads/2021/07/roger-waters-20201110_145009-e1636136206168-1024x553.jpg';
         $staff = [
-            ['name' => 'Jeremy Dennis', 'role' => 'Founder'],
+            ['name' => 'Jeremy Dennis', 'role' => 'Founder & Board Member'],
             ['name' => 'Denise Silva-Dennis', 'role' => 'Workshop Coordinator'],
             ['name' => 'Avery Dennis', 'role' => 'Facilities Director'],
             ['name' => 'Brianna L. Hernández', 'role' => 'Director of Curation'],
         ];
         $board = [
-            ['name' => 'Kelly Dennis', 'role' => 'President'],
-            ['name' => 'Jeremy Dennis', 'role' => 'Founder'],
+            ['name' => 'Kelly Dennis', 'role' => 'Board President'],
+            ['name' => 'Jeremy Dennis', 'role' => 'Founder & Board Member'],
             ['name' => 'Darlene Troge', 'role' => 'Treasurer'],
             ['name' => 'Brianna L. Hernández', 'role' => 'Secretary'],
             ['name' => 'Debbie Rechler', 'role' => 'Board Member'],
@@ -2599,8 +2599,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 </div>
                 <div class="ma-about-intro__body">
                     <p>The family house, built in the 1960s, has been restored as a safe and generative place for artists to create work, participate in residencies, and exhibit contemporary work on the Shinnecock Indian Reservation. Ma's House &amp; BIPOC Art Studio Inc. was chartered in 2021 as a 501(c)3 tax-exempt organization in New York State.</p>
-                    <p>Since June 2020, Indigenous visual artist and photographer Jeremy Dennis has worked to restore the Silva family home he grew up in. The project grew from the disruptions of the COVID-19 pandemic and from the need for spaces grounded in creativity, healing, imagining, and liberation for BIPOC artists and communities.</p>
+                    <p>Since June 2020, founder Jeremy Dennis has worked with family, artists, board members, volunteers, and community partners to restore the Silva family home he grew up in. The project grew from the disruptions of the COVID-19 pandemic and from the need for spaces grounded in creativity, healing, imagining, and liberation for BIPOC artists and communities.</p>
                 </div>
+            </section>
+
+            <section class="ma-about-programs ma-about-programs--impact" aria-label="Recognition and impact">
+                <article>
+                    <h3>Ruth Arts Core Grant</h3>
+                    <p>Ma's House was selected for the Ruth Foundation for the Arts 2025-2028 Core Grants cohort, receiving $150,000 in unrestricted support over three years.</p>
+                </article>
+                <article>
+                    <h3>Shinnecock Speaks</h3>
+                    <p>The Museum Association of New York recognized Ma's House for Shinnecock Speaks, an exhibition and public program series featuring 27 contemporary Shinnecock artists.</p>
+                </article>
+                <article>
+                    <h3>Residency Network</h3>
+                    <p>Since 2021, Ma's House has hosted a growing alumni network of BIPOC artists working across visual art, writing, performance, research, sound, film, and interdisciplinary practice.</p>
+                </article>
             </section>
 
             <section class="ma-about-programs" aria-label="What Ma's House supports">
@@ -2834,6 +2849,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             if (!$excerpt) {
                 $excerpt = wp_trim_words(self::clean_bio_text((string) get_post_field('post_content', $post_id)), 28);
             }
+            $excerpt = preg_replace('~<a\b[^>]*>.*?</a>~i', '', $excerpt) ?: $excerpt;
+            $excerpt = preg_replace('~\s*Read More\s*(?:Â»|»)?\s*[^<]*$~i', '', $excerpt) ?: $excerpt;
+            $excerpt = trim(wp_strip_all_tags($excerpt));
             $terms = wp_get_post_terms($post_id, 'category', ['fields' => 'names']);
             $label = is_array($terms) && $terms ? implode(' / ', array_slice($terms, 0, 2)) : 'News';
             ?>
@@ -2910,6 +2928,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 <div class="ma-sponsorship-hero__copy">
                     <p>Sponsorship</p>
                     <h1>Support workshops, residencies, and exhibitions at Ma's House.</h1>
+                    <p class="ma-sponsorship-hero__note">Sponsorship supports artist honoraria, public programs, exhibitions, and community access at Ma's House.</p>
                     <div class="ma-sponsorship-hero__actions">
                         <a href="#sponsorship-levels">View Opportunities</a>
                         <a href="https://www.mashouse.studio/donate/">General Donation</a>
@@ -2920,7 +2939,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             <section id="sponsorship-levels" class="ma-sponsorship-section">
                 <div class="ma-sponsorship-section__intro">
                     <h2>Sponsorship Opportunities &amp; Benefits</h2>
-                    <p>Sponsors help keep Ma's House active as a space for Indigenous artists, community programs, exhibitions, and public gatherings.</p>
+                    <p>Sponsors help keep Ma's House active as a space for Indigenous artists, community programs, exhibitions, and public gatherings. Recent support has strengthened Ma's House through the Ruth Foundation for the Arts 2025-2028 Core Grants cohort and recognition from the Museum Association of New York for Shinnecock Speaks.</p>
                 </div>
                 <div class="ma-sponsorship-grid">
                     <?php foreach ($tiers as $tier) : ?>
@@ -3480,6 +3499,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if ($html === '' || stripos($html, '<html') === false) {
             return $html;
         }
+        $html = self::filter_public_copy_text($html);
         $html = preg_replace('~<link\b(?=[^>]*\brel=(["\'])preload\1)(?=[^>]*social-icons-widget-by-wpzoom/assets/font/)[^>]*>\s*~i', '', $html) ?? $html;
         if (!self::allow_payment_assets_on_current_request()) {
             $html = preg_replace('~<link\b(?=[^>]*woocommerce-paypal-payments/assets/)[^>]*>\s*~i', '', $html) ?? $html;
@@ -3531,6 +3551,60 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (function_exists('is_product') && is_product()) {
             $html = preg_replace('~<p>\s*hi\s*</p>\s*~i', '', $html) ?? $html;
             $html = str_replace('>ENQUIRY!<', '>Enquire<', $html);
+        }
+        return $html;
+    }
+
+    private static function filter_public_copy_text(string $html): string {
+        $replacements = [
+            'Feburary' => 'February',
+            'The 2026 Residency Open Call is now CLOSED' => 'The 2026 Residency Open Call is now closed. Applications open each December.',
+            'Indigenous artist  artist and photographer Jeremy Dennis' => 'Indigenous artist and photographer Jeremy Dennis',
+            'Ma\'s House &amp; BIPOC Art Studio is led by Indigenous artist and photographer Jeremy Dennis. Dennis is an enrolled member of the Shinnecock Indian Nation.' => 'Ma\'s House &amp; BIPOC Art Studio, Inc. was founded by Indigenous artist and photographer Jeremy Dennis, an enrolled member of the Shinnecock Indian Nation.',
+            'Ma’s House &amp; BIPOC Art Studio Inc. was chartered in 2021' => 'Ma’s House &amp; BIPOC Art Studio, Inc. was chartered in 2021',
+            'Through exhibitions, workshops, and community programs, we empower artists and provide vital resources to help them succeed.' => 'Through exhibitions, residencies, workshops, a library, and community programs, we support artists and provide vital resources for creative work and public learning.',
+            'Your support helps us provide essential art supplies, equipment, and educational opportunities while keeping our programs accessible to all.' => 'Your support helps provide artist stipends, materials, equipment, educational opportunities, and accessible public programs.',
+            'donations of furnature and other house items' => 'donations of furniture and other house items',
+            'Our STart' => 'Our Start',
+            'equity isues' => 'equity issues',
+            'orgainzations' => 'organizations',
+            'Solo artists are a eligible to apply.' => 'Solo artists are eligible to apply.',
+            'Thanks to the Creatives Rebuild New York grant, we are grateful to offer $ 250.00 per week honorariums for visiting artists. (Or about $35.70 per day if staying more or less than a week)' => 'Ma&rsquo;s House offers $250 weekly stipends for residency artists, or about $35.70 per day for stays shorter or longer than a week.',
+            'The lead artist of Ma&#8217;s House (Jeremy Dennis) also lives at Ma&#8217;s House.' => 'Founder and board member Jeremy Dennis also lives at Ma&#8217;s House.',
+            'Interested in Sposoring a Future Resident Artist?' => 'Interested in Sponsoring a Future Resident Artist?',
+            'This support has made $250.00 honorariums for resident artists per week possible until June 2024.' => 'Ma&rsquo;s House offers $250 weekly stipends for residency artists, or about $35.70 per day for stays shorter or longer than a week.',
+            'six-to-eight-week long exhibitions' => 'six- to eight-week exhibitions',
+            'solo-exhibiting visual artists' => 'solo exhibitions by visual artists',
+            'Thanks you to our exhibit sponsors!' => 'Thank you to our exhibition sponsors.',
+            'Please mail checks (payable to Ma&#8217;s House &amp; BIPOC Art Studio, Inc.) and to:' => 'Please make checks payable to Ma&#8217;s House &amp; BIPOC Art Studio, Inc. and mail them to:',
+            'President &amp; Lead Artist' => 'Founder &amp; Board Member',
+            'Lead Artist &amp; President of Ma&#8217;s House' => 'Founder &amp; Board Member',
+            'The Ma&#8217;s House project is being led by artist and photographer Jeremy Dennis.' => 'Ma&#8217;s House was founded by artist and photographer Jeremy Dennis.',
+            'The Ma&#8217;s House project is being led by artist and photographer Jeremy Dennis' => 'Ma&#8217;s House was founded by artist and photographer Jeremy Dennis',
+        ];
+        $html = str_replace(array_keys($replacements), array_values($replacements), $html);
+
+        $html = preg_replace(
+            '~<p><strong>Ma’s House &amp; BIPOC Art Studio Inc</strong>\.\s*is led by Indigenous artist<strong>\s*Jeremy Dennis</strong>\.\s*The project began in June 2020 and serves as a communal art space based on the Shinnecock Indian Reservation in Southampton, New York\.\s*The family house, built in the 1960s, now features a residency program for Black, Indigenous, and People of Color \(BIPOC\) artists, a shared art studio, and a communal library, along with hosting an array of art and history-based programs for tribal members and the broader local community\.</p>~u',
+            '<p><strong>Ma’s House &amp; BIPOC Art Studio, Inc.</strong> was founded by Indigenous artist and photographer Jeremy Dennis and is guided by a board, staff, artists, and community partners. The project began in June 2020 and serves as a communal art space based on the Shinnecock Indian Reservation in Southampton, New York. The family house, built in the 1960s, now features a residency program for Black, Indigenous, and People of Color (BIPOC) artists, a shared art studio, a communal library, and art and history-based programs for Shinnecock community members and the broader local community.</p><p>Recent milestones include selection for the Ruth Foundation for the Arts 2025–2028 Core Grants cohort, recognition from the Museum Association of New York for <em>Shinnecock Speaks</em>, and a growing residency alumni network of BIPOC artists working across visual art, writing, performance, research, sound, film, and interdisciplinary practice.</p>',
+            $html
+        ) ?? $html;
+        $html = str_replace(
+            'Since June 2020, we raised over $40,000 to renovate and replace leaky plumbing, pouring a new cement floor in the basement to cover the dirt, and replacing the floor of the kitchen and bathroom.',
+            'Since June 2020, more than 400 supporters helped raise over $40,000 to repair leaky plumbing, pour a new cement floor in the basement, and replace the kitchen and bathroom floors.',
+            $html
+        );
+        $html = str_replace(
+            'It was decided in 2021 to turn Ma&#8217;s House into a non-profit organization to sustain this project and renovation. Yet according to a 2017 national report on equity issues in cultural philanthropy',
+            'In 2021, Ma&#8217;s House became a nonprofit organization to sustain this project and its public programs. According to a 2017 national report on equity issues in cultural philanthropy',
+            $html
+        );
+        if (strpos($html, 'Dear Friends and Supporters,') !== false && strpos($html, 'Ruth Foundation for the Arts 2025') === false) {
+            $html = str_replace(
+                'Thank you for standing with us.</p>',
+                'Thank you for standing with us.</p><p>Recent milestones include selection for the Ruth Foundation for the Arts 2025–2028 Core Grants cohort, recognition from the Museum Association of New York for <em>Shinnecock Speaks</em>, and a growing residency alumni network of BIPOC artists.</p>',
+                $html
+            );
         }
         return $html;
     }
