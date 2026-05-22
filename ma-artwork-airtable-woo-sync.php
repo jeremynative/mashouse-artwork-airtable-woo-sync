@@ -78,6 +78,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_news_page_content'], 37);
         add_filter('the_content', [__CLASS__, 'replace_subscribe_page_content'], 38);
         add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
+        add_filter('the_content', [__CLASS__, 'replace_residency_page_content'], 40);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -2722,6 +2723,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::podcast_page_html();
     }
 
+    public static function replace_residency_page_content(string $content): string {
+        if (is_admin() || !is_page('residency')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 198) {
+            return $content;
+        }
+
+        return self::residency_page_html();
+    }
+
     public static function render_news_posts_page_template(): void {
         if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
             return;
@@ -2885,6 +2898,131 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     <h2>Programs</h2>
                     <p>Stories from exhibitions, residencies, workshops, and public programs at Ma's House.</p>
                 </article>
+            </section>
+        </article>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function residency_page_html(): string {
+        $hero = 'https://www.mashouse.studio/wp-content/uploads/2023/06/Resized_20230618_165507.jpeg';
+        $subscribe_url = home_url('/subscribe/');
+        $sponsor_url = home_url('/donations/mas-house-residency-sponsorship/');
+
+        $details = [
+            [
+                'title' => 'Eligibility',
+                'body' => 'The residency supports US-based BIPOC artists working in visual art, writing, performance, research, sound, film, and interdisciplinary practice.',
+            ],
+            [
+                'title' => 'Length',
+                'body' => 'Residencies are usually organized as short stays of one to four weeks, depending on the project, season, and available housing.',
+            ],
+            [
+                'title' => 'Public Program',
+                'body' => 'Residents are asked to share one public-facing program, workshop, conversation, open studio, or community offering during their stay.',
+            ],
+            [
+                'title' => 'Stipend',
+                'body' => 'A $250 weekly stipend is available for residency artists, equal to about $35.70 per day.',
+            ],
+            [
+                'title' => 'Facilities',
+                'body' => 'Residents stay at Ma\'s House on the Shinnecock Indian Reservation and have access to shared studio, library, gathering, and program spaces.',
+            ],
+            [
+                'title' => 'Transportation',
+                'body' => 'Artists should plan for travel to Southampton, New York. Local transportation needs can be discussed after selection.',
+            ],
+        ];
+
+        ob_start();
+        ?>
+        <article class="ma-residency-page">
+            <section class="ma-residency-hero">
+                <figure>
+                    <img src="<?php echo esc_url($hero); ?>" alt="The Ma's House residency bedroom" loading="eager">
+                    <figcaption>The Ma's House residency bedroom.</figcaption>
+                </figure>
+                <div class="ma-residency-hero__copy">
+                    <p class="ma-residency-kicker">Residency</p>
+                    <h1>Time, space, and community for BIPOC artists.</h1>
+                    <p>Ma's House offers a place for artists to rest, research, make work, and share a public program while spending time on the Shinnecock Indian Reservation in Southampton, New York.</p>
+                    <div class="ma-residency-status" aria-label="Residency status">
+                        <div>
+                            <span>2026 Open Call</span>
+                            <strong>Closed</strong>
+                        </div>
+                        <div>
+                            <span>Applications</span>
+                            <strong>Open each December</strong>
+                        </div>
+                        <div>
+                            <span>Artist Stipend</span>
+                            <strong>$250 weekly</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ma-residency-intro">
+                <div>
+                    <h2>Who the residency is for</h2>
+                </div>
+                <div>
+                    <p>The program is open to BIPOC creatives whose practice may include visual art, writing, performance, community work, archival research, sound, film, or interdisciplinary projects.</p>
+                    <p>Applicants are encouraged to consider work connected to Shinnecock history, the local landscape, Indigenous presence, community-based practice, diversity, race, identity, and the cultural life of Ma's House.</p>
+                </div>
+            </section>
+
+            <section class="ma-residency-cards" aria-label="Residency focus areas">
+                <article>
+                    <h3>Make work</h3>
+                    <p>Use the residency as focused time to create, edit, research, experiment, or develop a new body of work.</p>
+                </article>
+                <article>
+                    <h3>Share with community</h3>
+                    <p>Each resident contributes one public program that can take the form of a workshop, talk, open studio, screening, reading, or gathering.</p>
+                </article>
+                <article>
+                    <h3>Spend time here</h3>
+                    <p>The residency is intentionally small and place-based, with access to the house, library, studio, and surrounding community context.</p>
+                </article>
+            </section>
+
+            <section class="ma-residency-details">
+                <div class="ma-residency-section-heading">
+                    <p>Program Details</p>
+                    <h2>What to know before applying</h2>
+                </div>
+                <div class="ma-residency-detail-grid">
+                    <?php foreach ($details as $detail) : ?>
+                        <article>
+                            <h3><?php echo esc_html($detail['title']); ?></h3>
+                            <p><?php echo esc_html($detail['body']); ?></p>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+
+            <section class="ma-residency-note">
+                <div>
+                    <p>Recent Support</p>
+                    <h2>Homebody Fellowship</h2>
+                </div>
+                <p>Recent special residency support has included the Homebody Fellowship for QTBIPOC artists based in the San Francisco Bay Area, made possible by the Homebody Fund at the East Bay Community Foundation.</p>
+            </section>
+
+            <section class="ma-residency-cta">
+                <div>
+                    <p>Current Status</p>
+                    <h2>Applications are currently closed.</h2>
+                    <p>The residency open call returns each December. Subscribe for application announcements, visiting artist updates, and public program invitations.</p>
+                </div>
+                <div class="ma-residency-actions">
+                    <a href="<?php echo esc_url($subscribe_url); ?>">Get Residency Updates</a>
+                    <a href="<?php echo esc_url($sponsor_url); ?>">Sponsor a Residency</a>
+                </div>
             </section>
         </article>
         <?php

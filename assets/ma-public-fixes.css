@@ -18,7 +18,8 @@ body:not(.home):not(.single-product) .elementor-widget-heading h1.elementor-head
 .ma-about-hero h1,
 .ma-sponsorship-hero h1,
 .ma-subscribe-hero h1,
-.ma-podcast-hero h1 {
+.ma-podcast-hero h1,
+.ma-residency-hero h1 {
   color: #111 !important;
   font-family: Arial, Helvetica, sans-serif !important;
   font-size: clamp(30px, 3.2vw, 42px) !important;
@@ -32,7 +33,11 @@ body:not(.home):not(.single-product) .elementor-widget-heading h1.elementor-head
 .ma-about-people h2,
 .ma-sponsorship-section__intro h2,
 .ma-past-sponsors__intro h2,
-body.page-id-3388 .elementor-element-52863ee h2 {
+body.page-id-3388 .elementor-element-52863ee h2,
+.ma-residency-intro h2,
+.ma-residency-section-heading h2,
+.ma-residency-note h2,
+.ma-residency-cta h2 {
   color: #111 !important;
   font-family: Arial, Helvetica, sans-serif !important;
   font-size: clamp(24px, 2.4vw, 32px) !important;
@@ -57,7 +62,8 @@ body.single-post:not(.single-product) .nv-post-cover + .container.single-post-co
   .ma-about-hero h1,
   .ma-sponsorship-hero h1,
   .ma-subscribe-hero h1,
-  .ma-podcast-hero h1 {
+  .ma-podcast-hero h1,
+  .ma-residency-hero h1 {
     font-size: 31px !important;
   }
 
@@ -1721,6 +1727,230 @@ body.page-id-2652 .nv-page-title-wrap {
   line-height: 1.5;
 }
 
+body.page-id-198 .nv-page-title-wrap {
+  display: none !important;
+}
+
+body.page-id-198 .nv-single-page-wrap,
+body.page-id-198 .entry-content {
+  margin: 0 !important;
+}
+
+.ma-residency-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 76px;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ma-residency-page * {
+  box-sizing: border-box;
+}
+
+.ma-residency-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+  gap: 42px;
+  align-items: center;
+  padding-bottom: 38px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-residency-hero figure {
+  margin: 0;
+}
+
+.ma-residency-hero img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 0;
+}
+
+.ma-residency-hero figcaption {
+  margin-top: 10px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ma-residency-kicker,
+.ma-residency-section-heading p,
+.ma-residency-note > div > p,
+.ma-residency-cta > div > p {
+  margin: 0 0 12px;
+  color: #666;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.ma-residency-hero h1 {
+  margin: 0;
+  max-width: 620px;
+  color: #111;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ma-residency-hero__copy > p:not(.ma-residency-kicker) {
+  margin: 18px 0 0;
+  color: #252525;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.ma-residency-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.ma-residency-status div {
+  min-height: 96px;
+  padding: 16px;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+}
+
+.ma-residency-status span {
+  display: block;
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ma-residency-status strong {
+  display: block;
+  color: #111;
+  font-size: 17px;
+  line-height: 1.22;
+}
+
+.ma-residency-intro,
+.ma-residency-note,
+.ma-residency-cta {
+  display: grid;
+  grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
+  gap: 34px;
+  padding: 38px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-residency-intro h2,
+.ma-residency-section-heading h2,
+.ma-residency-note h2,
+.ma-residency-cta h2 {
+  margin: 0;
+  color: #111;
+  font-size: clamp(24px, 2.4vw, 32px);
+  line-height: 1.14;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ma-residency-intro p,
+.ma-residency-note > p,
+.ma-residency-cta p {
+  margin: 0;
+  color: #2c2c2c;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.ma-residency-intro p + p,
+.ma-residency-cta p + p {
+  margin-top: 16px;
+}
+
+.ma-residency-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 34px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-residency-cards article,
+.ma-residency-detail-grid article {
+  padding-top: 18px;
+  border-top: 3px solid #ed1c24;
+}
+
+.ma-residency-cards h3,
+.ma-residency-detail-grid h3 {
+  margin: 0 0 10px;
+  color: #111;
+  font-size: 18px;
+  line-height: 1.24;
+  font-weight: 800;
+}
+
+.ma-residency-cards p,
+.ma-residency-detail-grid p {
+  margin: 0;
+  color: #444;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ma-residency-details {
+  padding: 38px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ma-residency-section-heading {
+  display: grid;
+  grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
+  gap: 34px;
+  align-items: start;
+  margin-bottom: 28px;
+}
+
+.ma-residency-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 22px;
+}
+
+.ma-residency-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ma-residency-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-decoration: none !important;
+  text-transform: uppercase;
+}
+
+.ma-residency-actions a + a {
+  background: #fff;
+  color: #111 !important;
+}
+
 @media (max-width: 920px) {
   body.page-id-3388 .elementor-element-e2f87cd > .elementor-container {
     grid-template-columns: 1fr !important;
@@ -1765,12 +1995,23 @@ body.page-id-2652 .nv-page-title-wrap {
   }
 
   .ma-podcast-hero,
-  .ma-podcast-player {
+  .ma-podcast-player,
+  .ma-residency-hero,
+  .ma-residency-intro,
+  .ma-residency-section-heading,
+  .ma-residency-note,
+  .ma-residency-cta {
     grid-template-columns: 1fr;
     gap: 18px;
   }
 
-  .ma-podcast-topics {
+  .ma-podcast-topics,
+  .ma-residency-cards,
+  .ma-residency-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ma-residency-status {
     grid-template-columns: 1fr;
   }
 }
@@ -1853,5 +2094,30 @@ body.page-id-2652 .nv-page-title-wrap {
 
   .ma-podcast-hero p {
     font-size: 16px;
+  }
+
+  .ma-residency-page {
+    padding: 34px 16px 54px;
+  }
+
+  .ma-residency-hero h1 {
+    font-size: 31px !important;
+  }
+
+  .ma-residency-hero__copy > p:not(.ma-residency-kicker) {
+    font-size: 16px;
+  }
+
+  .ma-residency-hero img {
+    min-height: 230px;
+  }
+
+  .ma-residency-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ma-residency-actions a {
+    width: 100%;
   }
 }
