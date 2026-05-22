@@ -293,6 +293,62 @@ body.page-id-3388 .give-donor-wall-shortcode-wrap .give-donor-content__comment {
   resize: none !important;
 }
 
+body.page-id-1115 .tribe-events-c-search__input-control {
+  position: relative !important;
+}
+
+body.page-id-1115 .tribe-events-c-search__input,
+body.page-id-1115 .tribe-events-c-search__input[type="text"],
+body.page-id-1115 .tribe-events-c-search__input[type="search"] {
+  height: 38px !important;
+  min-height: 38px !important;
+  border: 1px solid #d7d7d7 !important;
+  border-radius: 0 !important;
+  padding: 8px 12px 8px 38px !important;
+  color: #111 !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  resize: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: #fff !important;
+}
+
+body.page-id-1115 .tribe-events-c-search__input-control-icon-svg {
+  position: absolute !important;
+  left: 13px !important;
+  top: 50% !important;
+  width: 15px !important;
+  height: 15px !important;
+  transform: translateY(-50%) !important;
+  color: #666 !important;
+  pointer-events: none !important;
+}
+
+body.page-id-1115 .tribe-events-c-top-bar__datepicker-button {
+  font-size: 21px !important;
+  font-weight: 650 !important;
+}
+
+body.page-id-1115 .tribe-events-calendar-list__event-title {
+  margin: 6px 0 10px !important;
+  font-size: 21px !important;
+  line-height: 1.32 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+body.page-id-1115 .tribe-events-calendar-list__event-title-link {
+  color: #111 !important;
+  text-decoration: none !important;
+}
+
+body.page-id-1115 .tribe-events-calendar-month__calendar-event-title,
+body.page-id-1115 .tribe-events-calendar-day__event-title {
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
 body.home .elementor-element-c8e0c2e {
   padding-top: 0 !important;
   padding-bottom: 28px !important;
@@ -1705,6 +1761,10 @@ body.page-id-2652 .nv-page-title-wrap {
 
   .ma-klaviyo-form__row {
     grid-template-columns: 1fr;
+  }
+
+  body.page-id-1115 .tribe-events-calendar-list__event-title {
+    font-size: 19px !important;
   }
 
   .ma-podcast-page {

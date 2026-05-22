@@ -231,10 +231,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-1115 .tribe-events-header__events-bar,
             body.page-id-1115 .tribe-events-c-events-bar{display:flex!important;align-items:center!important;gap:14px!important;min-height:52px!important;border:1px solid #ddd!important;background:#fff!important;padding:8px 12px!important}
             body.page-id-1115 .tribe-events-c-search__input-group{display:flex!important;align-items:center!important;gap:10px!important}
-            body.page-id-1115 .tribe-events-c-search__input{height:38px!important;border:1px solid #d7d7d7!important;padding:8px 10px!important;font-size:14px!important}
+            body.page-id-1115 .tribe-events-c-search__input-control{position:relative!important}
+            body.page-id-1115 .tribe-events-c-search__input{height:38px!important;border:1px solid #d7d7d7!important;border-radius:0!important;padding:8px 12px 8px 38px!important;font-size:14px!important;line-height:1.25!important;resize:none!important;-webkit-appearance:none!important;appearance:none!important;background:#fff!important}
+            body.page-id-1115 .tribe-events-c-search__input-control-icon-svg{position:absolute!important;left:13px!important;top:50%!important;width:15px!important;height:15px!important;transform:translateY(-50%)!important;color:#666!important;pointer-events:none!important}
             body.page-id-1115 .tribe-events-c-search__button{height:38px!important;border:0!important;background:#111!important;color:#fff!important;padding:0 16px!important;font-weight:700!important}
             body.page-id-1115 .tribe-events-c-top-bar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;margin:0 0 24px!important}
-            body.page-id-1115 .tribe-events-c-top-bar__datepicker-button{display:inline-flex!important;align-items:center!important;gap:8px!important;color:#111!important;background:transparent!important;border:0!important;font-size:22px!important;font-weight:700!important}
+            body.page-id-1115 .tribe-events-c-top-bar__datepicker-button{display:inline-flex!important;align-items:center!important;gap:8px!important;color:#111!important;background:transparent!important;border:0!important;font-size:21px!important;font-weight:650!important}
             body.page-id-1115 .tribe-events-calendar-list{display:block!important;margin:0!important;padding:0!important;list-style:none!important}
             body.page-id-1115 .tribe-events-calendar-list__month-separator{display:flex!important;align-items:center!important;gap:18px!important;margin:34px 0 22px!important}
             body.page-id-1115 .tribe-events-calendar-list__month-separator:after{content:"";height:1px;background:#d9d9d9;flex:1}
@@ -247,8 +249,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper{grid-column:2!important;grid-row:1!important;width:220px!important;margin:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-featured-image{display:block!important;width:220px!important;aspect-ratio:1/1!important;height:auto!important;object-fit:cover!important;border-radius:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:1!important;width:auto!important}
-            body.page-id-1115 .tribe-events-calendar-list__event-title{margin:6px 0 12px!important;font-size:24px!important;line-height:1.25!important;font-weight:800!important}
+            body.page-id-1115 .tribe-events-calendar-list__event-title{margin:6px 0 10px!important;font-size:21px!important;line-height:1.32!important;font-weight:700!important;letter-spacing:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-title-link{color:#111!important;text-decoration:none!important}
+            body.page-id-1115 .tribe-events-calendar-month__calendar-event-title,
+            body.page-id-1115 .tribe-events-calendar-day__event-title{font-weight:700!important;letter-spacing:0!important}
             body.page-id-1115 .tribe-events-calendar-list__event-datetime-wrapper,
             body.page-id-1115 .tribe-events-calendar-list__event-venue{margin:0 0 10px!important;color:#111!important;font-size:13px!important;line-height:1.4!important}
             body.page-id-1115 .tribe-events-calendar-list__event-description{display:block!important;visibility:visible!important;color:#111!important;font-size:14px!important;line-height:1.6!important;max-width:720px!important}
@@ -263,7 +267,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 body.page-id-1115 .tribe-events-calendar-list__event-featured-image-wrapper,
                 body.page-id-1115 .tribe-events-calendar-list__event-details{grid-column:1!important;grid-row:auto!important;width:100%!important}
                 body.page-id-1115 .tribe-events-calendar-list__event-featured-image{width:100%!important;aspect-ratio:4/3!important}
-                body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:20px!important}
+                body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:19px!important}
                 body.page-id-1115 .tribe-events-header__events-bar,
                 body.page-id-1115 .tribe-events-c-events-bar{display:none!important}
             }
