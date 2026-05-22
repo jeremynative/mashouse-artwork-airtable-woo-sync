@@ -77,6 +77,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_about_page_content'], 36);
         add_filter('the_content', [__CLASS__, 'replace_news_page_content'], 37);
         add_filter('the_content', [__CLASS__, 'replace_subscribe_page_content'], 38);
+        add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
@@ -2695,6 +2696,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::subscribe_page_html();
     }
 
+    public static function replace_podcast_page_content(string $content): string {
+        if (is_admin() || !is_page('podcast')) {
+            return $content;
+        }
+        $post_id = (int) get_the_ID();
+        if ($post_id && $post_id !== 2652) {
+            return $content;
+        }
+
+        return self::podcast_page_html();
+    }
+
     public static function render_news_posts_page_template(): void {
         if (is_admin() || wp_doing_ajax() || is_feed() || !is_home()) {
             return;
@@ -2812,6 +2825,54 @@ final class MA_Artwork_Airtable_Woo_Sync {
             window.KlaviyoSubscribe.attachToForms('#ma-klaviyo-subscribe-form', {hide_form_on_success: true});
         }
         </script>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function podcast_page_html(): string {
+        $rss_url = 'https://cms.megaphone.fm/channel/STONY4418581412?selected=STONY1026693651';
+        $apple_url = 'https://podcasts.apple.com/us/podcast/mas-house-podcast/id1635647518';
+        $player_url = 'https://play.libsyn.com/embed/destination/id/4331243/height/412/theme/modern/size/large/thumbnail/yes/custom-color/742e2e/playlist-height/200/direction/backward/download/yes/font-color/FFFFFF';
+
+        ob_start();
+        ?>
+        <article class="ma-podcast-page">
+            <header class="ma-podcast-hero">
+                <div class="ma-podcast-hero__label">Podcast</div>
+                <div class="ma-podcast-hero__copy">
+                    <h1>Conversations from Ma's House</h1>
+                    <p>The Ma's House podcast, hosted by founder Jeremy Dennis, features conversations with artists-in-residence, exhibiting artists, Shinnecock Tribal Members, and guests connected to Ma's House programs.</p>
+                </div>
+            </header>
+
+            <section class="ma-podcast-player" aria-label="Podcast player">
+                <div class="ma-podcast-player__intro">
+                    <p>Recorded in Southampton, New York, at Ma's House on Shinnecock Territory, the podcast shares artist stories, program conversations, and voices connected to the creative life of the space.</p>
+                    <div class="ma-podcast-links">
+                        <a href="<?php echo esc_url($apple_url); ?>">Listen on Apple Podcasts</a>
+                        <a href="<?php echo esc_url($rss_url); ?>">RSS Feed</a>
+                    </div>
+                </div>
+                <div class="ma-podcast-embed">
+                    <iframe title="Ma's House Podcast player" src="<?php echo esc_url($player_url); ?>" width="100%" height="412" scrolling="no" allowfullscreen></iframe>
+                </div>
+            </section>
+
+            <section class="ma-podcast-topics" aria-label="Podcast topics">
+                <article>
+                    <h2>Artists</h2>
+                    <p>Interviews with visiting artists, exhibiting artists, and creative collaborators.</p>
+                </article>
+                <article>
+                    <h2>Community</h2>
+                    <p>Conversations with Shinnecock Tribal Members and people connected to local cultural work.</p>
+                </article>
+                <article>
+                    <h2>Programs</h2>
+                    <p>Stories from exhibitions, residencies, workshops, and public programs at Ma's House.</p>
+                </article>
+            </section>
+        </article>
         <?php
         return (string) ob_get_clean();
     }
