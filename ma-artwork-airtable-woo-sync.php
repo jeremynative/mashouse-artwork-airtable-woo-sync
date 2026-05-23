@@ -392,6 +392,29 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 scroll-margin-top: 128px;
             }
 
+            body.single-tribe_events .tribe-tickets input,
+            body.single-tribe_events .tribe-tickets textarea,
+            body.single-tribe_events .tribe-tickets select,
+            body.single-tribe_events .event-tickets input,
+            body.single-tribe_events .event-tickets textarea,
+            body.single-tribe_events .event-tickets select,
+            body.single-tribe_events [class*="tribe-tickets"] input,
+            body.single-tribe_events [class*="tribe-tickets"] textarea,
+            body.single-tribe_events [class*="tribe-tickets"] select {
+                resize: none !important;
+            }
+
+            body.single-tribe_events .tribe-tickets input::-webkit-resizer,
+            body.single-tribe_events .tribe-tickets textarea::-webkit-resizer,
+            body.single-tribe_events .event-tickets input::-webkit-resizer,
+            body.single-tribe_events .event-tickets textarea::-webkit-resizer,
+            body.single-tribe_events [class*="tribe-tickets"] input::-webkit-resizer,
+            body.single-tribe_events [class*="tribe-tickets"] textarea::-webkit-resizer {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+            }
+
             @media (max-width: 760px) {
                 body.single-tribe_events .ma-event-rsvp-jump {
                     width: 100% !important;
