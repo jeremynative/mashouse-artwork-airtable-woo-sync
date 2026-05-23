@@ -61,6 +61,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('widget_posts_args', [__CLASS__, 'exclude_artist_profiles_from_recent_posts_widget']);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
+        add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
@@ -348,6 +349,164 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 }, true);
             });
         });
+        </script>
+        <?php
+    }
+
+    public static function render_single_event_rsvp_jump_button(): void {
+        if (!is_singular('tribe_events')) {
+            return;
+        }
+        ?>
+        <style id="ma-event-rsvp-jump-css" data-no-optimize="1" data-cfasync="false">
+            body.single-tribe_events .ma-event-rsvp-jump {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: auto !important;
+                min-height: 42px !important;
+                margin: 16px 0 22px !important;
+                padding: 11px 18px !important;
+                border: 1px solid #111 !important;
+                border-radius: 0 !important;
+                background: #111 !important;
+                color: #fff !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                font-size: 14px !important;
+                line-height: 1.2 !important;
+                font-weight: 750 !important;
+                letter-spacing: .02em !important;
+                text-decoration: none !important;
+                text-transform: none !important;
+            }
+
+            body.single-tribe_events .ma-event-rsvp-jump:hover,
+            body.single-tribe_events .ma-event-rsvp-jump:focus {
+                background: #fff !important;
+                color: #111 !important;
+                outline: 2px solid transparent !important;
+                text-decoration: none !important;
+            }
+
+            body.single-tribe_events #ma-event-rsvp-target {
+                scroll-margin-top: 128px;
+            }
+
+            @media (max-width: 760px) {
+                body.single-tribe_events .ma-event-rsvp-jump {
+                    width: 100% !important;
+                    margin: 14px 0 18px !important;
+                }
+
+                body.single-tribe_events #ma-event-rsvp-target {
+                    scroll-margin-top: 104px;
+                }
+            }
+        </style>
+        <script id="ma-event-rsvp-jump-js" data-no-optimize="1" data-cfasync="false">
+        (function () {
+            var targetSelectors = [
+                '.tribe-tickets__rsvp',
+                '.tribe-tickets__tickets-form',
+                '.tribe-tickets__tickets',
+                '.tribe-tickets',
+                '#tribe-tickets',
+                '.event-tickets',
+                '[class*="tribe-tickets"]'
+            ];
+            var anchorSelectors = [
+                '.tribe-events-schedule',
+                '.tribe-events-single-event-title',
+                'h1.entry-title',
+                '.entry-title'
+            ];
+
+            function visibleElement(selectors) {
+                for (var i = 0; i < selectors.length; i += 1) {
+                    var elements = document.querySelectorAll(selectors[i]);
+                    for (var j = 0; j < elements.length; j += 1) {
+                        var element = elements[j];
+                        var rect = element.getBoundingClientRect();
+                        if (rect.width > 0 && rect.height > 0) {
+                            return element;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function insertButton() {
+                if (document.querySelector('.ma-event-rsvp-jump')) {
+                    return true;
+                }
+
+                var target = visibleElement(targetSelectors);
+                if (!target) {
+                    return false;
+                }
+
+                target.id = 'ma-event-rsvp-target';
+
+                var anchor = visibleElement(anchorSelectors);
+                if (!anchor) {
+                    return false;
+                }
+
+                var button = document.createElement('a');
+                button.className = 'ma-event-rsvp-jump';
+                button.href = '#ma-event-rsvp-target';
+                button.textContent = 'RSVP';
+                button.setAttribute('aria-label', 'Jump to the RSVP section for this event');
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(function () {
+                        var focusable = target.querySelector('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                        if (focusable) {
+                            focusable.focus({ preventScroll: true });
+                        }
+                    }, 450);
+                });
+
+                if (anchor.classList && anchor.classList.contains('tribe-events-schedule')) {
+                    anchor.parentNode.insertBefore(button, anchor.nextSibling);
+                } else {
+                    anchor.insertAdjacentElement('afterend', button);
+                }
+
+                return true;
+            }
+
+            function boot() {
+                if (insertButton()) {
+                    return;
+                }
+
+                var attempts = 0;
+                var timer = window.setInterval(function () {
+                    attempts += 1;
+                    if (insertButton() || attempts > 20) {
+                        window.clearInterval(timer);
+                    }
+                }, 300);
+
+                if ('MutationObserver' in window) {
+                    var observer = new MutationObserver(function () {
+                        if (insertButton()) {
+                            observer.disconnect();
+                        }
+                    });
+                    observer.observe(document.body, { childList: true, subtree: true });
+                    window.setTimeout(function () { observer.disconnect(); }, 8000);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot, { once: true });
+            } else {
+                boot();
+            }
+        }());
         </script>
         <?php
     }
