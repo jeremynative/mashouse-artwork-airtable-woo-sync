@@ -4032,7 +4032,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$text) {
             return '';
         }
-        if (preg_match('/\bbased in\s+([^.;\n]{2,90})/i', $text, $match)) {
+        if (preg_match('/\b(?:born and based|based|based out of|lives and works|lives|resides|works)\s+(?:in|on|out of)\s+([^.;\n]{2,90})/i', $text, $match)) {
+            return self::clean_artist_location($match[1]);
+        }
+        if (preg_match('/\b(?:from|native of)\s+((?:the\s+)?[A-Z][A-Za-z.\' -]+(?:,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))?)/', $text, $match)) {
             return self::clean_artist_location($match[1]);
         }
         if (preg_match('/\b([A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))[- ]based\b/', $text, $match)) {
@@ -4048,13 +4051,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function clean_artist_location(string $location): string {
         $location = trim(wp_strip_all_tags($location));
         $location = preg_replace('/\s+/', ' ', $location);
-        $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter)\b.*$/i', '', $location);
+        $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter|and\s+is|and\s+works|and\s+creates|while)\b.*$/i', '', $location);
         $location = trim($location, " \t\n\r\0\x0B,.;:-");
         $aliases = [
             'NYC' => 'New York, NY',
             'New York City' => 'New York, NY',
             'Brooklyn' => 'Brooklyn, NY',
             'Bronx' => 'Bronx, NY',
+            'Southampton' => 'Southampton, NY',
+            'Sag Harbor' => 'Sag Harbor, NY',
+            'East Hampton' => 'East Hampton, NY',
+            'Long Island' => 'Long Island, NY',
+            'the Shinnecock Indian Nation' => 'Shinnecock Indian Nation, Southampton, NY',
+            'Shinnecock Indian Nation' => 'Shinnecock Indian Nation, Southampton, NY',
             'Central and South Florida' => 'Central and South Florida',
         ];
         return $aliases[$location] ?? $location;

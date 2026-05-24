@@ -2347,6 +2347,14 @@ body.page-slug-community-artists .nv-page-title-wrap {
   text-transform: none;
 }
 
+.ma-community-artist-card__location {
+  margin: 7px 0 0;
+  color: #4d4d4d;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .ma-community-artist-card__bio {
   margin: 10px 0 0;
   color: #333;
