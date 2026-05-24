@@ -4054,6 +4054,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function clean_artist_location(string $location): string {
         $location = trim(wp_strip_all_tags($location));
         $location = preg_replace('/\s+/', ' ', $location);
+        $location = preg_replace('/^.*?\bis\s+(?:a|an)\s+/i', '', $location);
         $location = preg_replace('/^(?:a|an)\s+/i', '', $location);
         $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter|and\s+is|and\s+works|and\s+creates|while|but|after|made\s+possible|at)\b.*$/i', '', $location);
         $location = trim($location, " \t\n\r\0\x0B,.;:-");
@@ -4061,14 +4062,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'NYC' => 'New York, NY',
             'New York City' => 'New York, NY',
             'New York' => 'New York, NY',
+            'Brooklyn, New York' => 'Brooklyn, NY',
             'Brooklyn' => 'Brooklyn, NY',
+            'Bronx, New York' => 'Bronx, NY',
             'Bronx' => 'Bronx, NY',
+            'Queens, New York' => 'Queens, NY',
+            'central Queens, New York' => 'Central Queens, NY',
             'Southampton' => 'Southampton, NY',
+            'Sag Harbor, New York' => 'Sag Harbor, NY',
             'Sag Harbor' => 'Sag Harbor, NY',
+            'East Hampton, New York' => 'East Hampton, NY',
             'East Hampton' => 'East Hampton, NY',
             'Long Island' => 'Long Island, NY',
+            'the Shinnecock Nation' => 'Shinnecock Indian Nation, Southampton, NY',
+            'Shinnecock Nation' => 'Shinnecock Indian Nation, Southampton, NY',
             'the Shinnecock Indian Nation' => 'Shinnecock Indian Nation, Southampton, NY',
             'Shinnecock Indian Nation' => 'Shinnecock Indian Nation, Southampton, NY',
+            'the San Francisco Bay Area' => 'San Francisco Bay Area',
             'Central and South Florida' => 'Central and South Florida',
         ];
         return $aliases[$location] ?? $location;
