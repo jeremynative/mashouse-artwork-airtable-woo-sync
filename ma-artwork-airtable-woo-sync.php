@@ -4926,7 +4926,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return <<<'HTML'
 <style id="ma-homepage-final-layout-overrides" data-no-optimize="1" data-cfasync="false">
 body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:34px!important;min-height:0!important}
-body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(560px,1.35fr) minmax(360px,.82fr) minmax(320px,.74fr)!important;gap:clamp(26px,2.7vw,44px)!important;width:min(1520px,calc(100vw - 160px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
+body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(430px,1.08fr) minmax(390px,1.02fr) minmax(360px,.9fr)!important;gap:clamp(30px,3vw,52px)!important;width:min(1600px,calc(100vw - 80px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
 body.home .elementor-element-3dd430f .elementor-column{width:auto!important;max-width:none!important;min-width:0!important}
 body.home .elementor-element-7b56059>.elementor-element-populated,
 body.home .elementor-element-33c8c69>.elementor-element-populated,
@@ -4941,6 +4941,7 @@ body.home .elementor-element-525dad1,
 body.home .elementor-element-0a7cc4a{width:100%!important;margin-top:0!important}
 body.home .elementor-element-525dad1 img,
 body.home .elementor-element-0a7cc4a .swiper-slide-image{display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
+body.home .elementor-element-0a7cc4a .swiper-slide-image{max-width:420px!important;margin:0 auto!important}
 body.home .elementor-element-0a7cc4a .swiper,
 body.home .elementor-element-0a7cc4a .swiper-wrapper,
 body.home .elementor-element-0a7cc4a .swiper-slide,

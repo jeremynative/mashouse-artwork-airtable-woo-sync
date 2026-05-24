@@ -460,9 +460,9 @@ body.home .elementor-element-3dd430f > .elementor-container {
   min-height: 0 !important;
   align-items: flex-start !important;
   display: grid !important;
-  grid-template-columns: minmax(440px, 1.22fr) minmax(330px, .96fr) minmax(300px, .86fr) !important;
-  gap: clamp(28px, 3.2vw, 54px) !important;
-  width: min(1500px, calc(100vw - 112px)) !important;
+  grid-template-columns: minmax(430px, 1.08fr) minmax(390px, 1.02fr) minmax(360px, .9fr) !important;
+  gap: clamp(30px, 3vw, 52px) !important;
+  width: min(1600px, calc(100vw - 80px)) !important;
   max-width: none !important;
   margin: 0 auto !important;
 }
@@ -530,6 +530,11 @@ body.home .elementor-element-0a7cc4a .swiper-slide-image {
   object-position: center center !important;
 }
 
+body.home .elementor-element-0a7cc4a .swiper-slide-image {
+  max-width: 420px !important;
+  margin: 0 auto !important;
+}
+
 body.home .elementor-element-8203c65,
 body.home .elementor-element-e18ab85 {
   width: 100% !important;
@@ -543,7 +548,7 @@ body.home .elementor-element-e18ab85 .elementor-heading-title {
 }
 
 body.home .elementor-element-e18ab85 .elementor-heading-title {
-  max-width: 360px !important;
+  max-width: 420px !important;
   margin: 0 auto !important;
   font-weight: 650 !important;
 }
