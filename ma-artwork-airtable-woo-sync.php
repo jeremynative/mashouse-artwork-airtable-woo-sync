@@ -3626,6 +3626,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     </div>
                 <?php endif; ?>
             </section>
+            <p class="ma-community-artists-count" aria-live="polite" data-total="<?php echo esc_attr((string) count($artists)); ?>">
+                Showing <?php echo esc_html((string) count($artists)); ?> artists
+            </p>
 
             <section class="ma-community-artists-grid" aria-label="Artists">
                 <?php foreach ($artists as $artist) : ?>
@@ -3647,6 +3650,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                             <?php endif; ?>
                             <?php if (!empty($artist['location'])) : ?>
                                 <p class="ma-community-artist-card__location">Based in <?php echo esc_html($artist['location']); ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($artist['residency_period'])) : ?>
+                                <p class="ma-community-artist-card__residency">In residence: <?php echo esc_html($artist['residency_period']); ?></p>
                             <?php endif; ?>
                             <?php if ($artist['bio']) : ?>
                                 <p class="ma-community-artist-card__bio"><?php echo esc_html(wp_trim_words($artist['bio'], 28)); ?></p>
@@ -3696,6 +3702,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     link.href = url.toString();
                 });
             }
+            function updateCount() {
+                var count = document.querySelector('.ma-community-artists-count');
+                if (!count) return;
+                var visible = document.querySelectorAll('.ma-community-artist-card:not([hidden])').length;
+                count.textContent = 'Showing ' + visible + ' artist' + (visible === 1 ? '' : 's');
+            }
             function applyFilters(updateUrl){
                 var values = activeValues();
                 document.querySelectorAll('.ma-community-artist-card').forEach(function(card) {
@@ -3710,6 +3722,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     if (values.medium) url.searchParams.set('medium', values.medium); else url.searchParams.delete('medium');
                     window.history.replaceState({}, '', url.toString());
                 }
+                updateCount();
             }
             document.addEventListener('click', function(event) {
                 var button = event.target.closest('[data-ma-artist-filter]');

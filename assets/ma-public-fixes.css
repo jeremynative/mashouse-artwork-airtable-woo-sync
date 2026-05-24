@@ -2260,6 +2260,14 @@ body.page-slug-community-artists .nv-page-title-wrap {
   color: #fff;
 }
 
+.ma-community-artists-count {
+  margin: 16px 0 0;
+  color: #444;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .ma-community-artists-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2352,6 +2360,14 @@ body.page-slug-community-artists .nv-page-title-wrap {
   color: #4d4d4d;
   font-size: 13px;
   font-weight: 650;
+  line-height: 1.35;
+}
+
+.ma-community-artist-card__residency {
+  margin: 7px 0 0;
+  color: #111;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.35;
 }
 
