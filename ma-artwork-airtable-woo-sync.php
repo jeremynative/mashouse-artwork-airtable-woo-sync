@@ -3899,8 +3899,30 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
             $cards[] = $resident;
         }
-        usort($cards, static fn($a, $b) => strcasecmp($a['name'], $b['name']));
+        usort($cards, static function ($a, $b): int {
+            return strcasecmp(self::artist_last_name_sort_key($a['name'] ?? ''), self::artist_last_name_sort_key($b['name'] ?? ''));
+        });
         return $cards;
+    }
+
+    private static function artist_last_name_sort_key(string $name): string {
+        $name = trim(wp_strip_all_tags($name));
+        if (!$name) {
+            return '';
+        }
+        $name = preg_replace('/\s*\([^)]*\)\s*/', ' ', $name);
+        $name = preg_replace('/\s+/', ' ', (string) $name);
+        $group_suffixes = ['Collective', 'Studio', 'Studios', 'Project', 'Projects', 'Press', 'Co.', 'Company', 'Consulting', 'Design'];
+        $parts = array_values(array_filter(explode(' ', trim((string) $name))));
+        if (count($parts) <= 1 || in_array(end($parts), $group_suffixes, true)) {
+            return strtolower($name);
+        }
+        $particles = ['da', 'de', 'del', 'der', 'di', 'du', 'la', 'le', 'van', 'von'];
+        $last = array_pop($parts);
+        while ($parts && in_array(strtolower((string) end($parts)), $particles, true)) {
+            $last = array_pop($parts) . ' ' . $last;
+        }
+        return strtolower($last . ', ' . implode(' ', $parts));
     }
 
     private static function resident_artist_cards_data(): array {
