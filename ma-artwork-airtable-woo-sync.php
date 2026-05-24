@@ -3849,6 +3849,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             if (!$location || ($inferred_location && strlen($location) < 8)) {
                 $location = $inferred_location;
             }
+            $location = self::artist_location_region($location);
             $image = self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true));
             if (!$image && has_post_thumbnail($post_id)) {
                 $image = get_the_post_thumbnail_url($post_id, 'medium_large') ?: '';
@@ -3949,7 +3950,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $key = strtolower($name);
             $bio = self::bio_from_text_for_artist($name, (string) $post->post_content) ?: self::clean_bio_text((string) $post->post_excerpt ?: (string) $post->post_content);
             $image = has_post_thumbnail($post_id) ? (get_the_post_thumbnail_url($post_id, 'medium_large') ?: '') : '';
-            $location = self::infer_artist_location($bio);
+            $location = self::artist_location_region(self::infer_artist_location($bio));
             $mediums = self::correct_artist_mediums($name, self::infer_artist_mediums($bio));
             if (isset($seen[$key])) {
                 $index = $seen[$key];
@@ -4183,6 +4184,27 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function validated_artist_location(string $location): string {
         $location = self::clean_artist_location($location);
         return self::is_plausible_artist_location($location) ? $location : '';
+    }
+
+    private static function artist_location_region(string $location): string {
+        $location = self::clean_artist_location($location);
+        if (!$location) {
+            return '';
+        }
+        $regions = [
+            'New York' => '/\b(NY|New York|NYC|Brooklyn|Bronx|Queens|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Shinnecock)\b/i',
+            'California' => '/\b(CA|California|Oakland|San Francisco|Bay Area|Los Angeles)\b/i',
+            'Florida' => '/\b(FL|Florida|Central and South Florida)\b/i',
+            'New Jersey' => '/\b(NJ|New Jersey)\b/i',
+            'Virginia' => '/\b(VA|Virginia|Arlington)\b/i',
+            'Quebec' => '/\b(Kebaowek|First Nation|Quebec|Québec)\b/i',
+        ];
+        foreach ($regions as $region => $pattern) {
+            if (preg_match($pattern, $location)) {
+                return $region;
+            }
+        }
+        return '';
     }
 
     private static function is_plausible_artist_location(string $location): bool {
