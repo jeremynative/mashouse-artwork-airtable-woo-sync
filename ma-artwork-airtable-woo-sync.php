@@ -111,6 +111,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$is_post_query) {
             return;
         }
+        $resident_artists = get_term_by('slug', 'resident-artists', 'category');
+        if ($resident_artists instanceof WP_Term && self::query_targets_category($query, (int) $resident_artists->term_id, 'resident-artists')) {
+            $query->set('posts_per_page', 5);
+        }
         $artists = get_term_by('slug', 'artists', 'category');
         if (!$artists instanceof WP_Term) {
             return;
@@ -118,6 +122,40 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $excluded = array_map('intval', (array) $query->get('category__not_in'));
         $excluded[] = (int) $artists->term_id;
         $query->set('category__not_in', array_values(array_unique(array_filter($excluded))));
+    }
+
+    private static function query_targets_category(WP_Query $query, int $term_id, string $slug): bool {
+        $category_in = array_map('intval', (array) $query->get('category__in'));
+        if (in_array($term_id, $category_in, true)) {
+            return true;
+        }
+
+        $cat = $query->get('cat');
+        if ($cat && in_array($term_id, array_map('intval', preg_split('/[,\s]+/', (string) $cat) ?: []), true)) {
+            return true;
+        }
+
+        $category_name = (string) $query->get('category_name');
+        if ($category_name && in_array($slug, array_map('trim', explode(',', $category_name)), true)) {
+            return true;
+        }
+
+        $tax_query = (array) $query->get('tax_query');
+        foreach ($tax_query as $clause) {
+            if (!is_array($clause) || ($clause['taxonomy'] ?? '') !== 'category') {
+                continue;
+            }
+            $terms = (array) ($clause['terms'] ?? []);
+            $field = (string) ($clause['field'] ?? 'term_id');
+            if ($field === 'slug' && in_array($slug, array_map('strval', $terms), true)) {
+                return true;
+            }
+            if (in_array($term_id, array_map('intval', $terms), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function activate(): void {
