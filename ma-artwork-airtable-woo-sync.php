@@ -3621,6 +3621,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $artists = self::community_artist_cards_data();
         $mediums = [];
         $roles = [];
+        $locations = [];
         foreach ($artists as $artist) {
             foreach ($artist['mediums'] as $medium) {
                 $mediums[$medium] = $medium;
@@ -3628,9 +3629,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
             foreach ($artist['roles'] as $role) {
                 $roles[$role] = $role;
             }
+            $location = self::text($artist['location'] ?? '');
+            if ($location) {
+                $locations[$location] = $location;
+            }
         }
         natcasesort($mediums);
         natcasesort($roles);
+        natcasesort($locations);
 
         ob_start();
         ?>
@@ -3663,6 +3669,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
+                <?php if ($locations) : ?>
+                    <div>
+                        <span>Location</span>
+                        <button type="button" class="is-active" data-ma-artist-filter="location" data-value="">All</button>
+                        <?php foreach ($locations as $location) : ?>
+                            <button type="button" data-ma-artist-filter="location" data-value="<?php echo esc_attr(sanitize_title($location)); ?>"><?php echo esc_html($location); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </section>
             <p class="ma-community-artists-count" aria-live="polite" data-total="<?php echo esc_attr((string) count($artists)); ?>">
                 Showing <?php echo esc_html((string) count($artists)); ?> artists
@@ -3670,7 +3685,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
             <section class="ma-community-artists-grid" aria-label="Artists">
                 <?php foreach ($artists as $artist) : ?>
-                    <article class="ma-community-artist-card" data-role="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['roles']))); ?>" data-medium="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['mediums']))); ?>">
+                    <article class="ma-community-artist-card" data-role="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['roles']))); ?>" data-medium="<?php echo esc_attr(implode(' ', array_map('sanitize_title', $artist['mediums']))); ?>" data-location="<?php echo esc_attr(sanitize_title(self::text($artist['location'] ?? ''))); ?>">
                         <a class="ma-community-artist-card__image" href="<?php echo esc_url($artist['url']); ?>">
                             <?php if ($artist['image']) : ?>
                                 <img src="<?php echo esc_url($artist['image']); ?>" alt="<?php echo esc_attr($artist['name'] . ' portrait'); ?>" loading="lazy">
@@ -3716,12 +3731,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
             function activeValues(){
                 var controls = controlsRoot();
-                if (!controls) return {role:'', medium:''};
+                if (!controls) return {role:'', medium:'', location:''};
                 var role = controls.querySelector('[data-ma-artist-filter="role"].is-active');
                 var medium = controls.querySelector('[data-ma-artist-filter="medium"].is-active');
+                var location = controls.querySelector('[data-ma-artist-filter="location"].is-active');
                 return {
                     role: role ? role.getAttribute('data-value') : '',
-                    medium: medium ? medium.getAttribute('data-value') : ''
+                    medium: medium ? medium.getAttribute('data-value') : '',
+                    location: location ? location.getAttribute('data-value') : ''
                 };
             }
             function setActive(kind, value){
@@ -3737,6 +3754,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     var url = new URL(link.href, window.location.origin);
                     if (values.role) url.searchParams.set('role', values.role); else url.searchParams.delete('role');
                     if (values.medium) url.searchParams.set('medium', values.medium); else url.searchParams.delete('medium');
+                    if (values.location) url.searchParams.set('location', values.location); else url.searchParams.delete('location');
                     link.href = url.toString();
                 });
             }
@@ -3751,13 +3769,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 document.querySelectorAll('.ma-community-artist-card').forEach(function(card) {
                     var roleOk = !values.role || card.getAttribute('data-role').split(' ').indexOf(values.role) !== -1;
                     var mediumOk = !values.medium || card.getAttribute('data-medium').split(' ').indexOf(values.medium) !== -1;
-                    card.hidden = !(roleOk && mediumOk);
+                    var locationOk = !values.location || card.getAttribute('data-location') === values.location;
+                    card.hidden = !(roleOk && mediumOk && locationOk);
                 });
                 updateProfileLinks(values);
                 if (updateUrl) {
                     var url = new URL(window.location.href);
                     if (values.role) url.searchParams.set('role', values.role); else url.searchParams.delete('role');
                     if (values.medium) url.searchParams.set('medium', values.medium); else url.searchParams.delete('medium');
+                    if (values.location) url.searchParams.set('location', values.location); else url.searchParams.delete('location');
                     window.history.replaceState({}, '', url.toString());
                 }
                 updateCount();
@@ -3771,6 +3791,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             var params = new URLSearchParams(window.location.search);
             if (params.has('role')) setActive('role', params.get('role'));
             if (params.has('medium')) setActive('medium', params.get('medium'));
+            if (params.has('location')) setActive('location', params.get('location'));
             applyFilters(false);
         }());
         </script>
@@ -4105,8 +4126,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function clean_artist_location(string $location): string {
         $location = trim(wp_strip_all_tags($location));
         $location = preg_replace('/\s+/', ' ', $location);
+        $location = preg_replace('/^[A-Za-z]+-born,\s*/i', '', $location);
         $location = preg_replace('/^.*?\bis\s+(?:a|an)\s+/i', '', $location);
         $location = preg_replace('/^(?:a|an)\s+/i', '', $location);
+        $location = preg_replace('/\s+and\s+the\s+ocean\b.*$/i', '', $location);
         $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter|and\s+is|and\s+works|and\s+creates|while|but|after|made\s+possible|at)\b.*$/i', '', $location);
         $location = trim($location, " \t\n\r\0\x0B,.;:-");
         $aliases = [
