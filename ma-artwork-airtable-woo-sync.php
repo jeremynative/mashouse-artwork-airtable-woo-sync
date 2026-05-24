@@ -3770,7 +3770,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $instagram = self::text(get_post_meta($post_id, 'ma_artist_instagram', true));
             $social = self::artist_social_url($instagram);
             $inferred_location = self::infer_artist_location($bio);
-            $location = self::text(get_post_meta($post_id, 'ma_artist_location', true));
+            $location = self::clean_artist_location(self::text(get_post_meta($post_id, 'ma_artist_location', true)));
+            if (!self::is_plausible_artist_location($location)) {
+                $location = '';
+            }
             if (!$location || ($inferred_location && strlen($location) < 8)) {
                 $location = $inferred_location;
             }
@@ -4033,17 +4036,17 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return '';
         }
         if (preg_match('/\b(?:born and based|based|based out of|lives and works|lives|resides|works)\s+(?:in|on|out of)\s+([^.;\n]{2,90})/i', $text, $match)) {
-            return self::clean_artist_location($match[1]);
+            return self::validated_artist_location($match[1]);
         }
-        if (preg_match('/\b(?:from|native of)\s+((?:the\s+)?[A-Z][A-Za-z.\' -]+(?:,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))?)/', $text, $match)) {
-            return self::clean_artist_location($match[1]);
+        if (preg_match('/\b(?:from|native of)\s+((?:the\s+)?[A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|New Jersey|NJ|Virginia|VA|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))/i', $text, $match)) {
+            return self::validated_artist_location($match[1]);
         }
         if (preg_match('/\b([A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))[- ]based\b/', $text, $match)) {
-            return self::clean_artist_location($match[1]);
+            return self::validated_artist_location($match[1]);
         }
         if (preg_match('/\b([A-Z][A-Za-z.\' -]+)[- ]based\b/', $text, $match)) {
             $location = self::clean_artist_location($match[1]);
-            return preg_match('/\b(US|U\.S|American|community|place|home|studio|project)\b/i', $location) ? '' : $location;
+            return preg_match('/\b(US|U\.S|American|community|place|home|studio|project)\b/i', $location) ? '' : self::validated_artist_location($location);
         }
         return '';
     }
@@ -4051,11 +4054,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function clean_artist_location(string $location): string {
         $location = trim(wp_strip_all_tags($location));
         $location = preg_replace('/\s+/', ' ', $location);
-        $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter|and\s+is|and\s+works|and\s+creates|while)\b.*$/i', '', $location);
+        $location = preg_replace('/^(?:a|an)\s+/i', '', $location);
+        $location = preg_replace('/\s+(who|with|where|whose|working|primarily|currently|artist|designer|writer|photographer|painter|and\s+is|and\s+works|and\s+creates|while|but|after|made\s+possible|at)\b.*$/i', '', $location);
         $location = trim($location, " \t\n\r\0\x0B,.;:-");
         $aliases = [
             'NYC' => 'New York, NY',
             'New York City' => 'New York, NY',
+            'New York' => 'New York, NY',
             'Brooklyn' => 'Brooklyn, NY',
             'Bronx' => 'Bronx, NY',
             'Southampton' => 'Southampton, NY',
@@ -4067,6 +4072,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Central and South Florida' => 'Central and South Florida',
         ];
         return $aliases[$location] ?? $location;
+    }
+
+    private static function validated_artist_location(string $location): string {
+        $location = self::clean_artist_location($location);
+        return self::is_plausible_artist_location($location) ? $location : '';
+    }
+
+    private static function is_plausible_artist_location(string $location): bool {
+        if (!$location) {
+            return false;
+        }
+        if (preg_match('/\b(University|College|School|Institute|Foundation|Fund|After|March|April|May|June|July|August|September|October|November|December)\b/i', $location)) {
+            return false;
+        }
+        return (bool) preg_match('/\b(NY|New York|Brooklyn|Bronx|Queens|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Shinnecock|Oakland|San Francisco|Bay Area|California|CA|Florida|FL|New Jersey|NJ|Arlington|Virginia|VA|Los Angeles|Central and South Florida|Kebaowek|First Nation)\b/i', $location);
     }
 
     private static function infer_artist_mediums(string $text): array {
