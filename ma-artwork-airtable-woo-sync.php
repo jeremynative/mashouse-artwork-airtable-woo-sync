@@ -4133,13 +4133,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (preg_match('/\b(?:born and based|based|based out of|lives and works|lives|resides|works)\s+(?:in|on|out of)\s+([^.;\n]{2,90})/i', $text, $match)) {
             return self::validated_artist_location($match[1]);
         }
-        if (preg_match('/\b(?:from|native of)\s+((?:the\s+)?[A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|New Jersey|NJ|Virginia|VA|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))/i', $text, $match)) {
+        if (preg_match('/\b(?:from|native of)\s+((?:the\s+)?[A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|New Jersey|NJ|Virginia|VA|Pennsylvania|PA|Ohio|OH|Colorado|CO|Alaska|AK|Illinois|IL|Washington|WA|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco|Philadelphia|Chicago|Cincinnati|Ketchikan|Ione))/i', $text, $match)) {
             return self::validated_artist_location($match[1]);
         }
-        if (preg_match('/\b([A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco))[- ]based\b/', $text, $match)) {
+        if (preg_match('/\b([A-Z][A-Za-z.\' -]+,\s*(?:New York|NY|California|CA|Florida|FL|New Jersey|NJ|Pennsylvania|PA|Ohio|OH|Colorado|CO|Alaska|AK|Illinois|IL|Virginia|VA|Brooklyn|Queens|Bronx|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Los Angeles|San Francisco|Philadelphia|Chicago|Cincinnati))[-\x{2013}\x{2014} ]based\b/u', $text, $match)) {
             return self::validated_artist_location($match[1]);
         }
-        if (preg_match('/\b([A-Z][A-Za-z.\' -]+)[- ]based\b/', $text, $match)) {
+        if (preg_match('/\b([A-Z][A-Za-z.\' -]+)[-\x{2013}\x{2014} ]based\b/u', $text, $match)) {
             $location = self::clean_artist_location($match[1]);
             return preg_match('/\b(US|U\.S|American|community|place|home|studio|project)\b/i', $location) ? '' : self::validated_artist_location($location);
         }
@@ -4177,6 +4177,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Shinnecock Indian Nation' => 'Shinnecock Indian Nation, Southampton, NY',
             'the San Francisco Bay Area' => 'San Francisco Bay Area',
             'Central and South Florida' => 'Central and South Florida',
+            'Philadelphia' => 'Philadelphia, PA',
+            'Cincinnati' => 'Cincinnati, OH',
+            'Chicago' => 'Chicago, IL',
         ];
         return $aliases[$location] ?? $location;
     }
@@ -4197,6 +4200,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Florida' => '/\b(FL|Florida|Central and South Florida)\b/i',
             'New Jersey' => '/\b(NJ|New Jersey)\b/i',
             'Virginia' => '/\b(VA|Virginia|Arlington)\b/i',
+            'Pennsylvania' => '/\b(PA|Pennsylvania|Philadelphia)\b/i',
+            'Ohio' => '/\b(OH|Ohio|Cincinnati)\b/i',
+            'Colorado' => '/\b(CO|Colorado)\b/i',
+            'Alaska' => '/\b(AK|Alaska|Ketchikan)\b/i',
+            'Illinois' => '/\b(IL|Illinois|Chicago)\b/i',
+            'Washington' => '/\b(WA|Washington|Ione)\b/i',
             'Quebec' => '/\b(Kebaowek|First Nation|Quebec|Québec)\b/i',
         ];
         foreach ($regions as $region => $pattern) {
@@ -4214,7 +4223,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (preg_match('/\b(University|College|School|Institute|Foundation|Fund|After|March|April|May|June|July|August|September|October|November|December)\b/i', $location)) {
             return false;
         }
-        return (bool) preg_match('/\b(NY|New York|Brooklyn|Bronx|Queens|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Shinnecock|Oakland|San Francisco|Bay Area|California|CA|Florida|FL|New Jersey|NJ|Arlington|Virginia|VA|Los Angeles|Central and South Florida|Kebaowek|First Nation)\b/i', $location);
+        return (bool) preg_match('/\b(NY|New York|Brooklyn|Bronx|Queens|Manhattan|Long Island|Southampton|Sag Harbor|East Hampton|Shinnecock|Oakland|San Francisco|Bay Area|California|CA|Florida|FL|New Jersey|NJ|Arlington|Virginia|VA|Los Angeles|Central and South Florida|Kebaowek|First Nation|Pennsylvania|PA|Philadelphia|Ohio|OH|Cincinnati|Colorado|CO|Alaska|AK|Ketchikan|Illinois|IL|Chicago|Washington|WA|Ione|Quebec|Québec)\b/i', $location);
     }
 
     private static function infer_artist_mediums(string $text): array {
