@@ -82,6 +82,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
         add_filter('the_content', [__CLASS__, 'replace_residency_page_content'], 40);
         add_filter('the_content', [__CLASS__, 'replace_community_artists_page_content'], 41);
+        add_filter('the_content', [__CLASS__, 'prepend_single_post_content_header'], 41);
         add_filter('the_content', [__CLASS__, 'prepend_artist_post_content_header'], 42);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
@@ -3214,6 +3215,38 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::community_artists_page_html();
     }
 
+    public static function prepend_single_post_content_header(string $content): string {
+        if (is_admin() || !is_singular('post') || self::is_current_artist_profile_post()) {
+            return $content;
+        }
+        if (strpos($content, 'ma-single-post-content-header') !== false) {
+            return $content;
+        }
+        $post = get_queried_object();
+        if (!($post instanceof WP_Post)) {
+            return $content;
+        }
+        $title = self::text(get_the_title($post));
+        if (!$title) {
+            return $content;
+        }
+        $image = has_post_thumbnail((int) $post->ID)
+            ? get_the_post_thumbnail((int) $post->ID, 'large', [
+                'class' => 'ma-single-post-featured-image',
+                'loading' => 'eager',
+                'decoding' => 'async',
+            ])
+            : '';
+        $html = '<header class="ma-single-post-content-header">';
+        $html .= '<h1>' . esc_html($title) . '</h1>';
+        $html .= '<p>' . esc_html(get_the_date('F j, Y', (int) $post->ID)) . '</p>';
+        if ($image) {
+            $html .= '<figure>' . $image . '</figure>';
+        }
+        $html .= '</header>';
+        return $html . $content;
+    }
+
     public static function prepend_artist_post_content_header(string $content): string {
         if (is_admin() || !is_singular('post') || !self::is_current_artist_profile_post()) {
             return $content;
@@ -4785,10 +4818,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin() || !is_single() || (function_exists('is_product') && is_product())) {
             return;
         }
-        if (self::is_current_artist_profile_post()) {
-            return;
-        }
-        echo '<style id="ma-single-post-cover-spacing-css" data-no-optimize="1" data-cfasync="false">body.single-post:not(.single-product) .nv-post-cover{margin-top:86px!important}body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container{margin-top:0!important}@media(max-width:760px){body.single-post:not(.single-product) .nv-post-cover{margin-top:74px!important}}</style>';
+        echo '<style id="ma-single-post-cover-spacing-css" data-no-optimize="1" data-cfasync="false">body.single-post:not(.single-product) .nv-post-cover{display:none!important}body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{margin-top:0!important;padding-top:64px!important}.ma-single-post-content-header{margin:0 0 34px!important}.ma-single-post-content-header h1{font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(32px,4vw,52px)!important;line-height:1.08!important;font-weight:700!important;letter-spacing:0!important;margin:0 0 10px!important;color:#111!important}.ma-single-post-content-header p{font-size:14px!important;line-height:1.4!important;margin:0 0 22px!important;color:#5f6368!important}.ma-single-post-content-header figure{margin:0!important}.ma-single-post-featured-image{display:block!important;width:100%!important;max-width:820px!important;height:auto!important;object-fit:contain!important;border-radius:0!important}@media(max-width:760px){body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{padding-top:38px!important}.ma-single-post-content-header{margin-bottom:26px!important}.ma-single-post-content-header h1{font-size:31px!important}}</style>';
     }
 
     public static function render_staff_page_spacing_css(): void {
