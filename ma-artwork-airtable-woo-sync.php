@@ -5135,8 +5135,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function homepage_final_layout_overrides_css(): string {
         return <<<'HTML'
 <style id="ma-homepage-final-layout-overrides" data-no-optimize="1" data-cfasync="false">
-body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:34px!important;min-height:0!important}
-body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(430px,1.08fr) minmax(390px,1.02fr) minmax(360px,.9fr)!important;gap:clamp(30px,3vw,52px)!important;width:min(1600px,calc(100vw - 80px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
+body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:24px!important;min-height:0!important}
+body.home .elementor-element-c8e0c2e>.elementor-container{min-height:0!important}
+body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(360px,480px) minmax(360px,440px) minmax(320px,380px)!important;gap:clamp(34px,3vw,58px)!important;width:min(1420px,calc(100vw - 96px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
 body.home .elementor-element-3dd430f .elementor-column{width:auto!important;max-width:none!important;min-width:0!important}
 body.home .elementor-element-7b56059>.elementor-element-populated,
 body.home .elementor-element-33c8c69>.elementor-element-populated,
@@ -5144,14 +5145,15 @@ body.home .elementor-element-9c0e721>.elementor-element-populated{padding-top:0!
 body.home .elementor-element-3f664c6,
 body.home .elementor-element-4b2c3f8,
 body.home .elementor-element-18410d1{display:none!important}
-body.home .elementor-element-58eb33a .elementor-heading-title{max-width:680px!important;font-size:clamp(28px,1.8vw,34px)!important;line-height:1.06!important;letter-spacing:0!important}
-body.home .elementor-element-9f214c3{max-width:680px!important}
+body.home .elementor-element-58eb33a .elementor-heading-title{max-width:520px!important;font-size:clamp(28px,1.8vw,34px)!important;line-height:1.06!important;letter-spacing:0!important}
+body.home .elementor-element-9f214c3{max-width:520px!important}
 body.home .elementor-element-9f214c3 p{font-size:17px!important;line-height:1.42!important;margin-bottom:22px!important}
+body.home .elementor-element-9f214c3 p:nth-of-type(2){display:none!important}
 body.home .elementor-element-525dad1,
 body.home .elementor-element-0a7cc4a{width:100%!important;margin-top:0!important}
 body.home .elementor-element-525dad1 img,
 body.home .elementor-element-0a7cc4a .swiper-slide-image{display:block!important;width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
-body.home .elementor-element-0a7cc4a .swiper-slide-image{max-width:420px!important;margin:0 auto!important}
+body.home .elementor-element-0a7cc4a .swiper-slide-image{max-width:380px!important;margin:0 auto!important}
 body.home .elementor-element-0a7cc4a .swiper,
 body.home .elementor-element-0a7cc4a .swiper-wrapper,
 body.home .elementor-element-0a7cc4a .swiper-slide,
@@ -5216,6 +5218,11 @@ HTML;
         $html = preg_replace(
             '~<p><strong>Ma’s House &amp; BIPOC Art Studio Inc</strong>\.\s*is led by Indigenous artist<strong>\s*Jeremy Dennis</strong>\.\s*The project began in June 2020 and serves as a communal art space based on the Shinnecock Indian Reservation in Southampton, New York\.\s*The family house, built in the 1960s, now features a residency program for Black, Indigenous, and People of Color \(BIPOC\) artists, a shared art studio, and a communal library, along with hosting an array of art and history-based programs for tribal members and the broader local community\.</p>~u',
             '<p><strong>Ma’s House &amp; BIPOC Art Studio, Inc.</strong> was founded by Indigenous artist and photographer Jeremy Dennis and is guided by a board, staff, artists, and community partners. The project began in June 2020 and serves as a communal art space based on the Shinnecock Indian Reservation in Southampton, New York. The family house, built in the 1960s, now features a residency program for Black, Indigenous, and People of Color (BIPOC) artists, a shared art studio, a communal library, and art and history-based programs for Shinnecock community members and the broader local community.</p><p>Recent milestones include selection for the Ruth Foundation for the Arts 2025–2028 Core Grants cohort, recognition from the Museum Association of New York for <em>Shinnecock Speaks</em>, and a growing residency alumni network of BIPOC artists working across visual art, writing, performance, research, sound, film, and interdisciplinary practice.</p>',
+            $html
+        ) ?? $html;
+        $html = preg_replace(
+            '~<p>Recent milestones include selection for the Ruth Foundation for the Arts 2025[^<]*(?:<em>Shinnecock Speaks</em>)?[^<]*interdisciplinary practice\.</p>~u',
+            '',
             $html
         ) ?? $html;
         $html = str_replace(
