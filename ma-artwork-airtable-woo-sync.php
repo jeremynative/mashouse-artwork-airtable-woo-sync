@@ -114,7 +114,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $resident_artists = get_term_by('slug', 'resident-artists', 'category');
         if ($resident_artists instanceof WP_Term && self::query_targets_category($query, (int) $resident_artists->term_id, 'resident-artists')) {
-            $query->set('posts_per_page', 5);
+            $query->set('posts_per_page', 11);
         }
         $artists = get_term_by('slug', 'artists', 'category');
         if (!$artists instanceof WP_Term) {
