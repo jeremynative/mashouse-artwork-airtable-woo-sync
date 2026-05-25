@@ -82,6 +82,10 @@ body.single-post:not(.single-product) .container.single-post-container {
   margin: 0 !important;
 }
 
+.ma-artist-content-header__image {
+  margin: 22px 0 24px !important;
+}
+
 .ma-single-post-featured-image {
   display: block !important;
   width: 100% !important;

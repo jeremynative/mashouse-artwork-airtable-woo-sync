@@ -3264,7 +3264,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
         $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
-        return '<header class="ma-artist-content-header"><h1>' . esc_html($title) . '</h1></header>' . self::artist_page_back_and_tags_html($roles, $mediums) . $content;
+        $image = has_post_thumbnail((int) $post->ID)
+            ? get_the_post_thumbnail((int) $post->ID, 'large', [
+                'class' => 'ma-single-post-featured-image',
+                'loading' => 'eager',
+                'decoding' => 'async',
+            ])
+            : '';
+        $header = '<header class="ma-artist-content-header"><h1>' . esc_html($title) . '</h1>';
+        if ($image) {
+            $header .= '<figure class="ma-artist-content-header__image">' . $image . '</figure>';
+        }
+        $header .= '</header>';
+        return $header . self::artist_page_back_and_tags_html($roles, $mediums) . $content;
     }
 
     public static function render_news_posts_page_template(): void {
