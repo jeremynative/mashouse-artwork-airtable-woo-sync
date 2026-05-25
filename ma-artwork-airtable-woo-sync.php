@@ -3338,21 +3338,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 </div>
             </header>
 
-            <section class="ma-news-section ma-news-section--artists" aria-label="Visiting Artists">
-                <div class="ma-news-section__heading">
-                    <p>Residencies</p>
-                    <h2>Visiting Artists</h2>
-                </div>
-                <?php echo self::news_cards_html($visiting_artists, true); ?>
-            </section>
+            <div class="ma-news-columns">
+                <section class="ma-news-section ma-news-section--artists" aria-label="Visiting Artists">
+                    <div class="ma-news-section__heading">
+                        <p>Residencies</p>
+                        <h2>Visiting Artists</h2>
+                    </div>
+                    <?php echo self::news_cards_html($visiting_artists, true); ?>
+                </section>
 
-            <section class="ma-news-section" aria-label="Blog News">
-                <div class="ma-news-section__heading">
-                    <p>Blog</p>
-                    <h2>Blog News</h2>
-                </div>
-                <?php echo self::news_cards_html($blog_news, false); ?>
-            </section>
+                <section class="ma-news-section ma-news-section--blog" aria-label="Blog News">
+                    <div class="ma-news-section__heading">
+                        <p>Blog</p>
+                        <h2>Blog News</h2>
+                    </div>
+                    <?php echo self::news_cards_html($blog_news, false); ?>
+                </section>
+            </div>
         </article>
         <?php
         return (string) ob_get_clean();
