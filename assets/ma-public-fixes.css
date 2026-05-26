@@ -929,6 +929,10 @@ body.page-id-97 .elementor-element-91dee05 article.elementor-post {
   border-bottom: 1px solid #e3e3e3;
 }
 
+body.home .elementor-element-efa97c0 article.elementor-post:nth-of-type(n+7) {
+  display: none !important;
+}
+
 body.home .elementor-element-efa97c0 .elementor-post__thumbnail__link,
 body.home .elementor-element-91dee05 .elementor-post__thumbnail__link,
 body.page-id-97 .elementor-element-efa97c0 .elementor-post__thumbnail__link,
@@ -1039,6 +1043,18 @@ body.page-id-97 .elementor-element-91dee05 .elementor-post__excerpt {
   color: #333 !important;
   font-size: 13px !important;
   line-height: 1.45 !important;
+}
+
+body.home .elementor-element-efa97c0 .elementor-post__excerpt {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden !important;
+}
+
+body.home .elementor-element-91dee05 .elementor-post__excerpt {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
 }
 
 body.home .elementor-element-efa97c0 .elementor-post__excerpt p,
