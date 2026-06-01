@@ -75,6 +75,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
         add_filter('post_link', [__CLASS__, 'filter_artist_profile_permalink'], 20, 3);
         add_filter('wp_resource_hints', [__CLASS__, 'filter_frontend_resource_hints'], 20, 2);
+        add_filter('the_content', [__CLASS__, 'replace_homepage_static_events_block'], 20);
         add_filter('the_content', [__CLASS__, 'append_product_body_sections'], 30);
         add_filter('the_content', [__CLASS__, 'replace_sponsorship_page_content'], 35);
         add_filter('the_content', [__CLASS__, 'replace_about_page_content'], 36);
@@ -88,6 +89,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
+        add_shortcode('ma_home_events', [__CLASS__, 'home_events_shortcode']);
     }
 
     public static function exclude_artist_profiles_from_recent_posts_widget(array $args): array {
@@ -5146,6 +5148,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 '<p>Current exhibitions, upcoming programs, workshops, and off-site partnerships from Ma\'s House.</p>',
                 $html
             );
+            $html = preg_replace(
+                '~<section\b[\s\S]*?\bevents found\.[\s\S]*?</section>~i',
+                self::render_homepage_live_events_block(),
+                $html,
+                1
+            ) ?? $html;
             if (strpos($html, 'ma-homepage-final-layout-overrides') === false) {
                 $html = str_ireplace('</head>', self::homepage_final_layout_overrides_css() . '</head>', $html);
             }
@@ -5201,9 +5209,29 @@ body.home .ma-home-events-custom__title a,
 body.home .ma-home-events-custom__title *{font-size:16px!important;line-height:1.34!important;font-weight:650!important;letter-spacing:0!important}
 body.home .ma-home-events-custom__date strong{font-size:22px!important;font-weight:650!important}
 body.home .ma-home-events-custom__venue{font-weight:500!important}
+body.home .ma-home-events-custom{width:min(1220px,calc(100vw - 48px));margin:72px auto 58px;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body.home .ma-home-events-custom__header{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin:0 0 34px}
+body.home .ma-home-events-custom__header h2{margin:0!important;font-size:25px!important;line-height:1.2!important;font-weight:500!important;letter-spacing:0!important}
+body.home .ma-home-events-custom__header a{color:#111!important;text-decoration:underline!important;text-underline-offset:3px;font-weight:650}
+body.home .ma-home-events-custom__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:52px;row-gap:42px}
+body.home .ma-home-events-custom__item{display:grid;grid-template-columns:54px minmax(0,1fr) 160px;gap:22px;align-items:start}
+body.home .ma-home-events-custom__date{padding-top:2px;text-align:center;text-transform:uppercase}
+body.home .ma-home-events-custom__date span{display:block;color:#555;font-size:10px;line-height:1.1;font-weight:700}
+body.home .ma-home-events-custom__date strong{display:block;color:#111;line-height:1.05}
+body.home .ma-home-events-custom__meta{margin:0 0 9px;color:#111;font-size:14px;line-height:1.35}
+body.home .ma-home-events-custom__title{margin:0 0 12px!important;color:#111!important}
+body.home .ma-home-events-custom__title a{color:#111!important;text-decoration:none!important}
+body.home .ma-home-events-custom__title a:hover{text-decoration:underline!important;text-underline-offset:3px}
+body.home .ma-home-events-custom__venue{margin:0 0 12px;color:#111;font-size:13px;line-height:1.35}
+body.home .ma-home-events-custom__excerpt{margin:0;color:#111;font-size:14px;line-height:1.55}
+body.home .ma-home-events-custom__excerpt a{color:#111!important;text-decoration:underline!important;text-underline-offset:3px}
+body.home .ma-home-events-custom__thumb img{display:block;width:160px;height:160px;object-fit:cover;border-radius:0}
 @media(max-width:1180px){
 body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:minmax(0,1fr) minmax(260px,.82fr)!important;width:min(1040px,calc(100vw - 48px))!important}
 body.home .elementor-element-9c0e721{grid-column:2!important}
+body.home .ma-home-events-custom__grid{grid-template-columns:1fr}
+body.home .ma-home-events-custom__item{grid-template-columns:54px minmax(0,1fr) 150px}
+body.home .ma-home-events-custom__thumb img{width:150px;height:150px}
 }
 @media(max-width:900px){
 body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:1fr!important;width:min(680px,calc(100vw - 32px))!important}
@@ -5214,9 +5242,114 @@ body.home .elementor-element-0a7cc4a .swiper,
 body.home .elementor-element-0a7cc4a .swiper-wrapper,
 body.home .elementor-element-0a7cc4a .swiper-slide,
 body.home .elementor-element-0a7cc4a figure{height:auto!important}
+body.home .ma-home-events-custom{width:min(680px,calc(100vw - 32px));margin:48px auto}
+body.home .ma-home-events-custom__header{margin-bottom:24px}
+body.home .ma-home-events-custom__item{grid-template-columns:46px minmax(0,1fr);gap:14px}
+body.home .ma-home-events-custom__thumb{grid-column:2}
+body.home .ma-home-events-custom__thumb img{width:100%;height:auto;aspect-ratio:4/3}
 }
 </style>
 HTML;
+    }
+
+    private static function render_homepage_live_events_block(): string {
+        $events = get_posts([
+            'post_type' => 'tribe_events',
+            'post_status' => 'publish',
+            'posts_per_page' => 8,
+            'orderby' => 'meta_value',
+            'meta_key' => '_EventStartDate',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => '_EventStartDate',
+                    'value' => current_time('mysql'),
+                    'compare' => '>=',
+                    'type' => 'DATETIME',
+                ],
+            ],
+        ]);
+
+        ob_start();
+        ?>
+        <section class="ma-home-events-custom" aria-label="Upcoming events">
+            <div class="ma-home-events-custom__header">
+                <h2>Upcoming</h2>
+                <a href="<?php echo esc_url(home_url('/events/')); ?>">View all events</a>
+            </div>
+            <?php if (!$events): ?>
+                <p>No upcoming events are currently listed.</p>
+            <?php else: ?>
+                <div class="ma-home-events-custom__grid">
+                    <?php foreach ($events as $event): ?>
+                        <?php
+                        $event_id = (int) $event->ID;
+                        $start = self::event_start_datetime($event_id);
+                        $end = self::event_end_datetime($event_id);
+                        $start_ts = $start ? strtotime($start) : false;
+                        $permalink = get_permalink($event_id);
+                        $time = self::event_time_label($start, $end);
+                        $venue = function_exists('tribe_get_venue') ? wp_strip_all_tags((string) tribe_get_venue($event_id)) : '';
+                        $address = function_exists('tribe_get_full_address') ? wp_strip_all_tags((string) tribe_get_full_address($event_id)) : '';
+                        $thumb = get_the_post_thumbnail($event_id, 'medium_large', ['loading' => 'lazy']);
+                        $excerpt = self::event_excerpt($event);
+                        ?>
+                        <article class="ma-home-events-custom__item">
+                            <div class="ma-home-events-custom__date">
+                                <span><?php echo esc_html($start_ts ? strtoupper(wp_date('D', $start_ts)) : ''); ?></span>
+                                <strong><?php echo esc_html($start_ts ? wp_date('j', $start_ts) : ''); ?></strong>
+                            </div>
+                            <div class="ma-home-events-custom__body">
+                                <p class="ma-home-events-custom__meta"><?php echo esc_html($start_ts ? wp_date('M j', $start_ts) : ''); ?><?php echo $time ? ' @ ' . esc_html(str_replace(':00', '', $time)) : ''; ?></p>
+                                <h3 class="ma-home-events-custom__title"><a href="<?php echo esc_url($permalink); ?>"><?php echo esc_html(get_the_title($event)); ?></a></h3>
+                                <?php if ($venue || $address): ?>
+                                    <p class="ma-home-events-custom__venue"><?php echo esc_html(trim($venue . ($venue && $address ? ' ' : '') . $address)); ?></p>
+                                <?php endif; ?>
+                                <?php if ($excerpt): ?>
+                                    <p class="ma-home-events-custom__excerpt"><?php echo esc_html($excerpt); ?> <a href="<?php echo esc_url($permalink); ?>">Read More »</a></p>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($thumb): ?>
+                                <a class="ma-home-events-custom__thumb" href="<?php echo esc_url($permalink); ?>" aria-label="<?php echo esc_attr(get_the_title($event)); ?>">
+                                    <?php echo $thumb; ?>
+                                </a>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    public static function home_events_shortcode(): string {
+        return self::render_homepage_live_events_block();
+    }
+
+    public static function replace_homepage_static_events_block(string $content): string {
+        $front_id = (int) get_option('page_on_front');
+        $current_id = (int) get_the_ID();
+        if ($current_id <= 0 && isset($GLOBALS['post']) && $GLOBALS['post'] instanceof WP_Post) {
+            $current_id = (int) $GLOBALS['post']->ID;
+        }
+        if ($front_id <= 0 || $current_id !== $front_id || strpos($content, 'events found.') === false) {
+            return $content;
+        }
+        return preg_replace(
+            '~<section\b[\s\S]*?\bevents found\.[\s\S]*?</section>~i',
+            self::render_homepage_live_events_block(),
+            $content,
+            1
+        ) ?? $content;
+    }
+
+    private static function event_excerpt(WP_Post $event): string {
+        $text = $event->post_excerpt ?: $event->post_content;
+        $text = strip_shortcodes((string) $text);
+        $text = wp_strip_all_tags($text);
+        $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+        return wp_trim_words(trim($text), 32, '...');
     }
 
     private static function filter_public_copy_text(string $html): string {
