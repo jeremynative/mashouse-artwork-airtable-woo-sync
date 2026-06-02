@@ -832,6 +832,10 @@ body.page-id-3388 .elementor-element-5647690 > .elementor-background-overlay {
   line-height: 1.55 !important;
 }
 
+.give-donor-wall-shortcode-wrap .give-donor-content:has(.give-donor-content__comment) .give-donor-content__excerpt {
+  display: none !important;
+}
+
 .give-donor-wall-shortcode-wrap .give-donor__load_more {
   display: block !important;
   width: auto !important;
