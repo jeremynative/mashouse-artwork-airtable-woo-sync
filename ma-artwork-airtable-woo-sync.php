@@ -52,6 +52,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_events_page_first_paint_css'], 2);
         add_action('wp_head', [__CLASS__, 'render_donate_page_first_paint_css'], 3);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
+        add_action('wp_head', [__CLASS__, 'render_homepage_final_layout_overrides'], 19);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
@@ -5015,8 +5016,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (self::allow_woocommerce_session_on_current_request() || self::is_direct_give_embed_request()) {
             return $headers;
         }
-        $headers['Cache-Control'] = 'public, max-age=600, s-maxage=1800, stale-while-revalidate=300';
-        unset($headers['Pragma'], $headers['Expires']);
+        $headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+        $headers['Pragma'] = 'no-cache';
+        $headers['Expires'] = '0';
         return $headers;
     }
 
@@ -5028,9 +5030,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         header_remove('Cache-Control');
-        header_remove('Pragma');
-        header_remove('Expires');
-        header('Cache-Control: public, max-age=600, s-maxage=1800, stale-while-revalidate=300', true);
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true);
+        header('Pragma: no-cache', true);
+        header('Expires: 0', true);
     }
 
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
@@ -5100,6 +5102,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
     public static function start_frontend_performance_buffer(): void {
         if (is_admin() || wp_doing_ajax() || (function_exists('wp_is_json_request') && wp_is_json_request())) {
+            return;
+        }
+        if (function_exists('is_front_page') && is_front_page()) {
             return;
         }
         ob_start([__CLASS__, 'filter_frontend_html']);
@@ -5250,6 +5255,12 @@ body.home .ma-home-events-custom__thumb img{width:100%;height:auto;aspect-ratio:
 }
 </style>
 HTML;
+    }
+
+    public static function render_homepage_final_layout_overrides(): void {
+        if (function_exists('is_front_page') && is_front_page()) {
+            echo self::homepage_final_layout_overrides_css();
+        }
     }
 
     private static function render_homepage_live_events_block(): string {
