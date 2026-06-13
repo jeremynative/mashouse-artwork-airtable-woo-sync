@@ -2418,6 +2418,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function artist_role_choices(): array {
         return [
             'Community Artist',
+            'Shinnecock Artist',
             'Exhibiting Artist',
             'Residency Artist',
             'Guest Workshop Artist',
@@ -4147,6 +4148,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (self::is_community_artist_signal($name, $bio)) {
             $roles[] = 'Community Artist';
         }
+        if (self::is_shinnecock_artist_signal($name, $bio)) {
+            $roles[] = 'Shinnecock Artist';
+        }
         return self::valid_artist_roles($roles);
     }
 
@@ -4177,10 +4181,39 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if ($community_signal && !in_array('Community Artist', $roles, true)) {
             $roles[] = 'Community Artist';
         }
+        if (self::is_shinnecock_artist_signal($name, $bio) && !in_array('Shinnecock Artist', $roles, true)) {
+            $roles[] = 'Shinnecock Artist';
+        }
         if (in_array('Community Artist', $roles, true) && $has_residency && !$community_signal) {
             $roles = array_values(array_diff($roles, ['Community Artist']));
         }
         return self::valid_artist_roles($roles);
+    }
+
+    private static function is_shinnecock_artist_signal(string $name, string $bio): bool {
+        $manual_names = [
+            'avery dennis',
+            'brianna hernandez',
+            'brianna hernández',
+            'brianna l. hernandez',
+            'brianna l. hernández',
+            'denise silva-dennis',
+            'heather rogers',
+            'jeremy dennis',
+            'kelly dennis',
+        ];
+        $normalized_name = strtolower(trim(remove_accents($name)));
+        foreach ($manual_names as $manual_name) {
+            if ($normalized_name === strtolower(remove_accents($manual_name))) {
+                return true;
+            }
+        }
+
+        $text = strtolower(remove_accents($name . ' ' . wp_strip_all_tags($bio)));
+        return (bool) preg_match(
+            '/\b(enrolled\s+member\s+of\s+(?:the\s+)?shinnecock|shinnecock\s+(?:indian\s+)?nation\s+(?:artist|member|citizen|tribal\s+member|community\s+member|council\s+member)|shinnecock\s+(?:artist|tribal\s+member|tribe\s+member|nation\s+member|citizen|community\s+member|council\s+member)|member\s+of\s+(?:the\s+)?shinnecock|shinnecock\s+descent)\b/i',
+            $text
+        );
     }
 
     private static function is_shinnecock_or_manual_community_artist(string $name, string $bio): bool {
