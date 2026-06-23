@@ -67,6 +67,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
         add_action('wp_footer', [__CLASS__, 'render_single_product_artwork_panel_fallback'], 12);
+        add_action('wp_footer', [__CLASS__, 'render_variable_product_image_switcher'], 13);
         add_action('wp_footer', [__CLASS__, 'render_catalog_footer_assets'], 20);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
@@ -6145,6 +6146,139 @@ HTML;
         echo '<style id="ma-product-image-emphasis-css">body.single-product .elementor-element-923ecf0>.elementor-container{display:flex!important;gap:42px!important;justify-content:flex-start!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b{width:54%!important;max-width:650px!important;flex:0 1 54%!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:46%!important;max-width:560px!important;flex:0 1 46%!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-images,body.single-product .elementor-element-923ecf0 .elementor-element-f5de331{width:100%!important;max-width:640px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery{display:block!important;width:100%!important;max-width:640px!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b>.elementor-widget-wrap{padding-left:0!important}@media(max-width:900px){body.single-product .elementor-element-923ecf0>.elementor-container{display:block!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b,body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:100%!important;max-width:none!important}}</style>';
         echo '<style id="ma-product-image-fill-css">body.single-product .elementor-element-923ecf0 .elementor-element-f5de331{padding-right:0!important;margin-right:0!important;width:100%!important;max-width:650px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__wrapper{display:grid!important;grid-template-columns:repeat(6,minmax(0,72px))!important;gap:10px!important;align-items:start!important;width:100%!important;max-width:650px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image{display:block!important;width:72px!important;max-width:72px!important;margin:0!important;float:none!important;overflow:hidden!important;background:#f4f2ee!important;border:1px solid #dedbd4!important;cursor:pointer!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image:first-child{grid-column:1/-1!important;width:100%!important;max-width:650px!important;border:0!important;background:transparent!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image a{display:block!important;width:100%!important;height:100%!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image img{display:block!important;width:100%!important;height:72px!important;max-width:100%!important;object-fit:cover!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image:first-child img{height:auto!important;max-height:none!important;object-fit:contain!important}@media(max-width:760px){body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__wrapper{grid-template-columns:repeat(5,minmax(0,64px))!important;gap:8px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image{width:64px!important;max-width:64px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image img{height:64px!important}}</style>';
         echo '<style id="ma-product-exhibit-body-css">body.single-product .ma-product-summary-column>.ma-product-exhibit-card,body.single-product .ma-product-artwork-panel .ma-product-exhibit-card{display:none!important}.ma-product-exhibit-section{clear:both;width:min(1120px,calc(100% - 48px));max-width:1120px;margin:44px auto 0!important;padding:28px 0;border-top:1px solid rgba(0,0,0,.14);border-bottom:1px solid rgba(0,0,0,.08);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-exhibit-section h2{margin:0 0 18px!important;color:#111!important;font-size:22px!important;line-height:1.2!important;font-weight:650!important}.ma-product-exhibit-section .ma-product-exhibit-card{display:grid!important;max-width:820px;grid-template-columns:170px minmax(0,1fr)!important;gap:24px!important;align-items:start!important;margin:0!important;color:#111!important;text-decoration:none!important;background:transparent!important;border:0!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{min-height:0!important;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-section .ma-product-exhibit-card__image img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}.ma-product-exhibit-section .ma-product-exhibit-card__body span{display:block;margin:0 0 8px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-section .ma-product-exhibit-card__body h3{margin:0 0 8px!important;color:#111!important;font-size:19px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-section .ma-product-exhibit-card__body p{margin:0 0 5px;color:#333;font-size:14px;line-height:1.45}@media(max-width:760px){.ma-product-exhibit-section{width:calc(100% - 32px);margin-top:28px!important;padding:24px 0}.ma-product-exhibit-section .ma-product-exhibit-card{grid-template-columns:1fr!important;gap:14px!important}.ma-product-exhibit-section .ma-product-exhibit-card__image{max-width:260px}}</style>';
+    }
+
+    public static function render_variable_product_image_switcher(): void {
+        if (!function_exists('is_product') || !is_product()) {
+            return;
+        }
+        global $product;
+        if (!$product instanceof WC_Product || !$product->is_type('variable')) {
+            return;
+        }
+        ?>
+        <script id="ma-variable-product-image-switcher">
+        (function(){
+            function ready(fn){
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, {once:true});
+                else fn();
+            }
+            function slugify(value){
+                return String(value || '').toLowerCase().replace(/&amp;/g,'and').replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+            }
+            function gallery(){
+                var root = document.querySelector('.elementor-element-923ecf0 .woocommerce-product-gallery') || document.querySelector('.woocommerce-product-gallery');
+                if (!root) return null;
+                var items = Array.prototype.slice.call(root.querySelectorAll('.woocommerce-product-gallery__image'));
+                return items.length ? {root: root, items: items, main: items[0]} : null;
+            }
+            function imagePayloadFromVariation(variation){
+                var image = variation && variation.image ? variation.image : null;
+                if (!image || !image.src) return null;
+                return {
+                    src: image.src,
+                    srcset: image.srcset || '',
+                    sizes: image.sizes || '',
+                    full: image.full_src || image.url || image.src,
+                    alt: image.alt || ''
+                };
+            }
+            function imagePayloadFromGalleryItem(item){
+                if (!item) return null;
+                var img = item.querySelector('img');
+                if (!img) return null;
+                return {
+                    src: img.getAttribute('data-large_image') || img.getAttribute('data-src') || img.currentSrc || img.src,
+                    srcset: img.getAttribute('srcset') || item.getAttribute('data-thumb-srcset') || '',
+                    sizes: img.getAttribute('sizes') || item.getAttribute('data-thumb-sizes') || '',
+                    full: img.getAttribute('data-large_image') || img.getAttribute('data-src') || img.currentSrc || img.src,
+                    alt: item.getAttribute('data-thumb-alt') || img.getAttribute('alt') || ''
+                };
+            }
+            function findGalleryItemForColor(colorSlug, colorText){
+                var g = gallery();
+                if (!g || !colorSlug) return null;
+                var needles = [slugify(colorSlug), slugify(colorText)].filter(Boolean);
+                for (var i = 0; i < g.items.length; i++) {
+                    var item = g.items[i];
+                    var img = item.querySelector('img');
+                    var hay = [
+                        item.getAttribute('data-thumb') || '',
+                        item.getAttribute('data-thumb-alt') || '',
+                        item.getAttribute('data-thumb-srcset') || '',
+                        img ? img.getAttribute('src') : '',
+                        img ? img.getAttribute('srcset') : '',
+                        img ? img.getAttribute('data-src') : '',
+                        img ? img.getAttribute('data-large_image') : '',
+                        img ? img.getAttribute('alt') : ''
+                    ].join(' ').toLowerCase();
+                    for (var n = 0; n < needles.length; n++) {
+                        if (needles[n] && hay.indexOf(needles[n]) !== -1) return item;
+                    }
+                }
+                return null;
+            }
+            function applyMainImage(payload, activeItem){
+                var g = gallery();
+                if (!g || !g.main || !payload || !payload.src) return;
+                var mainImg = g.main.querySelector('img');
+                var mainLink = g.main.querySelector('a');
+                if (!mainImg) return;
+
+                mainImg.src = payload.src;
+                mainImg.setAttribute('src', payload.src);
+                mainImg.setAttribute('data-src', payload.full || payload.src);
+                mainImg.setAttribute('data-large_image', payload.full || payload.src);
+                if (payload.srcset) mainImg.setAttribute('srcset', payload.srcset);
+                else mainImg.removeAttribute('srcset');
+                if (payload.sizes) mainImg.setAttribute('sizes', payload.sizes);
+                else mainImg.removeAttribute('sizes');
+                if (payload.alt) mainImg.setAttribute('alt', payload.alt);
+                if (mainLink && payload.full) mainLink.setAttribute('href', payload.full);
+                g.items.forEach(function(item){ item.classList.remove('ma-active-product-thumb'); });
+                if (activeItem) activeItem.classList.add('ma-active-product-thumb');
+            }
+            function selectedColorInfo(){
+                var select = document.querySelector('form.variations_form select[name="attribute_pa_color"], form.variations_form select[data-attribute_name="attribute_pa_color"]');
+                if (!select || !select.value) return null;
+                var option = select.options[select.selectedIndex];
+                return {slug: select.value, text: option ? option.textContent : select.value};
+            }
+            function syncFromColor(){
+                var color = selectedColorInfo();
+                if (!color) return;
+                var item = findGalleryItemForColor(color.slug, color.text);
+                if (item) applyMainImage(imagePayloadFromGalleryItem(item), item);
+            }
+            ready(function(){
+                document.addEventListener('change', function(event){
+                    if (event.target && event.target.matches('form.variations_form select[name="attribute_pa_color"], form.variations_form select[data-attribute_name="attribute_pa_color"]')) {
+                        window.setTimeout(syncFromColor, 30);
+                    }
+                });
+                document.addEventListener('click', function(event){
+                    var item = event.target && event.target.closest ? event.target.closest('.woocommerce-product-gallery__image') : null;
+                    if (item && !item.matches('.woocommerce-product-gallery__image:first-child')) {
+                        applyMainImage(imagePayloadFromGalleryItem(item), item);
+                    }
+                }, true);
+                if (window.jQuery) {
+                    window.jQuery(document).on('found_variation', 'form.variations_form', function(event, variation){
+                        var payload = imagePayloadFromVariation(variation);
+                        if (payload) applyMainImage(payload, null);
+                        else window.setTimeout(syncFromColor, 30);
+                    });
+                    window.jQuery(document).on('reset_data', 'form.variations_form', function(){
+                        var g = gallery();
+                        if (g) g.items.forEach(function(item){ item.classList.remove('ma-active-product-thumb'); });
+                    });
+                }
+                syncFromColor();
+            });
+        }());
+        </script>
+        <style id="ma-variable-product-active-thumb-css">body.single-product .woocommerce-product-gallery__image.ma-active-product-thumb{border-color:#111!important;box-shadow:0 0 0 1px #111 inset!important}</style>
+        <?php
     }
 
     public static function artist_artworks_shortcode(array $atts): string {
