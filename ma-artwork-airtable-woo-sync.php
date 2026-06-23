@@ -20,6 +20,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private const RSVP_ATTENDEE_META_LAST_SYNCED = '_ma_airtable_visitor_last_synced_at';
     private const CRON_HOOK = 'ma_artwork_airtable_woo_sync_cron';
     private const LOCK_KEY = 'ma_artwork_airtable_woo_sync_lock';
+    private const ARTIST_FIELD_SETUP_CACHE_KEY = 'ma_artwork_airtable_artist_field_setup_checked';
     private const META_PREFIX = '_ma_artwork_airtable_';
     private static bool $shop_on_view_rendered = false;
     private static bool $catalog_css_printed = false;
@@ -204,7 +205,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         wp_clear_scheduled_hook(self::CRON_HOOK);
         if (!wp_next_scheduled(self::CRON_HOOK)) {
-            wp_schedule_event(time() + 1800, 'ma_artwork_every_thirty_minutes', self::CRON_HOOK);
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'ma_artwork_every_six_hours', self::CRON_HOOK);
         }
     }
 
@@ -230,11 +231,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         $schedule = wp_get_schedule(self::CRON_HOOK);
-        if ($schedule === 'ma_artwork_every_five_minutes') {
+        if ($schedule && $schedule !== 'ma_artwork_every_six_hours') {
             wp_clear_scheduled_hook(self::CRON_HOOK);
         }
         if (!wp_next_scheduled(self::CRON_HOOK)) {
-            wp_schedule_event(time() + 1800, 'ma_artwork_every_thirty_minutes', self::CRON_HOOK);
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'ma_artwork_every_six_hours', self::CRON_HOOK);
         }
 
         $rewrite_version = 'artist-profile-v1';
@@ -619,6 +620,10 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'interval' => 1800,
             'display' => 'Every 30 minutes',
         ];
+        $schedules['ma_artwork_every_six_hours'] = [
+            'interval' => 6 * HOUR_IN_SECONDS,
+            'display' => 'Every 6 hours',
+        ];
         return $schedules;
     }
 
@@ -948,8 +953,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         try {
-            if (!$dry_run) {
+            if (!$dry_run && ($force_all || !get_transient(self::ARTIST_FIELD_SETUP_CACHE_KEY))) {
                 self::ensure_artist_portrait_airtable_fields($options);
+                set_transient(self::ARTIST_FIELD_SETUP_CACHE_KEY, 1, WEEK_IN_SECONDS);
             }
             $records = self::list_airtable_records($options, $force_all ? '' : (string) $options['last_sync_at'], $inventory_number, $max_records);
             $exhibits = self::list_linked_exhibit_records($records, $options);
@@ -983,8 +989,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         $artist_directory = [];
-        if (!$dry_run) {
+        if (!$dry_run && self::should_refresh_artist_directory($options, $force_all)) {
             $artist_directory = self::sync_community_artist_records(180);
+            $options = self::options();
+            $options['last_artist_directory_sync_at'] = $started_at;
+            update_option(self::OPTION_KEY, $options, false);
         }
 
         $summary = [
@@ -1654,6 +1663,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'Exhibits Involved' => ['type' => 'multilineText'],
             'Events Led' => ['type' => 'multilineText'],
             'Donated Works' => ['type' => 'multilineText'],
+            'Exhibited Works' => ['type' => 'multilineText'],
             'Public Profile URL' => ['type' => 'url'],
         ];
         foreach ($wanted as $name => $config) {
@@ -2243,6 +2253,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ]);
     }
 
+    private static function should_refresh_artist_directory(array $options, bool $force_all): bool {
+        if ($force_all) {
+            return true;
+        }
+
+        $last = strtotime((string) ($options['last_artist_directory_sync_at'] ?? ''));
+        return !$last || (time() - $last) >= DAY_IN_SECONDS;
+    }
+
     public static function sync_community_artist_records(int $limit = 80): array {
         $options = self::options();
         if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['artist_table_id'])) {
@@ -2322,6 +2341,231 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return ['checked' => $checked, 'updated' => $updated, 'errors' => array_slice($errors, 0, 8)];
     }
 
+    public static function sync_exhibiting_artist_profiles(int $limit = 0, array $target_exhibits = [], bool $shinnecock_only = false): array {
+        $options = self::options();
+        if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['table_id']) || empty($options['artist_table_id'])) {
+            return ['checked' => 0, 'updated' => 0, 'created' => 0, 'errors' => ['Missing Airtable Artwork Inventory or Artists settings.']];
+        }
+        self::ensure_artist_portrait_airtable_fields($options);
+        $available_fields = self::airtable_table_field_names($options, (string) $options['artist_table_id']);
+        $records = self::list_all_airtable_artwork_records($options, $limit);
+        $artists = [];
+        $errors = [];
+
+        foreach ($records as $record) {
+            $fields = is_array($record['fields'] ?? null) ? $record['fields'] : [];
+            $exhibit_names = self::artwork_exhibit_names($fields, $options);
+            if (!$fields || !$exhibit_names) {
+                continue;
+            }
+            if ($target_exhibits && !self::artist_exhibit_matches($exhibit_names, $target_exhibits)) {
+                continue;
+            }
+            try {
+                $description = self::field($fields, $options, 'description');
+                $artist = self::artist_details_for_record($fields, $options, true, self::text($record['id'] ?? ''), $description);
+                $name = self::text($artist['name'] ?? '');
+                if (!$name) {
+                    continue;
+                }
+                $bio = self::text($artist['bio'] ?? '');
+                $is_target_shinnecock_show = self::artist_exhibit_matches($exhibit_names, ['Shinnecock Speaks', 'Resilient Roots']);
+                if ($shinnecock_only && !$is_target_shinnecock_show && !self::is_shinnecock_artist_signal($name, $bio)) {
+                    continue;
+                }
+                $key = strtolower(remove_accents(trim($name)));
+                if (!isset($artists[$key])) {
+                    $roles = self::split_list(self::text($artist['roles'] ?? ''));
+                    $roles[] = 'Exhibiting Artist';
+                    if ($is_target_shinnecock_show || self::is_shinnecock_artist_signal($name, $bio)) {
+                        $roles[] = 'Shinnecock Artist';
+                        $roles[] = 'Community Artist';
+                    }
+                    $artists[$key] = array_merge($artist, [
+                        'name' => $name,
+                        'roles' => implode(', ', self::valid_artist_roles($roles)),
+                        'mediums' => self::text($artist['mediums'] ?? ''),
+                        'exhibited_works' => [],
+                        'exhibits_involved' => [],
+                    ]);
+                }
+                $artists[$key]['exhibits_involved'] = array_values(array_unique(array_merge($artists[$key]['exhibits_involved'], $exhibit_names)));
+                $artists[$key]['exhibited_works'][] = self::compact_exhibited_work_from_fields($fields, $options, $exhibit_names);
+                $mediums = array_merge(
+                    self::split_list(self::text($artists[$key]['mediums'] ?? '')),
+                    self::infer_artist_mediums(self::field($fields, $options, 'medium') . ' ' . self::text($artist['bio'] ?? ''))
+                );
+                $artists[$key]['mediums'] = implode(', ', self::correct_artist_mediums($name, array_values(array_unique($mediums))));
+            } catch (Throwable $error) {
+                $errors[] = self::text($record['id'] ?? 'Artwork record') . ': ' . $error->getMessage();
+            }
+        }
+
+        $checked = 0;
+        $updated = 0;
+        $created = 0;
+        foreach ($artists as $artist) {
+            $checked++;
+            try {
+                $before = self::find_artist_profile_post($artist);
+                $linked_exhibits = array_map(static function ($title): array {
+                    return ['title' => $title];
+                }, $artist['exhibits_involved']);
+                $post_id = self::ensure_artist_profile_post($artist, $linked_exhibits);
+                if (!$post_id) {
+                    continue;
+                }
+                update_post_meta($post_id, 'ma_artist_exhibited_works_json', wp_json_encode(array_values($artist['exhibited_works'])));
+                update_post_meta($post_id, 'ma_artist_exhibits_involved', implode("\n", $artist['exhibits_involved']));
+                if (!$before) {
+                    $created++;
+                }
+                $updated++;
+
+                $record_id = self::text($artist['record_id'] ?? '');
+                if (!$record_id) {
+                    $record_id = self::find_or_create_artist_record($options, $artist['name'], self::text($artist['bio'] ?? ''));
+                    if ($record_id) {
+                        update_post_meta($post_id, 'ma_artist_airtable_record_id', $record_id);
+                    }
+                }
+                if ($record_id) {
+                    self::patch_artist_directory_fields($options, $record_id, [
+                        'Bio' => self::text($artist['bio'] ?? ''),
+                        'Mediums' => self::split_list(self::text($artist['mediums'] ?? '')),
+                        'Artist Roles' => self::split_list(self::text($artist['roles'] ?? '')),
+                        'Public Website' => self::text($artist['website'] ?? ''),
+                        'Social Media URL' => self::artist_social_url(self::text($artist['instagram'] ?? '')),
+                        'Based In' => self::artist_location_region(self::text($artist['location'] ?? '')),
+                        'Exhibits Involved' => implode("\n", $artist['exhibits_involved']),
+                        'Exhibited Works' => self::exhibited_works_text($artist['exhibited_works']),
+                        'Public Profile URL' => get_permalink($post_id) ?: '',
+                    ], $available_fields);
+                }
+            } catch (Throwable $error) {
+                $errors[] = self::text($artist['name'] ?? 'Artist') . ': ' . $error->getMessage();
+            }
+        }
+
+        return ['checked' => $checked, 'updated' => $updated, 'created' => $created, 'errors' => array_slice($errors, 0, 12)];
+    }
+
+    private static function artist_exhibit_matches(array $exhibit_names, array $needles): bool {
+        $haystack = strtolower(remove_accents(implode(' ', array_map([__CLASS__, 'text'], $exhibit_names))));
+        foreach ($needles as $needle) {
+            $needle = strtolower(remove_accents(self::text($needle)));
+            if ($needle && strpos($haystack, $needle) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function list_all_airtable_artwork_records(array $options, int $limit = 0): array {
+        $records = [];
+        $offset = '';
+        do {
+            $query = ['pageSize' => '100'];
+            if ($offset) {
+                $query['offset'] = $offset;
+            }
+            $url = sprintf(
+                'https://api.airtable.com/v0/%s/%s?%s',
+                rawurlencode($options['base_id']),
+                rawurlencode($options['table_id']),
+                http_build_query($query)
+            );
+            $response = wp_remote_get($url, [
+                'timeout' => 45,
+                'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token']],
+            ]);
+            if (is_wp_error($response)) {
+                throw new RuntimeException($response->get_error_message());
+            }
+            $code = wp_remote_retrieve_response_code($response);
+            $body = wp_remote_retrieve_body($response);
+            if ($code >= 300) {
+                throw new RuntimeException("Airtable artwork list failed ({$code}): {$body}");
+            }
+            $json = json_decode($body, true);
+            $records = array_merge($records, $json['records'] ?? []);
+            if ($limit > 0 && count($records) >= $limit) {
+                return array_slice($records, 0, $limit);
+            }
+            $offset = $json['offset'] ?? '';
+        } while ($offset);
+        return $records;
+    }
+
+    private static function artwork_exhibit_names(array $fields, array $options): array {
+        $values = [];
+        foreach (['exhibit_records', 'exhibit_title'] as $key) {
+            $raw = self::field_raw($fields, $options, $key);
+            $values = array_merge($values, self::split_field_values($raw));
+        }
+        $values = array_merge(
+            $values,
+            self::split_field_values($fields['Exhibitions'] ?? ''),
+            self::split_field_values($fields['Exhibitions without quotes for extensions'] ?? ''),
+            self::split_field_values($fields['Exhibition Description'] ?? '')
+        );
+        $clean = [];
+        foreach ($values as $value) {
+            $value = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $value)));
+            if ($value !== '') {
+                $clean[$value] = $value;
+            }
+        }
+        return array_values($clean);
+    }
+
+    private static function split_field_values($value): array {
+        if (is_array($value)) {
+            $out = [];
+            foreach ($value as $item) {
+                if (is_array($item)) {
+                    $out[] = self::text($item['name'] ?? $item['title'] ?? $item['id'] ?? '');
+                } else {
+                    $out[] = self::text($item);
+                }
+            }
+            return array_values(array_filter($out));
+        }
+        $text = self::text($value);
+        return $text === '' ? [] : [$text];
+    }
+
+    private static function compact_exhibited_work_from_fields(array $fields, array $options, array $exhibit_names): array {
+        return [
+            'title' => self::field($fields, $options, 'title'),
+            'year' => self::field($fields, $options, 'year'),
+            'medium' => self::field($fields, $options, 'medium'),
+            'dimensions' => self::field($fields, $options, 'dimensions'),
+            'inventory' => self::field($fields, $options, 'inventory_number'),
+            'availability' => self::field($fields, $options, 'availability'),
+            'exhibits' => array_values($exhibit_names),
+        ];
+    }
+
+    private static function exhibited_works_text(array $works): string {
+        $lines = [];
+        foreach ($works as $work) {
+            $title = self::text($work['title'] ?? '');
+            if (!$title) {
+                continue;
+            }
+            $details = array_filter([
+                self::text($work['year'] ?? ''),
+                self::text($work['medium'] ?? ''),
+                self::text($work['dimensions'] ?? ''),
+                self::text($work['inventory'] ?? '') ? 'Inventory ' . self::text($work['inventory'] ?? '') : '',
+            ]);
+            $exhibits = array_filter(array_map([__CLASS__, 'text'], $work['exhibits'] ?? []));
+            $lines[] = $title . ($details ? ' (' . implode(', ', $details) . ')' : '') . ($exhibits ? ' - ' . implode('; ', $exhibits) : '');
+        }
+        return implode("\n", $lines);
+    }
+
     private static function patch_artist_directory_fields(array $options, string $record_id, array $payload, array $available_fields): bool {
         $fields = [];
         foreach ($payload as $field => $value) {
@@ -2391,6 +2635,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function artist_medium_choices(): array {
         return [
             'Painter',
+            'Illustrator',
             'Photographer',
             'Printmaker',
             'Muralist',
@@ -2545,6 +2790,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $mediums = self::split_list(self::text($artist['mediums'] ?? ''));
         $roles = self::split_list(self::text($artist['roles'] ?? ''));
         $exhibits = self::artist_exhibit_labels($linked_exhibits);
+        $exhibited_works = is_array($artist['exhibited_works'] ?? null) ? $artist['exhibited_works'] : [];
         $parts = ['<div class="ma-artist-page">'];
         if ($name) {
             $parts[] = '<header class="ma-artist-page__heading"><h1>' . esc_html($name) . '</h1></header>';
@@ -2583,6 +2829,34 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         if ($facts) {
             $parts[] = '<section class="ma-artist-page__facts"><ul>' . $facts . '</ul></section>';
+        }
+
+        if ($exhibited_works) {
+            $items = '';
+            foreach ($exhibited_works as $work) {
+                $title = self::text($work['title'] ?? '');
+                if (!$title) {
+                    continue;
+                }
+                $meta = array_filter([
+                    self::text($work['year'] ?? ''),
+                    self::text($work['medium'] ?? ''),
+                    self::text($work['dimensions'] ?? ''),
+                    self::text($work['inventory'] ?? '') ? 'Inventory ' . self::text($work['inventory'] ?? '') : '',
+                ]);
+                $work_exhibits = array_filter(array_map([__CLASS__, 'text'], $work['exhibits'] ?? []));
+                $items .= '<li><strong>' . esc_html($title) . '</strong>';
+                if ($meta) {
+                    $items .= '<span>' . esc_html(implode(', ', $meta)) . '</span>';
+                }
+                if ($work_exhibits) {
+                    $items .= '<em>Included in ' . esc_html(implode('; ', $work_exhibits)) . '</em>';
+                }
+                $items .= '</li>';
+            }
+            if ($items) {
+                $parts[] = '<section class="ma-artist-page__exhibited-works"><h2>Exhibited works at Ma\'s House</h2><ul>' . $items . '</ul></section>';
+            }
         }
 
         $parts[] = '<section class="ma-artist-page__artworks"><h2>Artworks</h2>' . "\n" . '<!-- wp:shortcode -->[ma_artist_artworks artist="' . esc_attr($name) . '"]<!-- /wp:shortcode -->' . "\n" . '</section>';
@@ -2897,6 +3171,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$product instanceof WC_Product) {
             return;
         }
+        if (!self::is_artwork_product($product)) {
+            return;
+        }
         $price = (float) $product->get_price();
         if ($price <= 0 || !$product->is_purchasable()) {
             return;
@@ -2905,6 +3182,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function single_product_artwork_panel_html(WC_Product $product): string {
+        if (!self::is_artwork_product($product)) {
+            return '';
+        }
         $rows = self::product_detail_rows($product);
         $profile_url = esc_url(self::text(get_post_meta($product->get_id(), 'ma_artist_profile_url', true)));
         if (!$rows) {
@@ -3029,6 +3309,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $product = wc_get_product((int) get_queried_object_id());
         if (!$product instanceof WC_Product) {
+            return $content;
+        }
+        if (!self::is_artwork_product($product)) {
             return $content;
         }
         $artist_html = self::artist_product_section(self::artist_profile_data_for_product($product));
@@ -3268,7 +3551,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$title) {
             return $content;
         }
-        $image = has_post_thumbnail((int) $post->ID)
+        $image = (has_post_thumbnail((int) $post->ID) && !self::content_already_contains_featured_image($content, (int) $post->ID))
             ? get_the_post_thumbnail((int) $post->ID, 'large', [
                 'class' => 'ma-single-post-featured-image',
                 'loading' => 'eager',
@@ -3302,7 +3585,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
         $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
-        $image = has_post_thumbnail((int) $post->ID)
+        $image = (has_post_thumbnail((int) $post->ID) && !self::content_already_contains_featured_image($content, (int) $post->ID))
             ? get_the_post_thumbnail((int) $post->ID, 'large', [
                 'class' => 'ma-single-post-featured-image',
                 'loading' => 'eager',
@@ -3315,6 +3598,35 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $header .= '</header>';
         return $header . self::artist_page_back_and_tags_html($roles, $mediums) . $content;
+    }
+
+    private static function content_already_contains_featured_image(string $content, int $post_id): bool {
+        $thumbnail_id = (int) get_post_thumbnail_id($post_id);
+        if (!$thumbnail_id) {
+            return false;
+        }
+
+        if (strpos($content, 'wp-image-' . $thumbnail_id) !== false || strpos($content, 'attachment_' . $thumbnail_id) !== false) {
+            return true;
+        }
+
+        $urls = array_filter(array_unique([
+            wp_get_attachment_url($thumbnail_id),
+            wp_get_attachment_image_url($thumbnail_id, 'large'),
+            wp_get_attachment_image_url($thumbnail_id, 'medium_large'),
+            wp_get_attachment_image_url($thumbnail_id, 'medium'),
+            wp_get_attachment_image_url($thumbnail_id, 'thumbnail'),
+        ]));
+
+        foreach ($urls as $url) {
+            $path = (string) wp_parse_url((string) $url, PHP_URL_PATH);
+            $filename = $path ? wp_basename($path) : '';
+            if ($filename && strpos($content, $filename) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function render_news_posts_page_template(): void {
@@ -3725,7 +4037,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
         ob_start();
         ?>
-        <style>body.page .nv-page-title-wrap:has(+ .nv-single-page-wrap .ma-community-artists-page){display:none!important}</style>
+        <style>body.page .nv-page-title-wrap:has(+ .nv-single-page-wrap .ma-community-artists-page){display:none!important}.ma-community-artist-card__image span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:180px;padding:18px;background:#f3f0ea;color:#111;text-align:center;font-size:20px;line-height:1.15;font-weight:700}</style>
         <article class="ma-community-artists-page">
             <header class="ma-community-artists-hero">
                 <p>Community Artists</p>
@@ -3775,7 +4087,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                             <?php if ($artist['image']) : ?>
                                 <img src="<?php echo esc_url($artist['image']); ?>" alt="<?php echo esc_attr($artist['name'] . ' portrait'); ?>" loading="lazy">
                             <?php else : ?>
-                                <span><?php echo esc_html(self::initials($artist['name'])); ?></span>
+                                <span><?php echo esc_html($artist['name']); ?></span>
                             <?php endif; ?>
                         </a>
                         <div class="ma-community-artist-card__body">
@@ -3922,7 +4234,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $mediums = array_values(array_unique(array_merge($mediums, self::infer_artist_mediums($bio . ' ' . $product_context['mediums']))));
             $mediums = self::correct_artist_mediums($name, $mediums);
             $stored_roles = self::valid_artist_roles(self::split_list(self::text(get_post_meta($post_id, 'ma_artist_roles', true))));
-            $roles = self::reconcile_artist_roles($stored_roles ?: self::infer_artist_roles($post_id, $name, $bio, $product_context), $name, $bio, $post_id);
+            $roles = $stored_roles
+                ? self::reconcile_artist_roles($stored_roles, $name, $bio, $post_id, false)
+                : self::reconcile_artist_roles(self::infer_artist_roles($post_id, $name, $bio, $product_context), $name, $bio, $post_id, true);
             $website = self::text(get_post_meta($post_id, 'ma_artist_website', true));
             $instagram = self::text(get_post_meta($post_id, 'ma_artist_instagram', true));
             $social = self::artist_social_url($instagram);
@@ -4166,7 +4480,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return array_values($valid);
     }
 
-    private static function reconcile_artist_roles(array $roles, string $name, string $bio, int $post_id = 0): array {
+    private static function reconcile_artist_roles(array $roles, string $name, string $bio, int $post_id = 0, bool $allow_inferred_shinnecock = true): array {
         $roles = self::valid_artist_roles($roles);
         $has_residency = in_array('Residency Artist', $roles, true)
             || ($post_id && (get_post_meta($post_id, 'ma_artist_residency_period', true) || has_category('resident-artists', $post_id)))
@@ -4181,7 +4495,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if ($community_signal && !in_array('Community Artist', $roles, true)) {
             $roles[] = 'Community Artist';
         }
-        if (self::is_shinnecock_artist_signal($name, $bio) && !in_array('Shinnecock Artist', $roles, true)) {
+        if ($allow_inferred_shinnecock && self::is_shinnecock_artist_signal($name, $bio) && !in_array('Shinnecock Artist', $roles, true)) {
             $roles[] = 'Shinnecock Artist';
         }
         if (in_array('Community Artist', $roles, true) && $has_residency && !$community_signal) {
@@ -4193,10 +4507,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function is_shinnecock_artist_signal(string $name, string $bio): bool {
         $manual_names = [
             'avery dennis',
-            'brianna hernandez',
-            'brianna hernández',
-            'brianna l. hernandez',
-            'brianna l. hernández',
             'denise silva-dennis',
             'heather rogers',
             'jeremy dennis',
@@ -4348,6 +4658,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $map = [
             'Printmaker' => ['printmaker', 'printmaking', 'print maker', 'linocut', 'linoleum', 'copperplate', 'etching', 'screenprint', 'screen print', 'woodcut', 'lithograph'],
             'Painter' => ['painter', 'painting', 'paintings', 'acrylic', 'oil paint', 'watercolor', 'gouache'],
+            'Illustrator' => ['illustrator', 'illustration', 'illustrations', 'drawing', 'drawings'],
             'Photographer' => ['photographer', 'photography', 'photo-based', 'lens-based', 'cyanotype', 'anthotype'],
             'Muralist' => ['muralist', 'mural', 'murals', 'large-scale public art', 'public art'],
             'Beadworker' => ['beadwork', 'bead worker', 'beadworker', 'beading', 'wampum'],
@@ -4401,9 +4712,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'kris waymire' => ['Ceramic Artist'],
             'saidah belo-osagie' => ['Comedian'],
             'stephen longoria' => ['Designer', 'Digital Artist', 'Muralist'],
+            'christian weaver' => ['Illustrator'],
         ];
         $remove = [
             'beau bree rhee' => ['Beadworker'],
+            'christian weaver' => ['Weaver'],
             'jacoub reyes' => ['Performance Artist'],
             'stephen longoria' => ['Craft Artist'],
         ];
@@ -4666,7 +4979,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function artist_profile_data_for_product(WC_Product $product): array {
         $post = get_post($product->get_id());
         $source = $post ? ((string) $post->post_title . "\n" . (string) $post->post_content) : $product->get_name();
-        $name = self::text(get_post_meta($product->get_id(), 'ma_artist_name', true)) ?: self::infer_artist_name_from_text($source);
+        $name = self::product_artist_name($product) ?: self::infer_artist_name_from_text($source);
         $profile_post_id = (int) get_post_meta($product->get_id(), 'ma_artist_profile_post_id', true);
         if (!$profile_post_id && $name) {
             $profile_post_id = self::find_artist_profile_post(['name' => $name]);
@@ -4774,6 +5087,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 ],
             ],
         ]);
+        $all_ids = get_posts([
+            'post_type' => 'product',
+            'post_status' => ['publish', 'draft', 'pending', 'private'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+        foreach ($all_ids as $id) {
+            $product = wc_get_product((int) $id);
+            if ($product instanceof WC_Product && self::product_matches_artist($product, $artist_name)) {
+                $ids[] = (int) $id;
+            }
+        }
         return array_values(array_unique(array_map('intval', $ids)));
     }
 
@@ -4895,14 +5220,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin()) {
             return;
         }
-        echo '<style id="ma-global-site-polish-css">body .hfg_header.site-header,body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after,.hfg_header.site-header:before,.hfg_header.site-header:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:158px!important}body.page-id-377 .nv-single-page-wrap,body.page-id-377 .elementor-page-377{margin-top:0!important}@media(max-width:760px){body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:126px!important}}</style>';
+        echo '<style id="ma-global-site-polish-css">body .hfg_header.site-header,body:not(.home) .elementor-location-header,body:not(.home) .elementor-location-header>*,body:not(.home) .elementor-location-header .elementor,body:not(.home) .elementor-location-header .elementor-section,body:not(.home) .elementor-location-header .elementor-top-section,body:not(.home) .elementor-location-header .elementor-container,body:not(.home) .elementor-location-header .elementor-column,body:not(.home) .elementor-location-header .elementor-widget-wrap,body:not(.home) .elementor-location-header .e-con,body:not(.home) .elementor-location-header .e-con-inner,body:not(.home) header.site-header,body:not(.home) #masthead,body:not(.home) .site-header,body:not(.home) .main-header-bar,body:not(.home) .ast-primary-header-bar{border:0!important;border-color:transparent!important;box-shadow:none!important;outline:0!important}.elementor-location-header:before,.elementor-location-header:after,header.site-header:before,header.site-header:after,#masthead:before,#masthead:after,.hfg_header.site-header:before,.hfg_header.site-header:after{display:none!important;box-shadow:none!important}.elementor-location-header .elementor-widget-container{box-shadow:none!important;border:0!important}.elementor-location-header nav,.elementor-location-header .elementor-nav-menu,.elementor-location-header .elementor-menu-toggle,.elementor-location-header .elementor-search-form,.elementor-location-header .elementor-search-form__container{box-shadow:none!important}.builder-item--header_search,.builder-item--header_search *{box-sizing:border-box!important}.builder-item--header_search .component-wrap.search-field,.builder-item--header_search .widget-search{display:block!important;width:292px!important;max-width:292px!important;margin:0!important;padding:0!important}.builder-item--header_search .search-form{display:flex!important;align-items:stretch!important;width:292px!important;height:38px!important;margin:0!important;padding:0!important;border:1px solid #d8d8d8!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}body .builder-item--header_search .search-form label{display:none!important}body .builder-item--header_search input.search-field[type="search"]{display:block!important;flex:1 1 auto!important;width:auto!important;min-width:0!important;height:36px!important;min-height:36px!important;max-height:36px!important;margin:0!important;padding:0 12px!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;color:#222!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:14px!important;font-weight:400!important;line-height:36px!important;letter-spacing:0!important;outline:0!important;resize:none!important;-webkit-appearance:none!important;appearance:none!important}body .builder-item--header_search input.search-field[type="search"]::placeholder{color:#777!important;opacity:1!important}body .builder-item--header_search .search-submit.nv-submit{position:static!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 44px!important;width:44px!important;height:36px!important;min-height:36px!important;max-height:36px!important;margin:0!important;padding:0!important;border:0!important;border-left:1px solid #e3e0da!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;color:#777!important;line-height:1!important;transform:none!important}body .builder-item--header_search .nv-search-icon-wrap,body .builder-item--header_search .nv-icon{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important}body .builder-item--header_search svg{display:block!important;width:15px!important;height:15px!important;fill:currentColor!important}body .builder-item--header_search input.search-field[type="search"]::-webkit-search-decoration,body .builder-item--header_search input.search-field[type="search"]::-webkit-search-cancel-button,body .builder-item--header_search input.search-field[type="search"]::-webkit-search-results-button,body .builder-item--header_search input.search-field[type="search"]::-webkit-search-results-decoration{display:none!important}@media(max-width:1180px){.builder-item--header_search .component-wrap.search-field,.builder-item--header_search .widget-search,.builder-item--header_search .search-form{width:240px!important;max-width:240px!important}body .builder-item--header_search input.search-field[type="search"]{font-size:13px!important}}body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:158px!important}body.page-id-377 .nv-single-page-wrap,body.page-id-377 .elementor-page-377{margin-top:0!important}@media(max-width:760px){body.page-id-377 #content.neve-main,body.page-id-377 main.neve-main{padding-top:126px!important}}</style>';
     }
 
     public static function render_single_post_cover_spacing_css(): void {
         if (is_admin() || !is_single() || (function_exists('is_product') && is_product())) {
             return;
         }
-        echo '<style id="ma-single-post-cover-spacing-css" data-no-optimize="1" data-cfasync="false">body.single-post:not(.single-product) .nv-post-cover{display:none!important}body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{margin-top:0!important;padding-top:64px!important}.ma-single-post-content-header{margin:0 0 34px!important}.ma-single-post-content-header h1{font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(32px,4vw,52px)!important;line-height:1.08!important;font-weight:700!important;letter-spacing:0!important;margin:0 0 10px!important;color:#111!important}.ma-single-post-content-header p{font-size:14px!important;line-height:1.4!important;margin:0 0 22px!important;color:#5f6368!important}.ma-single-post-content-header figure{margin:0!important}.ma-single-post-featured-image{display:block!important;width:100%!important;max-width:820px!important;height:auto!important;object-fit:contain!important;border-radius:0!important}@media(max-width:760px){body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{padding-top:38px!important}.ma-single-post-content-header{margin-bottom:26px!important}.ma-single-post-content-header h1{font-size:31px!important}}</style>';
+        echo '<style id="ma-single-post-cover-spacing-css" data-no-optimize="1" data-cfasync="false">body.single-post:not(.single-product) .nv-post-cover{display:none!important}body.single-post:not(.single-product) .widget_archive,body.single-post:not(.single-product) .widget_categories,body.single-post:not(.single-product) [id^="archives-"],body.single-post:not(.single-product) [id^="categories-"]{display:none!important}body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{margin-top:0!important;padding-top:64px!important}.ma-single-post-content-header{margin:0 0 34px!important}.ma-single-post-content-header h1{font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(32px,4vw,52px)!important;line-height:1.08!important;font-weight:700!important;letter-spacing:0!important;margin:0 0 10px!important;color:#111!important}.ma-single-post-content-header p{font-size:14px!important;line-height:1.4!important;margin:0 0 22px!important;color:#5f6368!important}.ma-single-post-content-header figure{margin:0!important}.ma-single-post-featured-image{display:block!important;width:100%!important;max-width:820px!important;height:auto!important;object-fit:contain!important;border-radius:0!important}@media(max-width:760px){body.single-post:not(.single-product) .nv-post-cover+.container.single-post-container,body.single-post:not(.single-product) .container.single-post-container{padding-top:38px!important}.ma-single-post-content-header{margin-bottom:26px!important}.ma-single-post-content-header h1{font-size:31px!important}}</style>';
     }
 
     public static function render_staff_page_spacing_css(): void {
@@ -5049,9 +5374,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (self::allow_woocommerce_session_on_current_request() || self::is_direct_give_embed_request()) {
             return $headers;
         }
-        $headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
-        $headers['Pragma'] = 'no-cache';
-        $headers['Expires'] = '0';
+        $headers['Cache-Control'] = 'max-age=14400, must-revalidate';
+        unset($headers['Pragma'], $headers['Expires']);
         return $headers;
     }
 
@@ -5063,9 +5387,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
         header_remove('Cache-Control');
-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true);
-        header('Pragma: no-cache', true);
-        header('Expires: 0', true);
+        header_remove('Pragma');
+        header_remove('Expires');
+        header('Cache-Control: max-age=14400, must-revalidate', true);
     }
 
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
@@ -5215,7 +5539,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function homepage_final_layout_overrides_css(): string {
         return <<<'HTML'
 <style id="ma-homepage-final-layout-overrides" data-no-optimize="1" data-cfasync="false">
-body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:24px!important;min-height:0!important}
+body.home .elementor-element-c8e0c2e{padding-top:0!important;padding-bottom:48px!important;min-height:0!important;height:auto!important}
 body.home .elementor-element-c8e0c2e>.elementor-container{min-height:0!important}
 body.home .elementor-element-3dd430f>.elementor-container{display:grid!important;grid-template-columns:minmax(360px,480px) minmax(360px,440px) minmax(320px,380px)!important;gap:clamp(34px,3vw,58px)!important;width:min(1420px,calc(100vw - 96px))!important;max-width:none!important;margin:0 auto!important;align-items:start!important}
 body.home .elementor-element-3dd430f .elementor-column{width:auto!important;max-width:none!important;min-width:0!important}
@@ -5264,16 +5588,53 @@ body.home .ma-home-events-custom__venue{margin:0 0 12px;color:#111;font-size:13p
 body.home .ma-home-events-custom__excerpt{margin:0;color:#111;font-size:14px;line-height:1.55}
 body.home .ma-home-events-custom__excerpt a{color:#111!important;text-decoration:underline!important;text-underline-offset:3px}
 body.home .ma-home-events-custom__thumb img{display:block;width:160px;height:160px;object-fit:cover;border-radius:0}
+body.home .ma-firefox-video-fallback{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important;background-size:cover!important;background-position:center!important;color:#fff!important;text-decoration:none!important}
+body.home .ma-firefox-video-fallback__play{width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.62);box-shadow:0 0 0 1px rgba(255,255,255,.35);position:relative}
+body.home .ma-firefox-video-fallback__play:after{content:"";position:absolute;left:23px;top:17px;border-left:18px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent}
+body.home .ma-firefox-video-fallback__label{font-size:13px;font-weight:700;letter-spacing:.02em;text-shadow:0 1px 6px rgba(0,0,0,.72)}
 @media(max-width:1180px){
-body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:minmax(0,1fr) minmax(260px,.82fr)!important;width:min(1040px,calc(100vw - 48px))!important}
-body.home .elementor-element-9c0e721{grid-column:2!important}
+body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:minmax(340px,1fr) minmax(300px,420px)!important;grid-auto-rows:auto!important;column-gap:clamp(28px,4vw,48px)!important;row-gap:22px!important;width:min(1040px,calc(100vw - 48px))!important}
+body.home .elementor-element-7b56059{grid-column:1!important;grid-row:1 / span 2!important;width:100%!important;max-width:100%!important}
+body.home .elementor-element-33c8c69{grid-column:2!important;grid-row:1!important;width:100%!important;max-width:100%!important}
+body.home .elementor-element-9c0e721{grid-column:2!important;grid-row:2!important;width:100%!important;max-width:100%!important}
+body.home .elementor-element-525dad1 img{max-height:260px!important;object-fit:contain!important}
+body.home .elementor-element-0a7cc4a .swiper-slide-image{max-width:310px!important}
+body.home .elementor-element-8203c65 p,
+body.home .elementor-element-e18ab85 .elementor-heading-title{font-size:14px!important;line-height:1.28!important}
 body.home .ma-home-events-custom__grid{grid-template-columns:1fr}
 body.home .ma-home-events-custom__item{grid-template-columns:54px minmax(0,1fr) 150px}
 body.home .ma-home-events-custom__thumb img{width:150px;height:150px}
 }
 @media(max-width:900px){
+body.home .elementor-element-c8e0c2e{padding-bottom:40px!important}
 body.home .elementor-element-3dd430f>.elementor-container{grid-template-columns:1fr!important;width:min(680px,calc(100vw - 32px))!important}
-body.home .elementor-element-9c0e721{grid-column:auto!important}
+body.home .elementor-element-7b56059,
+body.home .elementor-element-33c8c69,
+body.home .elementor-element-9c0e721{grid-column:1!important;grid-row:auto!important;width:100%!important;max-width:100%!important}
+body.home .elementor-element-525dad1 img{max-height:none!important}
+body.home .elementor-element-0a7cc4a .swiper-slide-image{max-width:420px!important}
+body.home .elementor-element-c8e0c2e,
+body.home .elementor-element-c8e0c2e>.elementor-container,
+body.home .elementor-element-3dd430f,
+body.home .elementor-element-3dd430f>.elementor-container,
+body.home .elementor-element-3dd430f .elementor-column,
+body.home .elementor-element-3dd430f .elementor-widget-wrap,
+body.home .elementor-element-3dd430f .elementor-widget,
+body.home .elementor-element-3dd430f .elementor-widget-container{box-sizing:border-box!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important}
+body.home .elementor-element-3dd430f .elementor-column{width:100%!important;flex:0 0 100%!important}
+body.home .elementor-element-58eb33a,
+body.home .elementor-element-9f214c3,
+body.home .elementor-element-525dad1,
+body.home .elementor-element-8203c65,
+body.home .elementor-element-0a7cc4a,
+body.home .elementor-element-e18ab85{width:100%!important;max-width:100%!important}
+body.home .elementor-element-58eb33a .elementor-heading-title,
+body.home .elementor-element-9f214c3,
+body.home .elementor-element-9f214c3 .elementor-widget-container,
+body.home .elementor-element-9f214c3 p,
+body.home .elementor-element-8203c65 p,
+body.home .elementor-element-e18ab85 .elementor-heading-title{width:100%!important;max-width:100%!important;white-space:normal!important;overflow-wrap:break-word!important;word-break:normal!important}
+body.home .elementor-element-9f214c3 p{text-align:left!important}
 body.home .elementor-element-525dad1 img,
 body.home .elementor-element-0a7cc4a .swiper-slide-image,
 body.home .elementor-element-0a7cc4a .swiper,
@@ -5287,6 +5648,65 @@ body.home .ma-home-events-custom__thumb{grid-column:2}
 body.home .ma-home-events-custom__thumb img{width:100%;height:auto;aspect-ratio:4/3}
 }
 </style>
+<script id="ma-firefox-autoplay-video-fallback" data-no-optimize="1" data-cfasync="false">
+(function(){
+    if (!/firefox/i.test(navigator.userAgent || "")) {
+        return;
+    }
+    var seen = new WeakSet();
+    function videoInfo(src) {
+        src = src || "";
+        var vimeo = src.match(/player\.vimeo\.com\/video\/(\d+)/i);
+        if (vimeo) {
+            return { url: "https://vimeo.com/" + vimeo[1], poster: "https://vumbnail.com/" + vimeo[1] + ".jpg" };
+        }
+        var yt = src.match(/(?:youtube\.com\/embed\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]+)/i);
+        if (yt) {
+            return { url: "https://www.youtube.com/watch?v=" + yt[1], poster: "https://img.youtube.com/vi/" + yt[1] + "/hqdefault.jpg" };
+        }
+        return null;
+    }
+    function replaceIframe(iframe) {
+        if (!iframe || seen.has(iframe)) {
+            return;
+        }
+        var src = iframe.getAttribute("data-lazy-src") || iframe.getAttribute("src") || "";
+        var info = videoInfo(src);
+        if (!info) {
+            return;
+        }
+        seen.add(iframe);
+        iframe.removeAttribute("data-lazy-src");
+        iframe.setAttribute("src", "about:blank");
+        var link = document.createElement("a");
+        link.className = "ma-firefox-video-fallback";
+        link.href = info.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.setAttribute("aria-label", "Watch this video");
+        link.style.backgroundImage = "linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.35)), url('" + info.poster + "')";
+        link.innerHTML = '<span class="ma-firefox-video-fallback__play" aria-hidden="true"></span><span class="ma-firefox-video-fallback__label">Watch video</span>';
+        iframe.replaceWith(link);
+    }
+    function scan(root) {
+        root = root || document;
+        if (root.matches && root.matches("iframe")) {
+            replaceIframe(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll("iframe").forEach(replaceIframe);
+        }
+    }
+    scan(document);
+    new MutationObserver(function(mutations){
+        mutations.forEach(function(mutation){
+            mutation.addedNodes && mutation.addedNodes.forEach(scan);
+        });
+    }).observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener("DOMContentLoaded", function(){ scan(document); });
+    window.addEventListener("load", function(){ scan(document); });
+}());
+</script>
 HTML;
     }
 
@@ -5710,12 +6130,16 @@ HTML;
             echo '<style id="ma-artist-page-header-clearance-css">body.single-post .nv-post-cover{display:none!important}body.single-post #content.neve-main,body.single-post main.neve-main{padding-top:0!important}body.single-post .single-post-container,body.single-post .nv-single-post-wrap{margin-top:0!important;padding-top:54px!important}.ma-artist-content-header,.ma-artist-page__heading{max-width:1120px;margin:0 auto 24px}.ma-artist-content-header h1,.ma-artist-page__heading h1{margin:0;color:#111;font-family:' . esc_html(self::font_stack()) . ';font-size:34px;line-height:1.15;font-weight:700;letter-spacing:0}.ma-artist-page{padding-top:0!important}.ma-artist-page__portrait{margin-top:0!important}@media(max-width:760px){body.single-post .single-post-container,body.single-post .nv-single-post-wrap{padding-top:32px!important}.ma-artist-content-header h1,.ma-artist-page__heading h1{font-size:28px}}</style>';
             echo '<style id="ma-artist-page-tags-css">.ma-artist-page__nav{max-width:1120px;margin:0 auto 24px;display:grid;gap:14px;font-family:' . esc_html(self::font_stack()) . '}.ma-artist-page__back{display:inline-flex;width:max-content;align-items:center;color:#111!important;text-decoration:none!important;font-size:14px;font-weight:650}.ma-artist-page__back:before{content:"←";margin-right:8px}.ma-artist-page__back:hover{text-decoration:underline!important;text-underline-offset:3px}.ma-artist-page__tags{display:flex;flex-wrap:wrap;gap:8px}.ma-artist-page__tags a{display:inline-flex;align-items:center;border:1px solid rgba(0,0,0,.18);padding:6px 10px;color:#111!important;background:#fff;text-decoration:none!important;font-size:12px;line-height:1;font-weight:650}.ma-artist-page__tags a:hover{background:#f3f1ed}</style>';
         }
+        if ($is_artist_post) {
+            echo '<style id="ma-artist-page-exhibited-works-css">.ma-artist-page__exhibited-works{max-width:860px;margin:34px 0;padding-top:24px;border-top:1px solid rgba(0,0,0,.14)}.ma-artist-page__exhibited-works h2{margin:0 0 16px!important;color:#111!important;font-size:22px!important;line-height:1.2!important;font-weight:650!important}.ma-artist-page__exhibited-works ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}.ma-artist-page__exhibited-works li{display:grid;gap:4px;padding-bottom:14px;border-bottom:1px solid rgba(0,0,0,.08)}.ma-artist-page__exhibited-works strong{font-size:16px;line-height:1.3}.ma-artist-page__exhibited-works span,.ma-artist-page__exhibited-works em{display:block;color:#444;font-size:14px;line-height:1.45;font-style:normal}</style>';
+        }
         echo '<style id="ma-artist-profile-css">body.single-product div.product .summary.entry-summary,.ma-product-summary-column{box-sizing:border-box;padding:0 0 0 28px!important;background:transparent;border:0;box-shadow:none}body.single-product div.product .summary.entry-summary .product_title,body.single-product .elementor-widget-woocommerce-product-title .product_title{margin:0 0 14px!important;color:#050505!important;font-size:30px!important;line-height:1.14!important;font-weight:650!important;letter-spacing:0!important;text-align:left!important}body.single-product div.product .summary.entry-summary .price,body.single-product .elementor-widget-woocommerce-product-price .price{margin:0 0 20px!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:21px!important;line-height:1.2!important;font-weight:400!important;text-align:left!important}body.single-product .elementor-widget-woocommerce-product-price .price .amount{font:inherit!important;color:inherit!important}body.single-product div.product .summary.entry-summary .woocommerce-product-details__short-description{margin:0 0 22px!important;color:#222;font-size:15px;line-height:1.55}.ma-product-artwork-panel{display:grid;gap:20px;margin:20px 0!important;padding:18px 0 20px!important;border-top:1px solid rgba(0,0,0,.12);border-bottom:1px solid rgba(0,0,0,.12);font-family:' . esc_html(self::font_stack()) . ';color:#111}.ma-product-artwork-panel__details{display:grid;gap:10px}.ma-product-artwork-panel__row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:baseline}.ma-product-artwork-panel__row span{color:#686868;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-artwork-panel__row strong{color:#111;font-size:14px;line-height:1.35;font-weight:500}.ma-product-artwork-panel__row a{color:#111;text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;align-items:center;margin-top:2px;padding:0;color:#111;text-decoration:none;background:transparent;border:0}.ma-product-exhibit-card:hover h3{text-decoration:underline;text-underline-offset:3px}.ma-product-exhibit-card__image{min-height:74px;background:#f4f2ee;overflow:hidden}.ma-product-exhibit-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:contain}.ma-product-exhibit-card__body{align-self:center}.ma-product-exhibit-card__body span{display:block;margin:0 0 6px;color:#666;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.ma-product-exhibit-card__body h3{margin:0 0 7px!important;color:#111!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important}.ma-product-exhibit-card__body p{margin:0 0 3px;color:#333;font-size:13px;line-height:1.35}.ma-product-summary-column .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}.ma-product-summary-column .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}.ma-product-summary-column .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}.ma-product-summary-column .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}.ma-product-summary-column .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}.ma-artist-profile{clear:both;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;align-items:start;margin:34px 0 0;padding-top:28px;border-top:1px solid #ddd;color:#111}.ma-artist-profile__portrait{width:180px;aspect-ratio:4/5;background:#f2eee8;overflow:hidden}.ma-artist-profile__portrait a,.ma-artist-profile__portrait img{display:block;width:100%;height:100%}.ma-artist-profile__portrait img{object-fit:cover}.ma-artist-profile h3{margin:0 0 10px;font-size:22px;line-height:1.2}.ma-artist-profile h3 a{color:inherit;text-decoration:none}.ma-artist-profile p{margin:0 0 12px;line-height:1.6}.ma-artist-page{max-width:1120px;margin:0 auto}.ma-artist-page__portrait{max-width:420px;margin:0 0 28px}.ma-artist-page__portrait img{display:block;width:100%;height:auto}.ma-artist-page__bio{max-width:780px}.ma-artist-page__facts{margin:26px 0}.ma-artist-page__facts ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ma-artist-artworks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}.ma-artist-artwork img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.ma-artist-artwork h3{font-size:18px;line-height:1.25;margin:10px 0 4px}.ma-artist-artwork a{color:inherit;text-decoration:none}.ma-artist-artwork__meta,.ma-artist-artwork__price{font-size:14px;margin:0;color:#333}@media(max-width:760px){body.single-product div.product .summary.entry-summary,.ma-product-summary-column{padding:0!important}.ma-product-artwork-panel__row{grid-template-columns:82px minmax(0,1fr)}.ma-product-exhibit-card{grid-template-columns:86px minmax(0,1fr)}.ma-artist-profile{display:block}.ma-artist-profile__portrait{width:150px;margin:0 0 18px}.ma-artist-artworks{grid-template-columns:1fr}}</style>';
         echo '<style id="ma-product-public-parity-css">body.single-product .elementor-widget-woocommerce-product-meta .product_meta{display:grid!important;gap:5px;margin-top:18px!important;color:#555!important;font-size:12px!important;line-height:1.45!important}body.single-product .elementor-widget-woocommerce-product-meta .product_meta .ma-product-artwork-panel{width:100%;margin:0 0 18px!important}body.single-product .elementor-widget-woocommerce-product-meta .product_meta a{color:#111!important;text-decoration:underline;text-underline-offset:2px}body.single-product .elementor-widget-woocommerce-product-add-to-cart{margin-top:8px}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock{margin:0 0 12px!important;color:#333!important;font-size:13px!important;text-transform:uppercase;letter-spacing:.06em}body.single-product .elementor-widget-woocommerce-product-add-to-cart .single_add_to_cart_button{width:100%;border-radius:0!important;background:#111!important;color:#fff!important;font-weight:700!important;letter-spacing:.02em}</style>';
         echo '<style id="ma-product-compact-hero-css">body.single-product .elementor-element-923ecf0 .elementor-container{align-items:flex-start!important}body.single-product .elementor-element-923ecf0 .elementor-widget-wrap{align-content:flex-start!important;align-items:flex-start!important}body.single-product .elementor-element-923ecf0 .elementor-element-f5de331,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-images{margin-top:0!important;padding-top:0!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b>.elementor-widget-wrap{padding-top:10px!important}body.single-product .elementor-widget-woocommerce-product-title,body.single-product .elementor-widget-woocommerce-product-price,body.single-product .elementor-widget-woocommerce-product-add-to-cart,body.single-product .elementor-widget-woocommerce-product-meta,body.single-product .elementor-widget-shortcode,body.single-product .elementor-element-923ecf0 .elementor-widget-text-editor{margin-bottom:0!important}body.single-product .elementor-element-923ecf0 .elementor-widget-spacer{display:none!important}body.single-product .elementor-element-923ecf0 .elementor-widget-wrap>*+*{margin-top:18px!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-title{margin-top:0!important}body.single-product .elementor-widget-woocommerce-product-title .product_title{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important;font-size:27px!important;font-weight:700!important;line-height:1.18!important;margin:0!important}body.single-product .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-widget-woocommerce-product-price .amount,body.single-product .elementor-widget-woocommerce-product-add-to-cart,body.single-product .elementor-widget-woocommerce-product-meta,body.single-product .ma-product-artwork-panel,body.single-product .elementor-element-923ecf0 .elementor-widget-text-editor{font-family:' . esc_html(self::font_stack()) . ' !important;color:#111!important}body.single-product .elementor-widget-woocommerce-product-price .price{font-size:20px!important;font-weight:500!important;margin:0!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock{font-family:' . esc_html(self::font_stack()) . ' !important;margin:0 0 10px!important;color:#111!important;font-size:12px!important;font-weight:650!important;letter-spacing:.08em!important;text-transform:uppercase!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart form.cart{margin:0!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart .single_add_to_cart_button{min-height:48px!important;padding:13px 18px!important;font-family:' . esc_html(self::font_stack()) . ' !important;font-size:15px!important;line-height:1.2!important}body.single-product .elementor-widget-woocommerce-product-meta .product_meta{margin-top:0!important;font-family:' . esc_html(self::font_stack()) . ' !important}body.single-product .ma-product-artwork-panel{gap:0!important;padding:16px 0!important;margin:0!important}body.single-product .ma-product-artwork-panel__details{gap:8px!important}body.single-product .ma-product-artwork-panel__row{grid-template-columns:96px minmax(0,1fr)!important;gap:12px!important}body.single-product .ma-product-artwork-panel__row span{font-family:' . esc_html(self::font_stack()) . ' !important;color:#666!important;font-size:11px!important;letter-spacing:.08em!important}body.single-product .ma-product-artwork-panel__row strong{font-family:' . esc_html(self::font_stack()) . ' !important;font-size:14px!important;font-weight:500!important}body.single-product .product_meta .detail-container{font-family:' . esc_html(self::font_stack()) . ' !important;font-size:12px!important;line-height:1.35!important}body.single-product .elementor-element-923ecf0 .elementor-widget-text-editor{font-size:12px!important;line-height:1.35!important}@media(max-width:760px){body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b>.elementor-widget-wrap{padding-top:0!important}body.single-product .elementor-element-923ecf0 .elementor-widget-wrap>*+*{margin-top:14px!important}}</style>';
         echo '<style id="ma-product-font-final-css">body.single-product .elementor-element-923ecf0,body.single-product .elementor-element-923ecf0 *:not(.dashicons):not(.eicon):not([class*="icon"]){font-family:' . esc_html(self::font_stack()) . ' !important}body.single-product .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-widget-woocommerce-product-price .price span,body.single-product .elementor-widget-woocommerce-product-price .amount{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important}body.single-product .elementor-widget-woocommerce-product-title .product_title{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important}</style>';
         echo '<style id="ma-product-price-font-final-css">body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:' . esc_html(self::font_stack()) . ' !important;font-style:normal!important;font-weight:500!important}</style>';
         echo '<style id="ma-product-system-font-css">body.single-product .elementor-element-923ecf0,body.single-product .elementor-element-923ecf0 *:not(.dashicons):not(.eicon):not([class*="icon"]){font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .price *,body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-price .amount{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-style:normal!important;font-weight:500!important}</style>';
+        echo '<style id="ma-variable-product-options-css">body.single-product form.variations_form table.variations{width:100%!important;max-width:540px!important;margin:0 0 18px!important;border:0!important}body.single-product form.variations_form table.variations tbody,body.single-product form.variations_form table.variations tr,body.single-product form.variations_form table.variations th,body.single-product form.variations_form table.variations td{display:block!important;width:100%!important;padding:0!important;border:0!important}body.single-product form.variations_form table.variations tr{margin:0 0 14px!important}body.single-product form.variations_form table.variations .label,body.single-product form.variations_form table.variations label{margin:0 0 6px!important;color:#111!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:12px!important;line-height:1.25!important;font-weight:700!important;letter-spacing:.08em!important;text-transform:uppercase!important}body.single-product form.variations_form table.variations select{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:44px!important;min-height:44px!important;margin:0!important;padding:0 40px 0 12px!important;border:1px solid #d7d2ca!important;border-radius:0!important;background-color:#fff!important;color:#111!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:14px!important;line-height:44px!important;white-space:nowrap!important;overflow:hidden!important;resize:none!important}body.single-product form.variations_form .reset_variations{display:inline-block!important;margin-top:4px!important;font-size:12px!important}body.single-product form.variations_form .single_variation_wrap .woocommerce-variation-add-to-cart,body.single-product form.variations_form .single_variation_wrap .variations_button{display:flex!important;align-items:stretch!important;gap:10px!important;max-width:540px!important}body.single-product form.variations_form .quantity{flex:0 0 74px!important}body.single-product form.variations_form .single_add_to_cart_button{flex:1 1 auto!important}@media(max-width:640px){body.single-product form.variations_form .single_variation_wrap .woocommerce-variation-add-to-cart,body.single-product form.variations_form .single_variation_wrap .variations_button{display:block!important}body.single-product form.variations_form .quantity{margin:0 0 10px!important}}</style>';
         echo '<style id="ma-product-purchase-note-css">body.single-product .ma-product-purchase-note{max-width:520px;margin:0 0 14px!important;color:#444!important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-size:12px!important;line-height:1.45!important;font-weight:400!important}body.single-product .elementor-widget-woocommerce-product-add-to-cart .stock+.ma-product-purchase-note{margin-top:0!important}</style>';
         echo '<style id="ma-contextual-related-products-css">body.single-product .elementor-element-058532c,body.single-product .elementor-element-6c0ca08{display:none!important}.ma-contextual-related-products{clear:both;margin:48px 0 0;padding-top:28px;border-top:1px solid rgba(0,0,0,.14);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#111}.ma-contextual-related-products header{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:0 0 20px}.ma-contextual-related-products h2{margin:0!important;font-size:24px!important;line-height:1.2!important;font-weight:700!important;letter-spacing:0!important;color:#111!important}.ma-contextual-related-products header p{max-width:360px;margin:0;color:#666;font-size:13px;line-height:1.45}.ma-contextual-related-products__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}.ma-contextual-related-products__item a{color:inherit;text-decoration:none}.ma-contextual-related-products__item img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;margin:0 0 12px}.ma-contextual-related-products__item h3{margin:0 0 7px!important;font-size:16px!important;line-height:1.25!important;font-weight:650!important;letter-spacing:0!important;color:#111!important}.ma-contextual-related-products__item p{margin:0 0 7px;color:#555;font-size:12px;line-height:1.35}.ma-contextual-related-products__price{font-size:14px;font-weight:650;color:#111}.ma-contextual-related-products__price .amount{color:inherit}@media(max-width:900px){.ma-contextual-related-products__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ma-contextual-related-products header{display:block}.ma-contextual-related-products header p{margin-top:8px}}@media(max-width:560px){.ma-contextual-related-products__grid{grid-template-columns:1fr}}</style>';
         echo '<style id="ma-product-image-emphasis-css">body.single-product .elementor-element-923ecf0>.elementor-container{display:flex!important;gap:42px!important;justify-content:flex-start!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b{width:54%!important;max-width:650px!important;flex:0 1 54%!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:46%!important;max-width:560px!important;flex:0 1 46%!important}body.single-product .elementor-element-923ecf0 .elementor-widget-woocommerce-product-images,body.single-product .elementor-element-923ecf0 .elementor-element-f5de331{width:100%!important;max-width:640px!important}body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__wrapper,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery__image,body.single-product .elementor-element-923ecf0 .woocommerce-product-gallery img{width:100%!important;max-width:640px!important;height:auto!important}body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b>.elementor-widget-wrap{padding-left:0!important}@media(max-width:900px){body.single-product .elementor-element-923ecf0>.elementor-container{display:block!important}body.single-product .elementor-element-923ecf0 .elementor-element-c02330b,body.single-product .elementor-element-923ecf0 .elementor-element-8a50c1b{width:100%!important;max-width:none!important}}</style>';
@@ -5729,15 +6153,20 @@ HTML;
         if (!$artist || !class_exists('WooCommerce')) {
             return '';
         }
-        $products = get_posts([
+        $product_posts = get_posts([
             'post_type' => 'product',
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC',
-            'meta_key' => 'ma_artist_name',
-            'meta_value' => $artist,
         ]);
+        $products = [];
+        foreach ($product_posts as $post) {
+            $product = wc_get_product($post->ID);
+            if ($product instanceof WC_Product && self::product_matches_artist($product, $artist)) {
+                $products[] = $post;
+            }
+        }
         if (!$products) {
             return '<p>No artworks are currently listed for this artist.</p>';
         }
@@ -5760,6 +6189,77 @@ HTML;
         }
         $html .= '</div>';
         return $html;
+    }
+
+    private static function product_matches_artist(WC_Product $product, string $artist_name): bool {
+        $target = self::artist_compare_key($artist_name);
+        if (!$target) {
+            return false;
+        }
+        foreach (self::product_artist_candidates($product) as $candidate) {
+            if (self::artist_compare_key($candidate) === $target) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function product_artist_name(WC_Product $product): string {
+        foreach (self::product_artist_candidates($product) as $candidate) {
+            $candidate = self::text($candidate);
+            if ($candidate) {
+                return $candidate;
+            }
+        }
+        return '';
+    }
+
+    private static function product_artist_candidates(WC_Product $product): array {
+        $product_id = $product->get_id();
+        $post = get_post($product_id);
+        $source = $post ? ((string) $post->post_title . "\n" . (string) $post->post_content) : $product->get_name();
+        $candidates = [
+            get_post_meta($product_id, 'ma_artist_name', true),
+        ];
+
+        $artist_terms = wp_get_post_terms($product_id, 'pa_artist', ['fields' => 'names']);
+        if (!is_wp_error($artist_terms)) {
+            $candidates = array_merge($candidates, $artist_terms);
+        }
+
+        $tag_terms = wp_get_post_terms($product_id, 'product_tag', ['fields' => 'names']);
+        if (!is_wp_error($tag_terms)) {
+            $candidates = array_merge($candidates, $tag_terms);
+        }
+
+        if (preg_match('/\bby\s+([^,\n\r]+)/i', $product->get_name(), $match)) {
+            $candidates[] = $match[1];
+        }
+        $inferred = self::infer_artist_name_from_text($source);
+        if ($inferred) {
+            $candidates[] = $inferred;
+        }
+
+        $cleaned = [];
+        foreach ($candidates as $candidate) {
+            $candidate = self::clean_artist_label((string) $candidate);
+            if ($candidate && !in_array($candidate, $cleaned, true)) {
+                $cleaned[] = $candidate;
+            }
+        }
+        return $cleaned;
+    }
+
+    private static function clean_artist_label(string $artist_name): string {
+        $artist_name = self::text(str_replace('_', ' ', $artist_name));
+        $artist_name = preg_replace('/\s+/', ' ', $artist_name) ?: $artist_name;
+        return trim($artist_name);
+    }
+
+    private static function artist_compare_key(string $artist_name): string {
+        $artist_name = strtolower(remove_accents(self::clean_artist_label($artist_name)));
+        $artist_name = preg_replace('/[^a-z0-9]+/', '', $artist_name) ?: '';
+        return $artist_name;
     }
 
     public static function past_sponsors_shortcode(array $atts = []): string {
@@ -6297,54 +6797,73 @@ HTML;
         self::$catalog_css_printed = true;
         $font_stack = self::font_stack();
         echo '<style>
-            .ma-shop-on-view{clear:both;width:100%;margin:0 0 42px;padding:0 0 32px;border-bottom:1px solid rgba(0,0,0,.14);background:#fff}
-            .ma-shop-section-header{clear:both;display:flex;align-items:baseline;justify-content:space-between;gap:18px;margin:0 0 18px}
-            .ma-shop-section-header h2{margin:0;font-size:26px;line-height:1.15;font-weight:700;letter-spacing:0;color:#000}
-            .ma-shop-section-header p{margin:0;color:#555;font-size:15px;line-height:1.35;text-align:right}
-            .ma-shop-on-view__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;align-items:start}
+            body.post-type-archive-product,body.tax-product_cat{font-family:' . esc_html($font_stack) . ';color:#141414;background:#fff}
+            body.post-type-archive-product .nv-page-title-wrap,body.tax-product_cat .nv-page-title-wrap{margin:0 0 26px!important}
+            body.post-type-archive-product .page-title,body.tax-product_cat .page-title,body.post-type-archive-product h1,body.tax-product_cat h1{font-family:' . esc_html($font_stack) . '!important;font-size:clamp(30px,3vw,42px)!important;line-height:1.08!important;font-weight:650!important;letter-spacing:0!important;color:#111!important}
+            body.post-type-archive-product .neve-main,body.tax-product_cat .neve-main{font-family:' . esc_html($font_stack) . '!important}
+            body.post-type-archive-product .nv-content-wrap h1,body.tax-product_cat .nv-content-wrap h1{margin:0 0 20px!important;font-size:34px!important;line-height:1.12!important;font-weight:560!important;letter-spacing:0!important;color:#111!important}
+            body.post-type-archive-product .nv-content-wrap p,body.tax-product_cat .nv-content-wrap p{font-family:' . esc_html($font_stack) . ';font-size:15px;line-height:1.55;color:#262626}
+            body.post-type-archive-product .nv-content-wrap>p strong,body.tax-product_cat .nv-content-wrap>p strong,body.post-type-archive-product .elementor-widget-text-editor strong,body.tax-product_cat .elementor-widget-text-editor strong,body.post-type-archive-product .elementor-widget-text-editor b,body.tax-product_cat .elementor-widget-text-editor b{font-weight:500!important}
+            body.post-type-archive-product .nv-content-wrap a,body.tax-product_cat .nv-content-wrap a{color:#111;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+            body.post-type-archive-product .nv-content-wrap .button,body.tax-product_cat .nv-content-wrap .button,body.post-type-archive-product button,body.tax-product_cat button{font-family:' . esc_html($font_stack) . '!important;letter-spacing:0!important;border-radius:0!important}
+            body.post-type-archive-product input[type="search"],body.tax-product_cat input[type="search"],body.post-type-archive-product .aws-container .aws-search-field{height:42px!important;border:1px solid #d9d6cf!important;border-radius:0!important;box-shadow:none!important;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;color:#111!important}
+            body.post-type-archive-product input[type="search"]::placeholder,body.tax-product_cat input[type="search"]::placeholder{color:#777!important;opacity:1!important}
+            body.post-type-archive-product .nv-sidebar-wrap,body.tax-product_cat .nv-sidebar-wrap{font-family:' . esc_html($font_stack) . '!important;color:#222}
+            body.post-type-archive-product .nv-sidebar-wrap .widget,body.tax-product_cat .nv-sidebar-wrap .widget{margin-bottom:28px!important}
+            body.post-type-archive-product .nv-sidebar-wrap h2,body.post-type-archive-product .nv-sidebar-wrap h3,body.post-type-archive-product .wpfFilterTitle,body.tax-product_cat .nv-sidebar-wrap h2,body.tax-product_cat .nv-sidebar-wrap h3,body.tax-product_cat .wpfFilterTitle{font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1.35!important;font-weight:620!important;letter-spacing:0!important;color:#111!important;text-transform:none!important}
+            body.post-type-archive-product .wpfFilterWrapper,body.tax-product_cat .wpfFilterWrapper{margin-bottom:22px!important}
+            body.post-type-archive-product .wpfFilterContent,body.tax-product_cat .wpfFilterContent{font-family:' . esc_html($font_stack) . '!important}
+            body.post-type-archive-product .wpfFilterButton.wpfButton,body.tax-product_cat .wpfFilterButton.wpfButton{border-radius:0!important;background:#111!important;color:#fff!important;border:1px solid #111!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;font-weight:600!important;letter-spacing:0!important}
+            body.post-type-archive-product .wpfClearButton,body.tax-product_cat .wpfClearButton{font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;color:#555!important;text-decoration:underline!important;text-underline-offset:3px}
+            .ma-shop-on-view{clear:both;width:100%;margin:0 0 46px;padding:0 0 34px;border-bottom:1px solid #dedbd4;background:#fff}
+            .ma-shop-section-header{clear:both;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 22px}
+            .ma-shop-section-header h2{margin:0;font-family:' . esc_html($font_stack) . ';font-size:23px;line-height:1.15;font-weight:540;letter-spacing:0;color:#111}
+            .ma-shop-section-header p{margin:0;color:#666;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4;text-align:right}
+            .ma-shop-on-view__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 34px;align-items:start}
             .ma-art-card{display:block;min-width:0;color:inherit;text-decoration:none;background:#fff}
-            .ma-art-card img,.woocommerce ul.products.ma-shop-catalog-grid img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;background:#f2f2f2;border-radius:0!important;box-shadow:none!important}
-            .ma-shop-catalog-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f2f2f2;border-radius:0!important;box-shadow:none!important}
-            .ma-art-card h3,.woocommerce ul.products.ma-shop-catalog-grid .woocommerce-loop-product__title,.ma-shop-catalog-card .eael-product-title,.ma-shop-catalog-card .eael-product-title a{margin:14px 0 8px!important;font-size:18px!important;line-height:1.24!important;font-weight:700!important;color:#000!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
-            .ma-art-card__meta,.ma-art-card__exhibit,.ma-on-view-line{margin:.35rem 0 8px;color:#555;font-size:14px;line-height:1.45;text-align:left}
-            .ma-shop-catalog-meta{display:grid;gap:3px;margin:0 0 10px;color:#333;font-size:14px;line-height:1.35;text-align:left}
+            .ma-art-card img,.woocommerce ul.products.ma-shop-catalog-grid img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-shop-catalog-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-art-card:hover img,.ma-custom-store-card__image:hover img,.ma-shop-catalog-card:hover img{opacity:.92}
+            .ma-art-card h3,.woocommerce ul.products.ma-shop-catalog-grid .woocommerce-loop-product__title,.ma-shop-catalog-card .eael-product-title,.ma-shop-catalog-card .eael-product-title a{margin:14px 0 9px!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.35!important;font-weight:500!important;color:#111!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
+            .ma-art-card__meta,.ma-art-card__exhibit,.ma-on-view-line{margin:.35rem 0 8px;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.45;text-align:left}
+            .ma-shop-catalog-meta{display:grid;gap:5px;margin:0 0 13px;color:#2b2b2b;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4;text-align:left}
             .ma-shop-catalog-meta div{display:block}
-            .ma-shop-catalog-meta span{display:inline-block;margin-right:6px;color:#777;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-            .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#000!important;font-size:16px!important;line-height:1.25!important;font-weight:700!important;text-align:left!important}
+            .ma-shop-catalog-meta span{display:inline-block;margin-right:7px;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
+            .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
             .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products{display:none!important}
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
-            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:44px 0 0!important;padding:30px 0 0!important;border-top:1px solid rgba(0,0,0,.12);text-align:left;font-family:' . esc_html($font_stack) . '}
+            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:34px 0 0!important;padding:30px 0 0!important;border-top:1px solid #dedbd4;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
-            .ma-custom-store-grid__header{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;margin:0 0 30px!important;min-height:32px}
-            .ma-custom-store-grid__header h2{display:block!important;margin:0!important;padding:0!important;color:#000!important;font-family:' . esc_html($font_stack) . '!important;font-size:26px!important;line-height:1.15!important;font-weight:650!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
-            .ma-custom-store-grid__header p{display:block!important;margin:0!important;padding:0!important;color:#555!important;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;line-height:1.3!important;font-weight:400!important;text-align:right!important;white-space:nowrap}
+            .ma-custom-store-grid__header{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;margin:0 0 32px!important;min-height:32px}
+            .ma-custom-store-grid__header h2{display:block!important;margin:0!important;padding:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:23px!important;line-height:1.15!important;font-weight:540!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
+            .ma-custom-store-grid__header p{display:block!important;margin:0!important;padding:0!important;color:#666!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1.35!important;font-weight:500!important;text-align:right!important;white-space:nowrap}
             .ma-custom-store-grid [hidden]{display:none!important}
-            .ma-custom-store-active-filters{margin:-12px 0 24px!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:14px;line-height:1.4}
+            .ma-custom-store-active-filters{margin:-12px 0 24px!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4}
             .ma-custom-store-grid--loading .ma-custom-store-grid__items{opacity:.45;transition:opacity .15s ease}
-            .ma-custom-store-grid__items{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:64px 40px;width:100%;align-items:start;justify-items:stretch}
+            .ma-custom-store-grid__items{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:58px 42px;width:100%;align-items:start;justify-items:stretch}
             .ma-custom-store-empty{margin:20px 0!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:15px}
-            .ma-custom-store-card{display:grid!important;grid-template-rows:auto auto 1fr auto;min-width:0;margin:0!important;padding:0!important;background:#fff;color:#000;font-family:' . esc_html($font_stack) . '}
-            .ma-custom-store-card__image{display:block;width:100%;aspect-ratio:4/3;overflow:hidden;background:#f4f4f4;text-decoration:none}
-            .ma-custom-store-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;border-radius:0!important;box-shadow:none!important}
-            .ma-custom-store-card h3{display:block!important;margin:16px 0 11px!important;padding:0!important;font-family:' . esc_html($font_stack) . '!important;font-size:18px!important;line-height:1.28!important;font-weight:650!important;letter-spacing:0!important;text-align:left!important}
-            .ma-custom-store-card h3 a{color:#000!important;text-decoration:none!important}
+            .ma-custom-store-card{display:grid!important;grid-template-rows:auto auto 1fr auto;min-width:0;margin:0!important;padding:0!important;background:#fff;color:#141414;font-family:' . esc_html($font_stack) . '}
+            .ma-custom-store-card__image{display:block;width:100%;aspect-ratio:4/3;overflow:hidden;background:#f4f2ee;text-decoration:none}
+            .ma-custom-store-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-custom-store-card h3{display:block!important;margin:15px 0 10px!important;padding:0!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.36!important;font-weight:500!important;letter-spacing:0!important;text-align:left!important}
+            .ma-custom-store-card h3 a{color:#111!important;text-decoration:none!important}
             .ma-custom-store-card h3 a:hover{text-decoration:underline!important;text-underline-offset:3px}
-            .ma-custom-store-card__meta{display:grid!important;gap:6px;margin:0 0 14px!important;color:#222;font-family:' . esc_html($font_stack) . ';font-size:14px;line-height:1.35;text-align:left}
-            .ma-custom-store-card__meta div{display:grid!important;grid-template-columns:minmax(78px,max-content) minmax(0,1fr);column-gap:10px;align-items:baseline}
-            .ma-custom-store-card__meta span{display:block;color:#5f6368;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+            .ma-custom-store-card__meta{display:grid!important;gap:5px;margin:0 0 15px!important;color:#2b2b2b;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.42;text-align:left}
+            .ma-custom-store-card__meta div{display:grid!important;grid-template-columns:minmax(82px,max-content) minmax(0,1fr);column-gap:10px;align-items:baseline}
+            .ma-custom-store-card__meta span{display:block;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
             .ma-custom-store-card__meta span::after{content:":"}
-            .ma-custom-store-card__price{display:block!important;margin:2px 0 0!important;color:#111!important;font-family:Georgia,"Times New Roman",serif!important;font-size:17px!important;line-height:1.25!important;font-weight:500!important;text-align:left!important}
-            .woocommerce ul.products.ma-shop-catalog-grid{clear:both;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:34px!important;row-gap:52px!important;width:100%!important;height:auto!important;margin:0!important;align-items:start!important;list-style:none!important}
+            .ma-custom-store-card__price{display:block!important;margin:2px 0 0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
+            .woocommerce ul.products.ma-shop-catalog-grid{clear:both;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:42px!important;row-gap:58px!important;width:100%!important;height:auto!important;margin:0!important;align-items:start!important;list-style:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid>li.product{position:relative!important;left:auto!important;top:auto!important;float:none!important;display:block!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;transform:none!important;background:#fff!important;border:0!important;box-shadow:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid .woocommerce-LoopProduct-link,.woocommerce ul.products.ma-shop-catalog-grid .product-image-wrap,.woocommerce ul.products.ma-shop-catalog-grid .image-wrap{display:block!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;aspect-ratio:4/3!important}
             .woocommerce ul.products.ma-shop-catalog-grid .button,.woocommerce ul.products.ma-shop-catalog-grid .added_to_cart,.woocommerce ul.products.ma-shop-catalog-grid .star-rating{display:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid::before,.woocommerce ul.products.ma-shop-catalog-grid::after{content:none!important;display:none!important}
             body.woocommerce.archive .widget-area,body.tax-product_cat .widget-area{float:left}
             .ma-clean-artist-filter .wpfFilterVerScroll{max-height:360px!important;padding-right:6px}
-            .ma-clean-artist-filter .wpfLiLabel{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:5px 0!important;color:#111;font-size:14px;line-height:1.25}
+            .ma-clean-artist-filter .wpfLiLabel{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:5px 0!important;color:#222;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.3}
             .ma-clean-artist-filter .wpfFilterTaxNameWrapper,.ma-clean-artist-filter .wpfValue{white-space:normal!important;word-break:normal!important}
             .ma-clean-artist-filter .wpfCount{margin-left:4px;color:#777;font-size:12px}
-            @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1280px}}
+            @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1320px}}
             @media(max-width:1024px){.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:26px!important;row-gap:44px!important}}
             @media(max-width:640px){.ma-shop-section-header,.ma-custom-store-grid__header{display:block}.ma-shop-section-header p,.ma-custom-store-grid__header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:1fr!important}}
         </style>';
@@ -6567,6 +7086,9 @@ HTML;
     }
 
     private static function contextual_related_products_section(WC_Product $product): string {
+        if (!self::is_artwork_product($product)) {
+            return '';
+        }
         $ids = self::filter_contextual_related_products([], $product->get_id(), ['posts_per_page' => 4]);
         if (!$ids) {
             return '';
@@ -6608,6 +7130,40 @@ HTML;
         return (string) ob_get_clean();
     }
 
+    private static function is_artwork_product(WC_Product $product): bool {
+        $product_id = (int) $product->get_id();
+        if (!$product_id) {
+            return false;
+        }
+
+        if (has_term('artwork', 'product_cat', $product_id)) {
+            return true;
+        }
+
+        $terms = get_the_terms($product_id, 'product_cat');
+        if (is_wp_error($terms) || !$terms) {
+            return false;
+        }
+
+        foreach ($terms as $term) {
+            if (!$term instanceof WP_Term) {
+                continue;
+            }
+            if ($term->slug === 'artwork') {
+                return true;
+            }
+            $ancestors = get_ancestors((int) $term->term_id, 'product_cat');
+            foreach ($ancestors as $ancestor_id) {
+                $ancestor = get_term((int) $ancestor_id, 'product_cat');
+                if ($ancestor instanceof WP_Term && $ancestor->slug === 'artwork') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public static function filter_contextual_related_products(array $related_posts, int $product_id, array $args): array {
         if (is_admin() || !function_exists('wc_get_product')) {
             return $related_posts;
@@ -6616,15 +7172,18 @@ HTML;
         if (!$product) {
             return $related_posts;
         }
+        if (!self::is_artwork_product($product)) {
+            return $related_posts;
+        }
 
         $limit = max(1, (int) ($args['posts_per_page'] ?? count($related_posts) ?: 4));
-        $artist = self::text(get_post_meta($product_id, 'ma_artist_name', true)) ?: self::product_detail_value($product, 'Artist');
+        $artist = self::product_artist_name($product) ?: self::product_detail_value($product, 'Artist');
         $medium = self::text(get_post_meta($product_id, 'material', true)) ?: self::product_detail_value($product, 'Medium');
         $series = self::text(get_post_meta($product_id, 'ma_artwork_series', true)) ?: self::product_detail_value($product, 'Series');
 
         $ids = [];
         if ($artist) {
-            $ids = array_merge($ids, self::related_product_ids_by_meta($product_id, 'ma_artist_name', $artist, $limit));
+            $ids = array_merge($ids, self::related_product_ids_by_artist($product_id, $artist, $limit));
         }
         if (count($ids) < $limit && $medium) {
             $ids = array_merge($ids, self::related_product_ids_by_meta($product_id, 'material', $medium, $limit));
@@ -6658,6 +7217,34 @@ HTML;
                 'compare' => '=',
             ]],
         ]);
+    }
+
+    private static function related_product_ids_by_artist(int $product_id, string $artist_name, int $limit): array {
+        $ids = self::related_product_ids_by_meta($product_id, 'ma_artist_name', $artist_name, $limit);
+        if (count($ids) >= $limit) {
+            return $ids;
+        }
+        $all_ids = get_posts([
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'post__not_in' => [$product_id],
+            'orderby' => ['date' => 'DESC', 'ID' => 'DESC'],
+        ]);
+        foreach ($all_ids as $id) {
+            if (in_array((int) $id, $ids, true)) {
+                continue;
+            }
+            $product = wc_get_product((int) $id);
+            if ($product instanceof WC_Product && self::product_matches_artist($product, $artist_name)) {
+                $ids[] = (int) $id;
+            }
+            if (count($ids) >= $limit) {
+                break;
+            }
+        }
+        return array_slice(array_values(array_unique(array_map('intval', $ids))), 0, $limit);
     }
 
     private static function related_product_ids_by_category(int $product_id, int $limit): array {
@@ -6699,7 +7286,7 @@ HTML;
     private static function product_detail_rows(WC_Product $product): array {
         $post = get_post($product->get_id());
         $source = $post ? ((string) $post->post_title . "\n" . (string) $post->post_content) : $product->get_name();
-        $artist = self::text(get_post_meta($product->get_id(), 'ma_artist_name', true)) ?: self::infer_artist_name_from_text($source);
+        $artist = self::product_artist_name($product) ?: self::infer_artist_name_from_text($source);
         $year = self::text(get_post_meta($product->get_id(), 'year', true)) ?: self::infer_year_from_text($source);
         $series = self::text(get_post_meta($product->get_id(), 'ma_artwork_series', true)) ?: self::product_series_label($product);
         $medium = self::text(get_post_meta($product->get_id(), 'material', true)) ?: self::infer_medium_from_text($source);
@@ -6785,8 +7372,8 @@ HTML;
         if (function_exists('is_shop') && is_shop()) {
             return true;
         }
-        if (function_exists('is_search') && is_search() && self::text($_GET['post_type'] ?? '') === 'product') {
-            return true;
+        if (function_exists('is_search') && is_search()) {
+            return false;
         }
         if (function_exists('is_product_category') && is_product_category()) {
             $term = get_queried_object();
@@ -6887,6 +7474,7 @@ HTML;
             'write_shop_url' => 0,
             'last_sync_at' => '',
             'last_visitor_sync_at' => '',
+            'last_artist_directory_sync_at' => '',
             'cron_secret' => '',
             'field_map' => self::default_field_map(),
             'visitor_field_map' => self::default_visitor_field_map(),
