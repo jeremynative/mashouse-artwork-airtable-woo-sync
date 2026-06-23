@@ -7366,6 +7366,9 @@ HTML;
     }
 
     private static function is_artwork_catalog_request(): bool {
+        if (self::text($_GET['s'] ?? '') !== '' || (function_exists('get_query_var') && self::text(get_query_var('s')) !== '')) {
+            return false;
+        }
         if (function_exists('is_paged') && is_paged()) {
             return false;
         }
