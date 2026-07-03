@@ -65,6 +65,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('widget_posts_args', [__CLASS__, 'exclude_artist_profiles_from_recent_posts_widget']);
         add_filter('wp_nav_menu_objects', [__CLASS__, 'order_donate_menu_after_community_artists'], 20, 2);
         add_filter('nav_menu_link_attributes', [__CLASS__, 'filter_donate_menu_link_attributes'], 20, 4);
+        add_filter('nav_menu_css_class', [__CLASS__, 'filter_donate_menu_item_classes'], 20, 4);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
         add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
@@ -143,6 +144,17 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return $atts;
     }
 
+    public static function filter_donate_menu_item_classes(array $classes, WP_Post $item, $args, int $depth): array {
+        if (!self::is_donate_menu_item($item)) {
+            return $classes;
+        }
+
+        $classes = array_diff($classes, ['menu-item-has-children', 'menu-item-has-children--active', 'has-submenu']);
+        $classes[] = 'ma-donate-menu-item';
+
+        return array_values(array_unique($classes));
+    }
+
     private static function is_donate_menu_item($item): bool {
         $title = isset($item->title) ? trim(wp_strip_all_tags((string) $item->title)) : '';
         $url = isset($item->url) ? (string) $item->url : '';
@@ -165,7 +177,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return;
         }
 
-        echo '<style id="ma-givebutter-donate-menu-css" data-no-optimize="1" data-cfasync="false">.ma-givebutter-donate-link{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:2.35rem!important;padding:.55rem .9rem!important;border-radius:4px!important;background:#d92f2f!important;color:#fff!important;font-weight:700!important;line-height:1!important;text-decoration:none!important;white-space:nowrap!important}.ma-givebutter-donate-link:hover,.ma-givebutter-donate-link:focus{background:#111!important;color:#fff!important;text-decoration:none!important}.ma-givebutter-donate-link:focus-visible{outline:2px solid #111!important;outline-offset:3px!important}@media(max-width:960px){.ma-givebutter-donate-link{display:flex!important;width:max-content!important;margin:.35rem 0!important}}</style>';
+        echo '<style id="ma-givebutter-donate-menu-css" data-no-optimize="1" data-cfasync="false">@media(min-width:961px){body .builder-item--primary-menu .nav-ul{flex-wrap:nowrap!important;align-items:center!important}body .builder-item--primary-menu .nav-ul>li>a:not(.ma-givebutter-donate-link){padding-left:9px!important;padding-right:9px!important}body .builder-item--primary-menu .nav-ul>li.ma-donate-menu-item{display:flex!important;align-items:center!important;flex:0 0 auto!important;margin-left:2px!important;white-space:nowrap!important}}.ma-givebutter-donate-link{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:32px!important;padding:7px 12px!important;border-radius:4px!important;background:#d92f2f!important;color:#fff!important;font-size:14px!important;font-weight:700!important;line-height:1!important;text-decoration:none!important;white-space:nowrap!important}.ma-givebutter-donate-link:hover,.ma-givebutter-donate-link:focus{background:#111!important;color:#fff!important;text-decoration:none!important}.ma-givebutter-donate-link:focus-visible{outline:2px solid #111!important;outline-offset:3px!important}.ma-donate-menu-item .caret-wrap,.ma-donate-menu-item .sub-arrow,.ma-donate-menu-item .dropdown-toggle,.ma-donate-menu-item .nv-icon,.ma-donate-menu-item>button,.ma-donate-menu-item>.sub-menu{display:none!important}@media(max-width:1180px) and (min-width:961px){body .builder-item--primary-menu .nav-ul>li>a:not(.ma-givebutter-donate-link){padding-left:7px!important;padding-right:7px!important;font-size:14px!important}.ma-givebutter-donate-link{padding:7px 10px!important;font-size:14px!important}}@media(max-width:960px){.ma-givebutter-donate-link{display:flex!important;width:max-content!important;margin:.35rem 0!important}}</style>';
     }
 
     public static function exclude_artist_profiles_from_recent_posts_widget(array $args): array {
