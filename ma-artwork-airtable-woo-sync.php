@@ -54,6 +54,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_donate_page_first_paint_css'], 3);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_homepage_final_layout_overrides'], 19);
+        add_action('wp_head', [__CLASS__, 'render_donate_menu_button_css'], 19);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
@@ -62,6 +63,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('pre_get_posts', [__CLASS__, 'exclude_artist_profiles_from_home_news']);
         add_filter('posts_results', [__CLASS__, 'dedupe_homepage_weekly_event_posts'], 20, 2);
         add_filter('widget_posts_args', [__CLASS__, 'exclude_artist_profiles_from_recent_posts_widget']);
+        add_filter('wp_nav_menu_objects', [__CLASS__, 'order_donate_menu_after_community_artists'], 20, 2);
+        add_filter('nav_menu_link_attributes', [__CLASS__, 'filter_donate_menu_link_attributes'], 20, 4);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
         add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
@@ -93,6 +96,76 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
         add_shortcode('ma_home_events', [__CLASS__, 'home_events_shortcode']);
+    }
+
+    public static function order_donate_menu_after_community_artists(array $items, $args): array {
+        $donate_index = null;
+        $community_index = null;
+
+        foreach ($items as $index => $item) {
+            if (self::is_donate_menu_item($item)) {
+                $donate_index = $index;
+            }
+            if (self::is_community_artists_menu_item($item)) {
+                $community_index = $index;
+            }
+        }
+
+        if ($donate_index === null || $community_index === null || $donate_index > $community_index) {
+            return $items;
+        }
+
+        $donate = $items[$donate_index];
+        array_splice($items, $donate_index, 1);
+        if ($donate_index < $community_index) {
+            $community_index--;
+        }
+        array_splice($items, $community_index + 1, 0, [$donate]);
+
+        foreach ($items as $order => $item) {
+            $item->menu_order = $order + 1;
+        }
+
+        return $items;
+    }
+
+    public static function filter_donate_menu_link_attributes(array $atts, WP_Post $item, $args, int $depth): array {
+        if (!self::is_donate_menu_item($item)) {
+            return $atts;
+        }
+
+        $atts['href'] = 'https://givebutter.com/support-mas-house-year-round-s5wfol';
+        $atts['data-gb-account'] = 'yQLEsDOjxW31tHDZ';
+        $atts['data-gb-campaign'] = 'support-mas-house-year-round-s5wfol';
+        $atts['class'] = trim(($atts['class'] ?? '') . ' ma-givebutter-donate-link');
+        $atts['aria-label'] = 'Donate to Ma\'s House';
+
+        return $atts;
+    }
+
+    private static function is_donate_menu_item($item): bool {
+        $title = isset($item->title) ? trim(wp_strip_all_tags((string) $item->title)) : '';
+        $url = isset($item->url) ? (string) $item->url : '';
+
+        return strcasecmp($title, 'Donate') === 0
+            || strpos($url, '/donations/generalfund/') !== false
+            || strpos($url, 'givebutter.com/support-mas-house-year-round-s5wfol') !== false;
+    }
+
+    private static function is_community_artists_menu_item($item): bool {
+        $title = isset($item->title) ? trim(wp_strip_all_tags((string) $item->title)) : '';
+        $url = isset($item->url) ? (string) $item->url : '';
+
+        return strcasecmp($title, 'Community Artists') === 0
+            || strpos($url, '/community-artists/') !== false;
+    }
+
+    public static function render_donate_menu_button_css(): void {
+        if (is_admin()) {
+            return;
+        }
+
+        echo '<style id="ma-givebutter-donate-menu-css" data-no-optimize="1" data-cfasync="false">.ma-givebutter-donate-link{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:2.35rem!important;padding:.55rem .9rem!important;border-radius:4px!important;background:#d92f2f!important;color:#fff!important;font-weight:700!important;line-height:1!important;text-decoration:none!important;white-space:nowrap!important}.ma-givebutter-donate-link:hover,.ma-givebutter-donate-link:focus{background:#111!important;color:#fff!important;text-decoration:none!important}.ma-givebutter-donate-link:focus-visible{outline:2px solid #111!important;outline-offset:3px!important}@media(max-width:960px){.ma-givebutter-donate-link{display:flex!important;width:max-content!important;margin:.35rem 0!important}}</style>';
     }
 
     public static function exclude_artist_profiles_from_recent_posts_widget(array $args): array {
