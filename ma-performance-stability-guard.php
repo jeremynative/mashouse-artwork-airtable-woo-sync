@@ -45,19 +45,35 @@ function ma_stability_allow_cron_for_request(): bool {
 	return false;
 }
 
-add_action( 'send_headers', 'ma_stability_public_cache_headers', 0 );
+add_action( 'send_headers', 'ma_stability_public_cache_headers', PHP_INT_MAX );
 function ma_stability_public_cache_headers(): void {
-	if ( is_user_logged_in() || is_admin() || wp_doing_ajax() || is_search() || is_preview() || is_404() ) {
+	if ( ! ma_stability_is_cacheable_public_request() ) {
 		return;
+	}
+
+	header_remove( 'Set-Cookie' );
+	header_remove( 'Pragma' );
+	header_remove( 'Expires' );
+	header_remove( 'Cache-Control' );
+	header( 'Cache-Control: public, max-age=300, s-maxage=14400, stale-while-revalidate=3600' );
+}
+
+function ma_stability_is_cacheable_public_request(): bool {
+	if ( is_user_logged_in() || is_admin() || wp_doing_ajax() || is_search() || is_preview() || is_404() ) {
+		return false;
+	}
+
+	foreach ( array( 'add-to-cart', 'wc-ajax', 'giveDonationFormInIframe', 'give-embed' ) as $cache_bypass_key ) {
+		if ( isset( $_GET[ $cache_bypass_key ] ) ) {
+			return false;
+		}
 	}
 
 	if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() || is_account_page() ) ) {
-		return;
+		return false;
 	}
 
-	header_remove( 'Pragma' );
-	header_remove( 'Expires' );
-	header( 'Cache-Control: public, max-age=300, stale-while-revalidate=3600' );
+	return true;
 }
 
 add_action( 'shutdown', 'ma_stability_capture_home_fallback', 0 );
