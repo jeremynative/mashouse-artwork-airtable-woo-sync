@@ -1,0 +1,73 @@
+<?php
+/**
+ * Plugin Name: Ma's House Performance Stability Guard
+ * Description: Emergency public-page stability guard for Ma's House. Keeps expensive background work out of anonymous page loads and improves cacheability.
+ * Version: 0.1.0
+ * Author: Ma's House
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+define( 'MA_STABILITY_LAST_CRON_SPAWN', 'ma_stability_last_cron_spawn' );
+define( 'MA_STABILITY_CRON_THROTTLE', 10 * MINUTE_IN_SECONDS );
+
+add_filter( 'pre_spawn_cron', 'ma_stability_throttle_frontend_cron_spawn', 1 );
+function ma_stability_throttle_frontend_cron_spawn( $pre ) {
+	if ( ma_stability_allow_cron_for_request() ) {
+		return $pre;
+	}
+
+	$last_spawn = (int) get_transient( MA_STABILITY_LAST_CRON_SPAWN );
+	if ( $last_spawn && ( time() - $last_spawn ) < MA_STABILITY_CRON_THROTTLE ) {
+		return true;
+	}
+
+	set_transient( MA_STABILITY_LAST_CRON_SPAWN, time(), MA_STABILITY_CRON_THROTTLE );
+	return $pre;
+}
+
+function ma_stability_allow_cron_for_request(): bool {
+	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+		return true;
+	}
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return false;
+	}
+
+	$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+	if ( preg_match( '#/(wp-cron\.php|wp-admin/|wp-login\.php)#', $uri ) ) {
+		return true;
+	}
+
+	return false;
+}
+
+add_action( 'send_headers', 'ma_stability_public_cache_headers', 0 );
+function ma_stability_public_cache_headers(): void {
+	if ( is_user_logged_in() || is_admin() || wp_doing_ajax() || is_search() || is_preview() || is_404() ) {
+		return;
+	}
+
+	if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() || is_account_page() ) ) {
+		return;
+	}
+
+	header_remove( 'Pragma' );
+	header_remove( 'Expires' );
+	header( 'Cache-Control: public, max-age=300, stale-while-revalidate=3600' );
+}
+
+add_action( 'shutdown', 'ma_stability_capture_home_fallback', 0 );
+function ma_stability_capture_home_fallback(): void {
+	if ( ! is_front_page() || is_user_logged_in() || is_admin() || wp_doing_ajax() || http_response_code() >= 400 ) {
+		return;
+	}
+
+	$elapsed = timer_stop( 0, 3 );
+	if ( $elapsed > 8 ) {
+		error_log( 'Ma stability guard: slow homepage render ' . $elapsed . 's' );
+	}
+}

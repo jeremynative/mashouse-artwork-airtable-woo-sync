@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - "ma-artwork-airtable-woo-sync.php"
+      - "ma-performance-stability-guard.php"
       - "README.md"
       - "assets/**"
       - ".github/workflows/deploy-mashouse-plugin.yml"
@@ -22,7 +23,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate plugin PHP
-        run: php -l ma-artwork-airtable-woo-sync.php
+        run: |
+          php -l ma-artwork-airtable-woo-sync.php
+          php -l ma-performance-stability-guard.php
 
       - name: Prepare SSH
         run: |
@@ -37,14 +40,28 @@ jobs:
             --exclude ".git/" \
             --exclude ".github/" \
             --exclude "DEPLOYMENT.md" \
+            --exclude "ma-performance-stability-guard.php" \
             -e "ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
             ./ "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:${{ secrets.MASHOUSE_PLUGIN_PATH }}/"
+
+      - name: Deploy stability guard as must-use plugin
+        run: |
+          scp -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -P "${{ secrets.SITEGROUND_PORT }}" \
+            ma-performance-stability-guard.php \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:/tmp/ma-performance-stability-guard.php"
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             mkdir -p \"\$WP_ROOT/wp-content/mu-plugins\"; \
+             mv /tmp/ma-performance-stability-guard.php \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\""
 
       - name: Verify deployed file exists
         run: |
           ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
-            "test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php'"
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php' && \
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\""
 
       - name: Clear public site caches
         run: |
