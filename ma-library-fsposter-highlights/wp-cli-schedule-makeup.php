@@ -14,8 +14,13 @@ if ( ! function_exists( 'ma_lfh_create_highlight_post' ) ) {
 	require_once WP_PLUGIN_DIR . '/ma-library-fsposter-highlights/ma-library-fsposter-highlights.php';
 }
 
-$time  = isset( $args[0] ) ? ma_lfh_clean_text( $args[0] ) : wp_date( 'Y-m-d 18:00:00' );
-$avoid = isset( $args[1] ) ? strtolower( ma_lfh_clean_text( $args[1] ) ) : '';
+$script_args = array_values( (array) $args );
+if ( isset( $script_args[0] ) && '--' === $script_args[0] ) {
+	array_shift( $script_args );
+}
+
+$time  = isset( $script_args[0] ) ? ma_lfh_clean_text( $script_args[0] ) : wp_date( 'Y-m-d 18:00:00' );
+$avoid = isset( $script_args[1] ) ? strtolower( ma_lfh_clean_text( $script_args[1] ) ) : '';
 
 if ( $avoid ) {
 	$avoid_posts = get_posts(
@@ -32,7 +37,35 @@ if ( $avoid ) {
 	}
 }
 
-$post_id = ma_lfh_create_highlight_post( 'publish', false );
+$post_id = 0;
+$recent_replacements = get_posts(
+	array(
+		'post_type'      => 'post',
+		'post_status'    => 'publish',
+		'posts_per_page' => 5,
+		'orderby'        => 'date',
+		'order'          => 'DESC',
+		'meta_key'       => '_ma_lfh_book_id',
+		'date_query'     => array(
+			array(
+				'after' => '1 hour ago',
+			),
+		),
+	)
+);
+foreach ( $recent_replacements as $recent_replacement ) {
+	$title = strtolower( get_the_title( $recent_replacement ) );
+	if ( $avoid && false !== strpos( $title, $avoid ) ) {
+		continue;
+	}
+
+	$post_id = (int) $recent_replacement->ID;
+	break;
+}
+
+if ( ! $post_id ) {
+	$post_id = ma_lfh_create_highlight_post( 'publish', false );
+}
 if ( ! $post_id ) {
 	WP_CLI::error( 'No eligible replacement library book could be selected.' );
 }
