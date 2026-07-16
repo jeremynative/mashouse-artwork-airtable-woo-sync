@@ -28,6 +28,7 @@ jobs:
           php -l ma-artwork-airtable-woo-sync.php
           php -l ma-performance-stability-guard.php
           php -l ma-library-fsposter-highlights/ma-library-fsposter-highlights.php
+          php -l ma-library-fsposter-highlights/wp-cli-schedule-makeup.php
 
       - name: Prepare SSH
         run: |
@@ -79,7 +80,7 @@ jobs:
           ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
             "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
-             wp --path=\"\$WP_ROOT\" ma-lfh schedule-makeup --time='2026-07-16 18:00:00' --avoid='Rehearsals for Living'"
+             wp --path=\"\$WP_ROOT\" eval-file \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights/wp-cli-schedule-makeup.php\" -- '2026-07-16 18:00:00' 'Rehearsals for Living'"
 
       - name: Verify deployed file exists
         run: |
