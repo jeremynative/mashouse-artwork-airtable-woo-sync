@@ -8,6 +8,7 @@ on:
     paths:
       - "ma-artwork-airtable-woo-sync.php"
       - "ma-performance-stability-guard.php"
+      - "ma-library-fsposter-highlights/**"
       - "README.md"
       - "assets/**"
       - ".github/workflows/deploy-mashouse-plugin.yml"
@@ -26,6 +27,7 @@ jobs:
         run: |
           php -l ma-artwork-airtable-woo-sync.php
           php -l ma-performance-stability-guard.php
+          php -l ma-library-fsposter-highlights/ma-library-fsposter-highlights.php
 
       - name: Prepare SSH
         run: |
@@ -55,13 +57,38 @@ jobs:
              mkdir -p \"\$WP_ROOT/wp-content/mu-plugins\"; \
              mv /tmp/ma-performance-stability-guard.php \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\""
 
+      - name: Deploy library highlight scheduler
+        run: |
+          tar -czf ma-library-fsposter-highlights.tgz ma-library-fsposter-highlights
+          scp -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -P "${{ secrets.SITEGROUND_PORT }}" \
+            ma-library-fsposter-highlights.tgz \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:/tmp/ma-library-fsposter-highlights.tgz"
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             rm -rf /tmp/ma-library-fsposter-highlights; \
+             tar -xzf /tmp/ma-library-fsposter-highlights.tgz -C /tmp; \
+             rm -rf \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights\"; \
+             mkdir -p \"\$WP_ROOT/wp-content/plugins\"; \
+             mv /tmp/ma-library-fsposter-highlights \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights\"; \
+             rm -rf /tmp/ma-library-fsposter-highlights /tmp/ma-library-fsposter-highlights.tgz"
+
+      - name: Schedule one-time replacement library highlight
+        if: github.event_name == 'push' && github.event.head_commit.message == 'Fix library highlight rotation and schedule makeup'
+        run: |
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             wp --path=\"\$WP_ROOT\" ma-lfh schedule-makeup --time='2026-07-16 18:00:00' --avoid='Rehearsals for Living'"
+
       - name: Verify deployed file exists
         run: |
           ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
             "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
              test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php' && \
-             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\""
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\" && \
+             test -f \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights/ma-library-fsposter-highlights.php\""
 
       - name: Clear public site caches
         run: |
