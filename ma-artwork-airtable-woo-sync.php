@@ -470,6 +470,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 font-size: 16px;
                 line-height: 1.65;
+                margin-top: 0 !important;
             }
 
             body.single-tribe_events .tribe-events-single-event-description p {
@@ -477,9 +478,62 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 max-width: 760px;
             }
 
+            body.single-tribe_events .tribe-events-pg-template {
+                max-width: 1180px;
+                padding-left: 32px;
+                padding-right: 32px;
+            }
+
+            body.single-tribe_events .tribe-events-single {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            }
+
+            body.single-tribe_events .tribe-events-single-event-title {
+                max-width: 980px;
+                margin-bottom: 18px !important;
+                font-size: clamp(38px, 4.4vw, 58px) !important;
+                line-height: 1.04 !important;
+                font-weight: 650 !important;
+                letter-spacing: 0 !important;
+            }
+
+            body.single-tribe_events .tribe-events-schedule {
+                margin: 0 0 28px !important;
+            }
+
+            body.single-tribe_events .tribe_events.type-tribe_events {
+                display: grid;
+                grid-template-columns: minmax(300px, 440px) minmax(0, 1fr);
+                gap: 38px 44px;
+                align-items: start;
+            }
+
+            body.single-tribe_events .tribe-events-event-image {
+                grid-column: 1;
+                margin: 0 !important;
+                background: #f6f3ee;
+            }
+
+            body.single-tribe_events .tribe-events-event-image img {
+                display: block;
+                width: 100%;
+                height: auto;
+                max-height: 640px;
+                object-fit: contain;
+            }
+
+            body.single-tribe_events .tribe-events-single-event-description {
+                grid-column: 2;
+            }
+
+            body.single-tribe_events .tribe-events-event-meta,
+            body.single-tribe_events #tribe-events-footer {
+                grid-column: 1 / -1;
+            }
+
             body.single-tribe_events .ma-event-body {
                 display: grid;
-                gap: 34px;
+                gap: 28px;
                 max-width: 980px;
                 margin: 0;
             }
@@ -487,29 +541,33 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-lede {
                 max-width: 820px;
                 margin: 0;
-                font-size: 19px;
-                line-height: 1.55;
-                color: #222;
+                padding: 0 0 22px;
+                border-bottom: 3px solid #ad231b;
+                font-size: 20px;
+                line-height: 1.5;
+                font-weight: 520;
+                color: #171717;
             }
 
             body.single-tribe_events .ma-event-section {
-                padding-top: 26px;
+                padding-top: 24px;
                 border-top: 1px solid rgba(0, 0, 0, .14);
             }
 
             body.single-tribe_events .ma-event-section h2 {
-                margin: 0 0 15px !important;
-                color: #111 !important;
-                font-size: 22px !important;
+                margin: 0 0 16px !important;
+                color: #8f1c16 !important;
+                font-size: 13px !important;
                 line-height: 1.2 !important;
-                font-weight: 700 !important;
-                letter-spacing: 0 !important;
+                font-weight: 800 !important;
+                letter-spacing: .08em !important;
+                text-transform: uppercase !important;
             }
 
             body.single-tribe_events .ma-event-details {
                 display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 14px;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
                 margin: 0;
                 padding: 0;
                 list-style: none;
@@ -517,9 +575,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
             body.single-tribe_events .ma-event-details li {
                 min-height: 100%;
-                padding: 16px;
+                padding: 15px;
                 border: 1px solid rgba(0, 0, 0, .14);
-                background: #fff;
+                background: #faf8f4;
             }
 
             body.single-tribe_events .ma-event-details span,
@@ -546,7 +604,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-focus-list,
             body.single-tribe_events .ma-event-artists {
                 display: grid;
-                gap: 10px;
+                gap: 9px;
                 margin: 0;
                 padding: 0;
                 list-style: none;
@@ -571,10 +629,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-artists {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 max-width: 760px;
+                gap: 0 22px;
             }
 
             body.single-tribe_events .ma-event-artists li {
-                padding: 12px 0;
+                padding: 10px 0;
                 border-bottom: 1px solid rgba(0, 0, 0, .1);
                 font-weight: 650;
             }
@@ -622,6 +681,27 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
 
             @media (max-width: 760px) {
+                body.single-tribe_events .tribe-events-pg-template {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                }
+
+                body.single-tribe_events .tribe-events-single-event-title {
+                    font-size: clamp(30px, 9vw, 42px) !important;
+                }
+
+                body.single-tribe_events .tribe_events.type-tribe_events {
+                    display: block;
+                }
+
+                body.single-tribe_events .tribe-events-event-image {
+                    margin: 0 0 28px !important;
+                }
+
+                body.single-tribe_events .tribe-events-event-image img {
+                    max-height: none;
+                }
+
                 body.single-tribe_events .ma-event-body {
                     gap: 28px;
                 }
