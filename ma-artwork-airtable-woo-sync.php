@@ -52,6 +52,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_single_post_cover_spacing_css'], 1);
         add_action('wp_head', [__CLASS__, 'render_events_page_first_paint_css'], 2);
         add_action('wp_head', [__CLASS__, 'render_donate_page_first_paint_css'], 3);
+        add_action('wp_head', [__CLASS__, 'render_single_event_content_css'], 4);
         add_action('wp_head', [__CLASS__, 'render_global_site_polish_css'], 18);
         add_action('wp_head', [__CLASS__, 'render_homepage_final_layout_overrides'], 19);
         add_action('wp_head', [__CLASS__, 'render_donate_menu_button_css'], 19);
@@ -448,6 +449,196 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 body.page-id-1115 .tribe-events-calendar-list__event-title{font-size:18px!important}
                 body.page-id-1115 .tribe-events-header__events-bar,
                 body.page-id-1115 .tribe-events-c-events-bar{display:none!important}
+            }
+        </style>
+        <?php
+    }
+
+    public static function render_single_event_content_css(): void {
+        if (!is_singular('tribe_events')) {
+            return;
+        }
+        ?>
+        <style id="ma-single-event-content-css" data-no-optimize="1" data-cfasync="false">
+            body.single-tribe_events .tribe-events-single-event-description,
+            body.single-tribe_events .tribe-events-single-event-description * {
+                box-sizing: border-box;
+            }
+
+            body.single-tribe_events .tribe-events-single-event-description {
+                color: #111;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-size: 16px;
+                line-height: 1.65;
+            }
+
+            body.single-tribe_events .tribe-events-single-event-description p {
+                margin: 0 0 1.05rem;
+                max-width: 760px;
+            }
+
+            body.single-tribe_events .ma-event-body {
+                display: grid;
+                gap: 34px;
+                max-width: 980px;
+                margin: 0;
+            }
+
+            body.single-tribe_events .ma-event-lede {
+                max-width: 820px;
+                margin: 0;
+                font-size: 19px;
+                line-height: 1.55;
+                color: #222;
+            }
+
+            body.single-tribe_events .ma-event-section {
+                padding-top: 26px;
+                border-top: 1px solid rgba(0, 0, 0, .14);
+            }
+
+            body.single-tribe_events .ma-event-section h2 {
+                margin: 0 0 15px !important;
+                color: #111 !important;
+                font-size: 22px !important;
+                line-height: 1.2 !important;
+                font-weight: 700 !important;
+                letter-spacing: 0 !important;
+            }
+
+            body.single-tribe_events .ma-event-details {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 14px;
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            body.single-tribe_events .ma-event-details li {
+                min-height: 100%;
+                padding: 16px;
+                border: 1px solid rgba(0, 0, 0, .14);
+                background: #fff;
+            }
+
+            body.single-tribe_events .ma-event-details span,
+            body.single-tribe_events .ma-event-artists span,
+            body.single-tribe_events .ma-event-contact span {
+                display: block;
+                margin: 0 0 7px;
+                color: #7a1d17;
+                font-size: 11px;
+                line-height: 1.2;
+                font-weight: 800;
+                letter-spacing: .08em;
+                text-transform: uppercase;
+            }
+
+            body.single-tribe_events .ma-event-details strong {
+                display: block;
+                color: #111;
+                font-size: 15px;
+                line-height: 1.45;
+                font-weight: 650;
+            }
+
+            body.single-tribe_events .ma-event-focus-list,
+            body.single-tribe_events .ma-event-artists {
+                display: grid;
+                gap: 10px;
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            body.single-tribe_events .ma-event-focus-list li {
+                position: relative;
+                padding-left: 18px;
+                max-width: 760px;
+            }
+
+            body.single-tribe_events .ma-event-focus-list li:before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: .75em;
+                width: 6px;
+                height: 6px;
+                background: #ad231b;
+            }
+
+            body.single-tribe_events .ma-event-artists {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                max-width: 760px;
+            }
+
+            body.single-tribe_events .ma-event-artists li {
+                padding: 12px 0;
+                border-bottom: 1px solid rgba(0, 0, 0, .1);
+                font-weight: 650;
+            }
+
+            body.single-tribe_events .ma-event-credit,
+            body.single-tribe_events .ma-event-contact {
+                max-width: 760px;
+                color: #333;
+                font-size: 14px;
+                line-height: 1.55;
+            }
+
+            body.single-tribe_events .ma-event-contact {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            body.single-tribe_events .ma-event-contact p {
+                margin: 0;
+            }
+
+            body.single-tribe_events .ma-event-rsvp-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: max-content;
+                max-width: 100%;
+                min-height: 46px;
+                padding: 0 20px;
+                border: 1px solid #ad231b;
+                background: #ad231b;
+                color: #fff !important;
+                font-size: 15px;
+                line-height: 1;
+                font-weight: 750;
+                text-decoration: none !important;
+            }
+
+            body.single-tribe_events .ma-event-rsvp-link:hover,
+            body.single-tribe_events .ma-event-rsvp-link:focus {
+                background: #8f1c16;
+                border-color: #8f1c16;
+                color: #fff !important;
+            }
+
+            @media (max-width: 760px) {
+                body.single-tribe_events .ma-event-body {
+                    gap: 28px;
+                }
+
+                body.single-tribe_events .ma-event-lede {
+                    font-size: 17px;
+                }
+
+                body.single-tribe_events .ma-event-details,
+                body.single-tribe_events .ma-event-artists,
+                body.single-tribe_events .ma-event-contact {
+                    grid-template-columns: 1fr;
+                }
+
+                body.single-tribe_events .ma-event-rsvp-link {
+                    width: 100%;
+                }
             }
         </style>
         <?php
