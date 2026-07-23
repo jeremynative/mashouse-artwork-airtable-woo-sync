@@ -6871,7 +6871,96 @@ HTML;
             return;
         }
         self::print_catalog_css();
-        echo '<div class="ma-shop-section-header ma-all-art-heading"><h2>All Art</h2><p>Available artworks from the Ma\'s House collection.</p></div>';
+        echo self::store_catalog_section_html(self::shop_catalog_products_for_custom_grid());
+    }
+
+    private static function store_catalog_section_html(array $items): string {
+        if (!$items) {
+            return '';
+        }
+        ob_start();
+        ?>
+        <section class="ma-custom-store-grid" aria-label="Store catalog">
+            <div class="ma-store-toolbar">
+                <label class="ma-store-search">
+                    <span>Search</span>
+                    <input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog">
+                </label>
+                <div class="ma-store-chips" aria-label="Store categories">
+                    <?php echo self::store_category_controls_html($items); ?>
+                </div>
+                <div class="ma-store-count"><span class="ma-custom-store-count"><?php echo esc_html((string) count($items)); ?></span> items</div>
+            </div>
+            <div class="ma-custom-store-active-filters" hidden></div>
+            <div class="ma-custom-store-grid__items">
+                <?php foreach ($items as $item) {
+                    echo self::store_product_card_html($item);
+                } ?>
+            </div>
+            <p class="ma-custom-store-empty" hidden>No items match those filters.</p>
+        </section>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function store_category_controls_html(array $items): string {
+        $categories = [];
+        foreach ($items as $item) {
+            $slug = self::text($item['category_slug'] ?? '');
+            if (!$slug || isset($categories[$slug])) {
+                continue;
+            }
+            $categories[$slug] = self::text($item['category_label'] ?? $slug);
+        }
+        asort($categories, SORT_NATURAL | SORT_FLAG_CASE);
+
+        $html = '<button type="button" class="ma-store-chip is-active" data-category="">All</button>';
+        foreach ($categories as $slug => $label) {
+            $html .= '<button type="button" class="ma-store-chip" data-category="' . esc_attr($slug) . '">' . esc_html($label) . '</button>';
+        }
+        return $html;
+    }
+
+    private static function store_product_card_html(array $item): string {
+        $title = self::text($item['title'] ?? '');
+        $url = esc_url($item['url'] ?? '');
+        $artist = self::text($item['artist'] ?? '');
+        $medium = self::text($item['medium'] ?? '');
+        $category_label = self::text($item['category_label'] ?? '');
+        $category_slug = self::text($item['category_slug'] ?? '');
+        $price_text = self::text($item['price_text'] ?? '');
+        $search_text = strtolower(implode(' ', array_filter([$title, $artist, $medium, $category_label, $price_text])));
+        ob_start();
+        ?>
+        <article class="ma-custom-store-card"
+            data-product-id="<?php echo esc_attr((string) ($item['id'] ?? '')); ?>"
+            data-artist="<?php echo esc_attr($artist); ?>"
+            data-artist-slug="<?php echo esc_attr(sanitize_title($artist)); ?>"
+            data-medium="<?php echo esc_attr($medium); ?>"
+            data-medium-slug="<?php echo esc_attr(sanitize_title($medium)); ?>"
+            data-category="<?php echo esc_attr($category_slug); ?>"
+            data-search="<?php echo esc_attr($search_text); ?>">
+            <a class="ma-custom-store-card__image" href="<?php echo $url; ?>">
+                <?php if (!empty($item['image'])) : ?>
+                    <img src="<?php echo esc_url($item['image']); ?>" alt="<?php echo esc_attr($title); ?>" loading="lazy">
+                <?php endif; ?>
+            </a>
+            <?php if ($category_label) : ?>
+                <div class="ma-custom-store-card__type"><?php echo esc_html($category_label); ?></div>
+            <?php endif; ?>
+            <h3><a href="<?php echo $url; ?>"><?php echo esc_html($title); ?></a></h3>
+            <?php if ($artist) : ?>
+                <p class="ma-custom-store-card__artist"><?php echo esc_html($artist); ?></p>
+            <?php endif; ?>
+            <?php if ($medium) : ?>
+                <p class="ma-custom-store-card__medium"><?php echo esc_html($medium); ?></p>
+            <?php endif; ?>
+            <?php if (!empty($item['price_html'])) : ?>
+                <div class="ma-custom-store-card__price"><?php echo wp_kses_post($item['price_html']); ?></div>
+            <?php endif; ?>
+        </article>
+        <?php
+        return (string) ob_get_clean();
     }
 
     public static function render_catalog_head_guard(): void {
@@ -6963,6 +7052,7 @@ HTML;
         (function(){
             var meta = <?php echo wp_json_encode($meta); ?> || {};
             var customProducts = <?php echo wp_json_encode($catalog); ?> || [];
+            var allProducts = customProducts.slice();
             var catalogEndpoint = <?php echo wp_json_encode($catalog_endpoint); ?>;
             var filterRequestId = 0;
             function esc(s){return String(s || '').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
@@ -7138,6 +7228,7 @@ HTML;
             function refreshFilteredCatalog(){
                 var params = currentFilterParams();
                 if (!params.artist && !params.medium) {
+                    renderCards(allProducts);
                     applyCustomFilters();
                     return;
                 }
