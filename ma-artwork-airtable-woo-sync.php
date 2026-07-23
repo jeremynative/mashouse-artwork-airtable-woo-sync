@@ -7230,11 +7230,13 @@ HTML;
             return [];
         }
         $args = [
-            'status' => 'publish',
-            'limit' => empty($filters['artist']) && empty($filters['medium']) ? 240 : 300,
-            'return' => 'ids',
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => empty($filters['artist']) && empty($filters['medium']) ? 300 : 400,
+            'fields' => 'ids',
             'orderby' => 'date',
             'order' => 'DESC',
+            'no_found_rows' => true,
         ];
         $tax_query = [];
         $artist_terms = self::catalog_filter_terms($filters['artist'] ?? []);
@@ -7255,11 +7257,11 @@ HTML;
                 'operator' => 'IN',
             ];
         }
-        if ($tax_query) {
+        if (!empty($tax_query)) {
             $args['tax_query'] = count($tax_query) > 1 ? array_merge(['relation' => 'AND'], $tax_query) : $tax_query;
         }
 
-        $product_ids = wc_get_products($args);
+        $product_ids = get_posts($args);
         $items = [];
         foreach ($product_ids as $product_id) {
             $product = wc_get_product((int) $product_id);
