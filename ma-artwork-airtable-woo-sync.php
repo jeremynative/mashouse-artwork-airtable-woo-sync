@@ -7385,7 +7385,7 @@ HTML;
             body.post-type-archive-product .wrapper{padding-top:93px!important}
             body.admin-bar.post-type-archive-product .hfg_header.site-header,body.admin-bar.post-type-archive-product #masthead{top:32px!important}
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
-            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:0!important;padding:92px 0 48px!important;border-top:0;text-align:left;font-family:' . esc_html($font_stack) . '}
+            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:0!important;padding:34px 0 48px!important;border-top:0;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
             .ma-store-toolbar{position:fixed;top:93px;left:64px;right:24px;z-index:999;display:grid!important;grid-template-columns:minmax(260px,420px) minmax(0,1fr) auto;gap:18px;align-items:center;width:auto;max-width:1480px;margin:0 auto!important;padding:14px 0!important;border-bottom:1px solid #dedbd4;background:#fff;transform:none}
             body.admin-bar.post-type-archive-product .ma-store-toolbar{top:125px}
