@@ -6781,12 +6781,29 @@ HTML;
                     return '<div><span>' + esc(row.label) + '</span>' + esc(row.value) + '</div>';
                 }).join('');
                 var image = item.image ? '<img src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy">' : '';
-                return '<article class="ma-custom-store-card" data-product-id="' + esc(item.id) + '" data-artist="' + esc(item.artist || '') + '" data-artist-slug="' + esc(slugify(item.artist || '')) + '" data-medium="' + esc(item.medium || '') + '" data-medium-slug="' + esc(slugify(item.medium || '')) + '">' +
+                var searchText = [item.title, item.artist, item.medium, item.category_label, item.price_text].join(' ');
+                return '<article class="ma-custom-store-card" data-product-id="' + esc(item.id) + '" data-artist="' + esc(item.artist || '') + '" data-artist-slug="' + esc(slugify(item.artist || '')) + '" data-medium="' + esc(item.medium || '') + '" data-medium-slug="' + esc(slugify(item.medium || '')) + '" data-category="' + esc(item.category_slug || '') + '" data-search="' + esc(searchText.toLowerCase()) + '">' +
                     '<a class="ma-custom-store-card__image" href="' + esc(item.url) + '">' + image + '</a>' +
+                    (item.category_label ? '<div class="ma-custom-store-card__type">' + esc(item.category_label) + '</div>' : '') +
                     '<h3><a href="' + esc(item.url) + '">' + esc(item.title) + '</a></h3>' +
-                    (rows ? '<div class="ma-custom-store-card__meta">' + rows + '</div>' : '') +
+                    (item.artist ? '<p class="ma-custom-store-card__artist">' + esc(item.artist) + '</p>' : '') +
+                    (item.medium ? '<p class="ma-custom-store-card__medium">' + esc(item.medium) + '</p>' : '') +
                     (item.price_html ? '<div class="ma-custom-store-card__price">' + item.price_html + '</div>' : '') +
                 '</article>';
+            }
+            function categoryControls(){
+                var seen = {};
+                var labels = [];
+                customProducts.forEach(function(item){
+                    var slug = item.category_slug || '';
+                    if (!slug || seen[slug]) return;
+                    seen[slug] = true;
+                    labels.push({slug: slug, label: item.category_label || slug});
+                });
+                labels.sort(function(a,b){ return a.label.localeCompare(b.label); });
+                return '<button type="button" class="ma-store-chip is-active" data-category="">All</button>' + labels.map(function(item){
+                    return '<button type="button" class="ma-store-chip" data-category="' + esc(item.slug) + '">' + esc(item.label) + '</button>';
+                }).join('');
             }
             function renderCards(items){
                 customProducts = items || [];
@@ -6805,7 +6822,7 @@ HTML;
                 var section = document.createElement('section');
                 section.className = 'ma-custom-store-grid';
                 section.setAttribute('aria-label','Store catalog');
-                section.innerHTML = '<div class="ma-custom-store-grid__header"><h2>Store Catalog</h2><p><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> available items</p></div><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
+                section.innerHTML = '<div class="ma-store-hero"><p>Ma&rsquo;s House Store</p><h1>Collect art and merch online</h1><div>Every purchase helps fund Ma&rsquo;s House exhibits, residencies, workshops, and community programs while supporting BIPOC artists and makers.</div></div><div class="ma-store-toolbar"><label class="ma-store-search"><span>Search</span><input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog"></label><div class="ma-store-chips" aria-label="Store categories">' + categoryControls() + '</div><div class="ma-store-count"><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> items</div></div><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
                 var placeholder = document.querySelector('.ma-store-grid-placeholder');
                 if (placeholder && placeholder.parentNode) {
                     placeholder.parentNode.replaceChild(section, placeholder);
@@ -6885,17 +6902,23 @@ HTML;
             function applyCustomFilters(){
                 var grid = document.querySelector('.ma-custom-store-grid');
                 if (!grid) return;
+                var searchInput = grid.querySelector('.ma-store-search input');
+                var search = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                var activeChip = grid.querySelector('.ma-store-chip.is-active');
+                var category = activeChip ? activeChip.getAttribute('data-category') || '' : '';
                 var artistFilters = selectedFilterValues('artist');
                 var mediumFilters = selectedFilterValues('medium');
                 var visible = 0;
                 grid.querySelectorAll('.ma-custom-store-card').forEach(function(card){
+                    var searchOk = !search || (card.getAttribute('data-search') || '').indexOf(search) !== -1;
+                    var categoryOk = !category || card.getAttribute('data-category') === category;
                     var artistOk = !artistFilters.length || artistFilters.some(function(filter){
                         return card.getAttribute('data-artist-slug') === filter.slug;
                     });
                     var mediumOk = !mediumFilters.length || mediumFilters.some(function(filter){
                         return card.getAttribute('data-medium-slug') === filter.slug;
                     });
-                    var show = artistOk && mediumOk;
+                    var show = searchOk && categoryOk && artistOk && mediumOk;
                     card.hidden = !show;
                     card.style.display = show ? '' : 'none';
                     if (show) visible++;
@@ -6996,9 +7019,23 @@ HTML;
                 }
             }, true);
             document.addEventListener('click', function(event){
+                var chip = event.target && event.target.closest ? event.target.closest('.ma-store-chip') : null;
+                if (chip) {
+                    var grid = chip.closest('.ma-custom-store-grid');
+                    if (grid) {
+                        grid.querySelectorAll('.ma-store-chip').forEach(function(item){ item.classList.toggle('is-active', item === chip); });
+                        applyCustomFilters();
+                    }
+                    return;
+                }
                 if (event.target && event.target.closest && event.target.closest('.wpfFilterWrapper')) {
                     window.setTimeout(function(){ cleanFilters(); refreshFilteredCatalog(); }, 120);
                     window.setTimeout(refreshFilteredCatalog, 500);
+                }
+            }, true);
+            document.addEventListener('input', function(event){
+                if (event.target && event.target.closest && event.target.closest('.ma-store-search')) {
+                    applyCustomFilters();
                 }
             }, true);
             new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
@@ -7059,28 +7096,39 @@ HTML;
             body.post-type-archive-product .elementor-element-450fa30 .elementor-column{width:100%!important;max-width:100%!important}
             body.post-type-archive-product .elementor-element-450fa30 .elementor-column:not(:has(.ma-custom-store-grid)):has(.wpfMainWrapper),
             body.post-type-archive-product .elementor-element-450fa30 .elementor-column:not(:has(.ma-custom-store-grid)):has(.elementor-widget-wc-categories){display:none!important}
+            body.post-type-archive-product .hfg_header.site-header,body.post-type-archive-product #masthead{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100%!important;z-index:1000!important;background:#fff!important}
+            body.post-type-archive-product .wrapper{padding-top:93px!important}
+            body.admin-bar.post-type-archive-product .hfg_header.site-header,body.admin-bar.post-type-archive-product #masthead{top:32px!important}
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
-            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:34px 0 0!important;padding:30px 0 0!important;border-top:1px solid #dedbd4;text-align:left;font-family:' . esc_html($font_stack) . '}
+            .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:0!important;padding:92px 0 48px!important;border-top:0;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
-            .ma-custom-store-grid__header{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;margin:0 0 32px!important;min-height:32px}
-            .ma-custom-store-grid__header h2{display:block!important;margin:0!important;padding:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:23px!important;line-height:1.15!important;font-weight:540!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
-            .ma-custom-store-grid__header p{display:block!important;margin:0!important;padding:0!important;color:#666!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1.35!important;font-weight:500!important;text-align:right!important;white-space:nowrap}
+            .ma-store-hero{display:grid;gap:12px;margin:0 0 28px!important;padding:8px 0 24px!important;border-bottom:1px solid #e5e0d8}
+            .ma-store-hero p{margin:0!important;color:#9a1914!important;font-family:' . esc_html($font_stack) . '!important;font-size:12px!important;font-weight:760!important;letter-spacing:.11em!important;text-transform:uppercase!important}
+            .ma-store-hero h1{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:clamp(36px,5vw,68px)!important;line-height:.98!important;font-weight:620!important;letter-spacing:0!important;max-width:980px!important}
+            .ma-store-hero div{max-width:780px;color:#333;font-family:' . esc_html($font_stack) . ';font-size:16px;line-height:1.55}
+            .ma-store-toolbar{position:fixed;top:93px;left:50%;z-index:999;display:grid!important;grid-template-columns:minmax(260px,420px) minmax(0,1fr) auto;gap:18px;align-items:center;width:min(1480px,calc(100vw - 48px));margin:0!important;padding:14px 0!important;border-bottom:1px solid #dedbd4;background:#fff;transform:translateX(-50%)}
+            body.admin-bar.post-type-archive-product .ma-store-toolbar{top:125px}
+            .ma-store-search{display:block;margin:0!important}
+            .ma-store-search span{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+            .ma-store-search input{display:block;width:100%!important;height:42px!important;margin:0!important;padding:0 12px!important;border:1px solid #d8d3ca!important;border-radius:0!important;background:#fff!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;line-height:42px!important;box-shadow:none!important}
+            .ma-store-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+            .ma-store-chip{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:34px!important;margin:0!important;padding:0 13px!important;border:1px solid #d7d2ca!important;border-radius:999px!important;background:#fff!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1!important;font-weight:560!important;letter-spacing:0!important;text-transform:none!important;cursor:pointer!important}
+            .ma-store-chip.is-active{border-color:#111!important;background:#111!important;color:#fff!important}
+            .ma-store-count{color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;font-weight:560;text-align:right;white-space:nowrap}
             .ma-custom-store-grid [hidden]{display:none!important}
             .ma-custom-store-active-filters{margin:-12px 0 24px!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4}
             .ma-custom-store-grid--loading .ma-custom-store-grid__items{opacity:.45;transition:opacity .15s ease}
-            .ma-custom-store-grid__items{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:52px 34px;width:100%;align-items:start;justify-items:stretch}
+            .ma-custom-store-grid__items{display:block!important;columns:4 260px;column-gap:34px;width:100%}
             .ma-custom-store-empty{margin:20px 0!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:15px}
-            .ma-custom-store-card{display:grid!important;grid-template-rows:auto auto 1fr auto;min-width:0;margin:0!important;padding:0!important;background:#fff;color:#141414;font-family:' . esc_html($font_stack) . '}
+            .ma-custom-store-card{display:inline-block!important;width:100%;break-inside:avoid;min-width:0;margin:0 0 42px!important;padding:0!important;background:#fff;color:#141414;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-card__image{display:block;width:100%;overflow:visible;background:#f7f5f1;text-decoration:none}
-            .ma-custom-store-card__image img{display:block;width:100%;height:auto;max-height:520px;object-fit:contain;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
-            .ma-custom-store-card h3{display:block!important;margin:15px 0 10px!important;padding:0!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.36!important;font-weight:500!important;letter-spacing:0!important;text-align:left!important}
+            .ma-custom-store-card__image img{display:block;width:100%;height:auto;max-height:none;object-fit:contain;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-custom-store-card__type{margin:13px 0 7px;color:#777;font-family:' . esc_html($font_stack) . ';font-size:10.5px;font-weight:720;letter-spacing:.085em;text-transform:uppercase}
+            .ma-custom-store-card h3{display:block!important;margin:0 0 7px!important;padding:0!important;font-family:' . esc_html($font_stack) . '!important;font-size:15px!important;line-height:1.32!important;font-weight:560!important;letter-spacing:0!important;text-align:left!important}
             .ma-custom-store-card h3 a{color:#111!important;text-decoration:none!important}
             .ma-custom-store-card h3 a:hover{text-decoration:underline!important;text-underline-offset:3px}
-            .ma-custom-store-card__meta{display:grid!important;gap:5px;margin:0 0 15px!important;color:#2b2b2b;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.42;text-align:left}
-            .ma-custom-store-card__meta div{display:grid!important;grid-template-columns:minmax(82px,max-content) minmax(0,1fr);column-gap:10px;align-items:baseline}
-            .ma-custom-store-card__meta span{display:block;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
-            .ma-custom-store-card__meta span::after{content:":"}
-            .ma-custom-store-card__price{display:block!important;margin:2px 0 0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
+            .ma-custom-store-card__artist,.ma-custom-store-card__medium{margin:0 0 5px!important;color:#555!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1.35!important}
+            .ma-custom-store-card__price{display:block!important;margin:10px 0 0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
             .woocommerce ul.products.ma-shop-catalog-grid{clear:both;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:42px!important;row-gap:58px!important;width:100%!important;height:auto!important;margin:0!important;align-items:start!important;list-style:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid>li.product{position:relative!important;left:auto!important;top:auto!important;float:none!important;display:block!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;transform:none!important;background:#fff!important;border:0!important;box-shadow:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid .woocommerce-LoopProduct-link,.woocommerce ul.products.ma-shop-catalog-grid .product-image-wrap,.woocommerce ul.products.ma-shop-catalog-grid .image-wrap{display:block!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;aspect-ratio:4/3!important}
@@ -7092,8 +7140,8 @@ HTML;
             .ma-clean-artist-filter .wpfFilterTaxNameWrapper,.ma-clean-artist-filter .wpfValue{white-space:normal!important;word-break:normal!important}
             .ma-clean-artist-filter .wpfCount{margin-left:4px;color:#777;font-size:12px}
             @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1480px}.archive.woocommerce .neve-main>.shop-container .nv-shop.col{max-width:100%!important}}
-            @media(max-width:1024px){.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:26px!important;row-gap:44px!important}}
-            @media(max-width:640px){.ma-shop-section-header,.ma-custom-store-grid__header{display:block}.ma-shop-section-header p,.ma-custom-store-grid__header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:1fr!important}}
+            @media(max-width:1024px){body.post-type-archive-product .hfg_header.site-header,body.post-type-archive-product #masthead{position:sticky!important}.ma-custom-store-grid{padding-top:0!important}.ma-store-toolbar{position:static;grid-template-columns:1fr;width:100%;transform:none}.ma-store-count{text-align:left}.ma-custom-store-grid__items{columns:2 240px!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:26px!important;row-gap:44px!important}}
+            @media(max-width:640px){.ma-shop-section-header{display:block}.ma-shop-section-header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid{grid-template-columns:1fr!important}.ma-custom-store-grid__items{columns:1!important}.ma-store-hero h1{font-size:36px!important}}
         </style>';
     }
 
@@ -7317,16 +7365,48 @@ HTML;
     private static function catalog_item_for_product(WC_Product $product): array {
         $image_id = $product->get_image_id();
         $image = $image_id ? wp_get_attachment_image_url($image_id, 'large') : wc_placeholder_img_src('large');
+        $category = self::store_catalog_category($product);
+        $price_text = wp_strip_all_tags($product->get_price_html());
         return [
             'id' => $product->get_id(),
             'title' => wp_strip_all_tags($product->get_name()),
             'url' => get_permalink($product->get_id()),
             'image' => $image ?: '',
             'price_html' => wp_kses_post($product->get_price_html()),
+            'price_text' => $price_text,
             'artist' => self::product_detail_value($product, 'Artist'),
             'medium' => self::product_detail_value($product, 'Medium') ?: self::product_detail_value($product, 'Series'),
+            'category_label' => $category['label'],
+            'category_slug' => $category['slug'],
             'rows' => self::product_detail_rows($product),
         ];
+    }
+
+    private static function store_catalog_category(WC_Product $product): array {
+        $product_id = (int) $product->get_id();
+        if (self::is_artwork_product($product)) {
+            return ['label' => 'Artwork', 'slug' => 'artwork'];
+        }
+        $preferred = [
+            'clothing' => 'Merch',
+            'consumable' => 'Goods',
+            'book' => 'Books',
+            'zine' => 'Zines',
+        ];
+        foreach ($preferred as $slug => $label) {
+            if (has_term($slug, 'product_cat', $product_id)) {
+                return ['label' => $label, 'slug' => $slug];
+            }
+        }
+        $terms = get_the_terms($product_id, 'product_cat');
+        if (is_array($terms)) {
+            foreach ($terms as $term) {
+                if ($term instanceof WP_Term && !in_array($term->slug, ['uncategorized'], true)) {
+                    return ['label' => self::text($term->name), 'slug' => self::text($term->slug)];
+                }
+            }
+        }
+        return ['label' => 'Store', 'slug' => 'store'];
     }
 
     private static function contextual_related_products_section(WC_Product $product): string {
