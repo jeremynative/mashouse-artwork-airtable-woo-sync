@@ -6970,16 +6970,16 @@ HTML;
         self::print_catalog_css();
         ?>
         <style id="ma-store-first-paint-guard">
-            body .elementor-widget-woocommerce-products,
-            body .elementor-widget-eael-woo-product-carousel,
+            body .elementor-widget-woocommerce-products:not(:has(.ma-custom-store-grid)),
+            body .elementor-widget-eael-woo-product-carousel:not(:has(.ma-custom-store-grid)),
             body .elementor-widget-wc-categories,
             body .elementor-widget-woocommerce-product-categories,
             body .elementor-widget-wp-widget-woocommerce_product_categories,
             body .woocommerce ul.products,
             body ul.products,
             body li.product-category{transition:none!important}
-            body .elementor-widget-woocommerce-products,
-            body .elementor-widget-eael-woo-product-carousel,
+            body .elementor-widget-woocommerce-products:not(:has(.ma-custom-store-grid)),
+            body .elementor-widget-eael-woo-product-carousel:not(:has(.ma-custom-store-grid)),
             body .elementor-widget-wc-categories,
             body .elementor-widget-woocommerce-product-categories,
             body .elementor-widget-wp-widget-woocommerce_product_categories,
@@ -7017,6 +7017,7 @@ HTML;
                 selectors.forEach(function(selector){
                     document.querySelectorAll(selector).forEach(function(el){
                         if (el.closest('.ma-custom-store-grid')) return;
+                        if (el.querySelector && el.querySelector('.ma-custom-store-grid')) return;
                         el.classList.add('ma-hide-elementor-products');
                         el.setAttribute('aria-hidden', 'true');
                     });
@@ -7111,7 +7112,9 @@ HTML;
                     anchor.parentNode.insertBefore(section, anchor);
                 }
                 document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.elementor-widget-wp-widget-woocommerce_product_search,.woocommerce.widget_product_search,.woocommerce-product-search,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,ul.products').forEach(function(el){
-                    if (!section.contains(el)) el.classList.add('ma-hide-elementor-products');
+                    if (section.contains(el)) return;
+                    if (el.querySelector && el.querySelector('.ma-custom-store-grid')) return;
+                    el.classList.add('ma-hide-elementor-products');
                 });
             }
             function hideFeaturedSection(){
@@ -7370,7 +7373,7 @@ HTML;
             .ma-shop-catalog-meta div{display:block}
             .ma-shop-catalog-meta span{display:inline-block;margin-right:7px;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
             .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
-            .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .elementor-element-fab0403,body.post-type-archive-product .elementor-element-16f5371,body.post-type-archive-product .elementor-widget-wp-widget-woocommerce_product_search,body.post-type-archive-product .woocommerce.widget_product_search,body.post-type-archive-product .woocommerce-product-search,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
+            .ma-hide-elementor-products:not(:has(.ma-custom-store-grid)),.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .elementor-element-fab0403,body.post-type-archive-product .elementor-element-16f5371,body.post-type-archive-product .elementor-widget-wp-widget-woocommerce_product_search,body.post-type-archive-product .woocommerce.widget_product_search,body.post-type-archive-product .woocommerce-product-search,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
             body.post-type-archive-product .elementor-1381>.elementor-section>.elementor-container,
             body.post-type-archive-product .elementor-1381 .elementor-section.elementor-top-section>.elementor-container,
             body.post-type-archive-product .elementor-1381 .elementor-section.elementor-inner-section>.elementor-container{width:calc(100vw - 64px)!important;max-width:1480px!important}
