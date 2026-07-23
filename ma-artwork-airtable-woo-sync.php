@@ -6812,7 +6812,7 @@ HTML;
                 } else {
                     anchor.parentNode.insertBefore(section, anchor);
                 }
-                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,ul.products').forEach(function(el){
+                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,ul.products').forEach(function(el){
                     if (!section.contains(el)) el.classList.add('ma-hide-elementor-products');
                 });
             }
@@ -7043,7 +7043,7 @@ HTML;
             .ma-shop-on-view__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 34px;align-items:start}
             .ma-art-card{display:block;min-width:0;color:inherit;text-decoration:none;background:#fff}
             .ma-art-card img,.woocommerce ul.products.ma-shop-catalog-grid img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
-            .ma-shop-catalog-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f4f2ee;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-shop-catalog-card img{display:block;width:100%;height:auto;background:#f4f2ee;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
             .ma-art-card:hover img,.ma-custom-store-card__image:hover img,.ma-shop-catalog-card:hover img{opacity:.92}
             .ma-art-card h3,.woocommerce ul.products.ma-shop-catalog-grid .woocommerce-loop-product__title,.ma-shop-catalog-card .eael-product-title,.ma-shop-catalog-card .eael-product-title a{margin:14px 0 9px!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.35!important;font-weight:500!important;color:#111!important;letter-spacing:0!important;text-align:left!important;text-decoration:none!important}
             .ma-art-card__meta,.ma-art-card__exhibit,.ma-on-view-line{margin:.35rem 0 8px;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.45;text-align:left}
@@ -7051,7 +7051,7 @@ HTML;
             .ma-shop-catalog-meta div{display:block}
             .ma-shop-catalog-meta span{display:inline-block;margin-right:7px;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
             .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
-            .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products{display:none!important}
+            .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
             .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:34px 0 0!important;padding:30px 0 0!important;border-top:1px solid #dedbd4;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
@@ -7061,11 +7061,11 @@ HTML;
             .ma-custom-store-grid [hidden]{display:none!important}
             .ma-custom-store-active-filters{margin:-12px 0 24px!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4}
             .ma-custom-store-grid--loading .ma-custom-store-grid__items{opacity:.45;transition:opacity .15s ease}
-            .ma-custom-store-grid__items{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:58px 42px;width:100%;align-items:start;justify-items:stretch}
+            .ma-custom-store-grid__items{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:52px 34px;width:100%;align-items:start;justify-items:stretch}
             .ma-custom-store-empty{margin:20px 0!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:15px}
             .ma-custom-store-card{display:grid!important;grid-template-rows:auto auto 1fr auto;min-width:0;margin:0!important;padding:0!important;background:#fff;color:#141414;font-family:' . esc_html($font_stack) . '}
-            .ma-custom-store-card__image{display:block;width:100%;aspect-ratio:4/3;overflow:hidden;background:#f4f2ee;text-decoration:none}
-            .ma-custom-store-card__image img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
+            .ma-custom-store-card__image{display:block;width:100%;overflow:visible;background:#f7f5f1;text-decoration:none}
+            .ma-custom-store-card__image img{display:block;width:100%;height:auto;max-height:520px;object-fit:contain;border-radius:0!important;box-shadow:none!important;transition:opacity .18s ease}
             .ma-custom-store-card h3{display:block!important;margin:15px 0 10px!important;padding:0!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.36!important;font-weight:500!important;letter-spacing:0!important;text-align:left!important}
             .ma-custom-store-card h3 a{color:#111!important;text-decoration:none!important}
             .ma-custom-store-card h3 a:hover{text-decoration:underline!important;text-underline-offset:3px}
@@ -7084,7 +7084,7 @@ HTML;
             .ma-clean-artist-filter .wpfLiLabel{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:5px 0!important;color:#222;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.3}
             .ma-clean-artist-filter .wpfFilterTaxNameWrapper,.ma-clean-artist-filter .wpfValue{white-space:normal!important;word-break:normal!important}
             .ma-clean-artist-filter .wpfCount{margin-left:4px;color:#777;font-size:12px}
-            @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1320px}}
+            @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1480px}.archive.woocommerce .neve-main>.shop-container .nv-shop.col{max-width:100%!important}}
             @media(max-width:1024px){.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:26px!important;row-gap:44px!important}}
             @media(max-width:640px){.ma-shop-section-header,.ma-custom-store-grid__header{display:block}.ma-shop-section-header p,.ma-custom-store-grid__header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid,.ma-custom-store-grid__items{grid-template-columns:1fr!important}}
         </style>';
@@ -7231,18 +7231,12 @@ HTML;
         }
         $args = [
             'status' => 'publish',
-            'limit' => empty($filters['artist']) && empty($filters['medium']) ? 120 : 300,
+            'limit' => empty($filters['artist']) && empty($filters['medium']) ? 240 : 300,
             'return' => 'ids',
             'orderby' => 'date',
             'order' => 'DESC',
         ];
-        $tax_query = [[
-            'taxonomy' => 'product_cat',
-            'field' => 'slug',
-            'terms' => ['artwork'],
-            'include_children' => true,
-            'operator' => 'IN',
-        ]];
+        $tax_query = [];
         $artist_terms = self::catalog_filter_terms($filters['artist'] ?? []);
         if ($artist_terms) {
             $tax_query[] = [
@@ -7272,9 +7266,29 @@ HTML;
             if (!($product instanceof WC_Product)) {
                 continue;
             }
+            if (!self::is_store_catalog_product($product)) {
+                continue;
+            }
             $items[] = self::catalog_item_for_product($product);
         }
         return $items;
+    }
+
+    private static function is_store_catalog_product(WC_Product $product): bool {
+        $product_id = (int) $product->get_id();
+        if (!$product_id || !$product->is_visible() || !$product->is_in_stock() || !$product->is_purchasable()) {
+            return false;
+        }
+        if (!$product->get_image_id()) {
+            return false;
+        }
+        if (has_term(['mas-house-collection', 'mas-house-permanent-collection'], 'product_cat', $product_id)) {
+            return false;
+        }
+        if (self::is_artwork_product($product) && !has_term(['artwork-for-sale', 'available-artwork'], 'product_cat', $product_id)) {
+            return false;
+        }
+        return true;
     }
 
     private static function catalog_filter_terms($values): array {
