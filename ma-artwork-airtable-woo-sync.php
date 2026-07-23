@@ -6822,14 +6822,14 @@ HTML;
                 var section = document.createElement('section');
                 section.className = 'ma-custom-store-grid';
                 section.setAttribute('aria-label','Store catalog');
-                section.innerHTML = '<div class="ma-store-hero"><p>Ma&rsquo;s House Store</p><h1>Collect art and merch online</h1><div>Every purchase helps fund Ma&rsquo;s House exhibits, residencies, workshops, and community programs while supporting BIPOC artists and makers.</div></div><div class="ma-store-toolbar"><label class="ma-store-search"><span>Search</span><input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog"></label><div class="ma-store-chips" aria-label="Store categories">' + categoryControls() + '</div><div class="ma-store-count"><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> items</div></div><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
+                section.innerHTML = '<div class="ma-store-toolbar"><label class="ma-store-search"><span>Search</span><input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog"></label><div class="ma-store-chips" aria-label="Store categories">' + categoryControls() + '</div><div class="ma-store-count"><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> items</div></div><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
                 var placeholder = document.querySelector('.ma-store-grid-placeholder');
                 if (placeholder && placeholder.parentNode) {
                     placeholder.parentNode.replaceChild(section, placeholder);
                 } else {
                     anchor.parentNode.insertBefore(section, anchor);
                 }
-                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,ul.products').forEach(function(el){
+                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.elementor-widget-wp-widget-woocommerce_product_search,.woocommerce.widget_product_search,.woocommerce-product-search,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,ul.products').forEach(function(el){
                     if (!section.contains(el)) el.classList.add('ma-hide-elementor-products');
                 });
             }
@@ -7088,7 +7088,7 @@ HTML;
             .ma-shop-catalog-meta div{display:block}
             .ma-shop-catalog-meta span{display:inline-block;margin-right:7px;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
             .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
-            .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
+            .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .elementor-widget-wp-widget-woocommerce_product_search,body.post-type-archive-product .woocommerce.widget_product_search,body.post-type-archive-product .woocommerce-product-search,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
             body.post-type-archive-product .elementor-1381>.elementor-section>.elementor-container,
             body.post-type-archive-product .elementor-1381 .elementor-section.elementor-top-section>.elementor-container,
             body.post-type-archive-product .elementor-1381 .elementor-section.elementor-inner-section>.elementor-container{width:calc(100vw - 64px)!important;max-width:1480px!important}
@@ -7102,10 +7102,6 @@ HTML;
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
             .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:0!important;padding:92px 0 48px!important;border-top:0;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
-            .ma-store-hero{display:grid;gap:12px;margin:0 0 28px!important;padding:8px 0 24px!important;border-bottom:1px solid #e5e0d8}
-            .ma-store-hero p{margin:0!important;color:#9a1914!important;font-family:' . esc_html($font_stack) . '!important;font-size:12px!important;font-weight:760!important;letter-spacing:.11em!important;text-transform:uppercase!important}
-            .ma-store-hero h1{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:clamp(36px,5vw,68px)!important;line-height:.98!important;font-weight:620!important;letter-spacing:0!important;max-width:980px!important}
-            .ma-store-hero div{max-width:780px;color:#333;font-family:' . esc_html($font_stack) . ';font-size:16px;line-height:1.55}
             .ma-store-toolbar{position:fixed;top:93px;left:50%;z-index:999;display:grid!important;grid-template-columns:minmax(260px,420px) minmax(0,1fr) auto;gap:18px;align-items:center;width:min(1480px,calc(100vw - 48px));margin:0!important;padding:14px 0!important;border-bottom:1px solid #dedbd4;background:#fff;transform:translateX(-50%)}
             body.admin-bar.post-type-archive-product .ma-store-toolbar{top:125px}
             .ma-store-search{display:block;margin:0!important}
@@ -7141,7 +7137,7 @@ HTML;
             .ma-clean-artist-filter .wpfCount{margin-left:4px;color:#777;font-size:12px}
             @media(min-width:1200px){body.post-type-archive-product .neve-main>.container,body.tax-product_cat .neve-main>.container{max-width:1480px}.archive.woocommerce .neve-main>.shop-container .nv-shop.col{max-width:100%!important}}
             @media(max-width:1024px){body.post-type-archive-product .hfg_header.site-header,body.post-type-archive-product #masthead{position:sticky!important}.ma-custom-store-grid{padding-top:0!important}.ma-store-toolbar{position:static;grid-template-columns:1fr;width:100%;transform:none}.ma-store-count{text-align:left}.ma-custom-store-grid__items{columns:2 240px!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;column-gap:26px!important;row-gap:44px!important}}
-            @media(max-width:640px){.ma-shop-section-header{display:block}.ma-shop-section-header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid{grid-template-columns:1fr!important}.ma-custom-store-grid__items{columns:1!important}.ma-store-hero h1{font-size:36px!important}}
+            @media(max-width:640px){.ma-shop-section-header{display:block}.ma-shop-section-header p{margin-top:6px!important;text-align:left!important}.ma-shop-on-view__grid,.woocommerce ul.products.ma-shop-catalog-grid{grid-template-columns:1fr!important}.ma-custom-store-grid__items{columns:1!important}}
         </style>';
     }
 
