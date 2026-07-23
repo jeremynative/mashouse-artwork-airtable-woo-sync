@@ -7052,6 +7052,10 @@ HTML;
             .ma-shop-catalog-meta span{display:inline-block;margin-right:7px;color:#747474;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
             .ma-art-card__price,.woocommerce ul.products.ma-shop-catalog-grid .price,.ma-shop-catalog-card .eael-product-price{margin:0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:15.5px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
             .ma-hide-elementor-products,.ma-hide-featured-store-section,.woocommerce ul.products.ma-hide-elementor-products,.elementor-widget-wc-categories.ma-hide-elementor-products,body.post-type-archive-product .wpfMainWrapper,body.post-type-archive-product .wpfFilterWrapper,body.post-type-archive-product .woocommerce-sidebar,body.post-type-archive-product aside.widget-area,body.post-type-archive-product .nv-sidebar-wrap{display:none!important}
+            body.post-type-archive-product .elementor-element-450fa30>.elementor-container{display:block!important;width:100%!important;max-width:1480px!important}
+            body.post-type-archive-product .elementor-element-450fa30 .elementor-column{width:100%!important;max-width:100%!important}
+            body.post-type-archive-product .elementor-element-450fa30 .elementor-column:not(:has(.ma-custom-store-grid)):has(.wpfMainWrapper),
+            body.post-type-archive-product .elementor-element-450fa30 .elementor-column:not(:has(.ma-custom-store-grid)):has(.elementor-widget-wc-categories){display:none!important}
             .ma-store-grid-placeholder{clear:both;display:block;min-height:820px}
             .ma-custom-store-grid{box-sizing:border-box;clear:both;display:block!important;width:100%;max-width:100%;margin:34px 0 0!important;padding:30px 0 0!important;border-top:1px solid #dedbd4;text-align:left;font-family:' . esc_html($font_stack) . '}
             .ma-custom-store-grid *{box-sizing:border-box}
