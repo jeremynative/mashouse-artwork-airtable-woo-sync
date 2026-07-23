@@ -2302,7 +2302,30 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $text = wp_strip_all_tags((string) $text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\s+/', ' ', $text);
-        return trim((string) $text);
+        $text = trim((string) $text);
+        if (!$text) {
+            return '';
+        }
+        $lower = strtolower($text);
+        $template_markers = [
+            'back to community artists',
+            "ma's house podcast",
+            'artist programs',
+            "ma's house residency:",
+            'artist roles:',
+            'practice:',
+            'open episode',
+        ];
+        $marker_count = 0;
+        foreach ($template_markers as $marker) {
+            if (strpos($lower, $marker) !== false) {
+                $marker_count++;
+            }
+        }
+        if ($marker_count >= 3) {
+            return '';
+        }
+        return $text;
     }
 
     private static function artist_bio_fallback(string $artist_name): string {
