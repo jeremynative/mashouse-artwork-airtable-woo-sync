@@ -606,24 +606,54 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 display: grid;
                 gap: 9px;
                 margin: 0;
-                padding: 0;
-                list-style: none;
+                padding: 0 !important;
+                list-style: none !important;
             }
 
             body.single-tribe_events .ma-event-focus-list li {
+                display: block !important;
                 position: relative;
-                padding-left: 18px;
                 max-width: 760px;
+                margin: 0 !important;
+                padding: 14px 16px 14px 48px !important;
+                border: 1px solid rgba(173, 35, 27, .24);
+                border-left: 4px solid #ad231b;
+                background: #fbf8f3;
+                color: #171717;
+                font-size: 16px;
+                line-height: 1.45;
+                font-weight: 560;
+                list-style: none !important;
+            }
+
+            body.single-tribe_events .ma-event-focus-list li::marker {
+                content: "" !important;
+                display: none !important;
             }
 
             body.single-tribe_events .ma-event-focus-list li:before {
                 content: "";
                 position: absolute;
-                left: 0;
-                top: .75em;
-                width: 6px;
-                height: 6px;
+                left: 18px;
+                top: 20px;
+                width: 10px;
+                height: 10px;
                 background: #ad231b;
+            }
+
+            body.single-tribe_events .ma-event-focus-list li:after {
+                content: "";
+                position: absolute;
+                left: 22px;
+                top: 24px;
+                width: 2px;
+                height: 2px;
+                background: #fff;
+            }
+
+            body.single-tribe_events .ma-event-focus-list li p {
+                margin: 0 !important;
+                max-width: 760px;
             }
 
             body.single-tribe_events .ma-event-artists {
