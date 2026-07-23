@@ -73,6 +73,10 @@ function ma_stability_is_cacheable_public_request(): bool {
 		return false;
 	}
 
+	if ( function_exists( 'is_woocommerce' ) && is_woocommerce() ) {
+		return false;
+	}
+
 	return true;
 }
 
