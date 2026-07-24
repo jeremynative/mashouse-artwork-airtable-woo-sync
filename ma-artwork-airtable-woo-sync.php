@@ -4786,11 +4786,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
         unset($artist);
         foreach ($artists as &$artist) {
             $artist['period_sort'] = self::residency_period_sort_value(self::text($artist['residency_period'] ?? ''));
+            $artist['source_sort'] = (int) ($artist['residency_source_sort'] ?? 0);
         }
         unset($artist);
         usort($artists, static function (array $a, array $b): int {
             $date_compare = ((int) ($b['period_sort'] ?? 0)) <=> ((int) ($a['period_sort'] ?? 0));
-            return $date_compare ?: strcasecmp(self::artist_last_name_sort_key($a['name'] ?? ''), self::artist_last_name_sort_key($b['name'] ?? ''));
+            $source_compare = ((int) ($b['source_sort'] ?? 0)) <=> ((int) ($a['source_sort'] ?? 0));
+            return $date_compare ?: $source_compare ?: strcasecmp(self::artist_last_name_sort_key($a['name'] ?? ''), self::artist_last_name_sort_key($b['name'] ?? ''));
         });
 
         $mediums = [];
@@ -4884,7 +4886,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             <p class="ma-residency-alumni-count" aria-live="polite">Showing <?php echo esc_html((string) count($artists)); ?> residency artists</p>
             <section class="ma-residency-alumni-grid" aria-label="Residency artists">
                 <?php foreach ($artists as $artist) : ?>
-                    <article class="ma-residency-alumni-card" data-name="<?php echo esc_attr(strtolower($artist['name'])); ?>" data-practice="<?php echo esc_attr(implode(' ', array_map('sanitize_title', (array) $artist['mediums']))); ?>" data-location="<?php echo esc_attr(sanitize_title(self::text($artist['location'] ?? ''))); ?>" data-date="<?php echo esc_attr((string) ($artist['period_sort'] ?? 0)); ?>">
+                    <article class="ma-residency-alumni-card" data-name="<?php echo esc_attr(strtolower($artist['name'])); ?>" data-practice="<?php echo esc_attr(implode(' ', array_map('sanitize_title', (array) $artist['mediums']))); ?>" data-location="<?php echo esc_attr(sanitize_title(self::text($artist['location'] ?? ''))); ?>" data-date="<?php echo esc_attr((string) ($artist['period_sort'] ?? 0)); ?>" data-source-date="<?php echo esc_attr((string) ($artist['source_sort'] ?? 0)); ?>">
                         <?php if (!empty($artist['image'])) : ?>
                             <a class="ma-residency-alumni-card__image" href="<?php echo esc_url($artist['url']); ?>">
                                 <img src="<?php echo esc_url($artist['image']); ?>" alt="<?php echo esc_attr($artist['name'] . ' portrait'); ?>" loading="lazy">
@@ -4926,7 +4928,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 });
                 cards.sort(function(a,b){
                     if (sort.value === 'name') return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-                    return Number(b.getAttribute('data-date')) - Number(a.getAttribute('data-date')) || a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+                    return Number(b.getAttribute('data-date')) - Number(a.getAttribute('data-date')) || Number(b.getAttribute('data-source-date')) - Number(a.getAttribute('data-source-date')) || a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
                 }).forEach(function(card){ grid.appendChild(card); });
                 count.textContent = 'Showing ' + shown + ' residency artist' + (shown === 1 ? '' : 's');
                 empty.hidden = shown !== 0;
@@ -5098,9 +5100,25 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ]);
         $cards = [];
         $seen = [];
+        $aliases = [];
+        foreach ($posts as $source_post) {
+            [$source_name] = self::resident_artist_name_and_period((string) $source_post->post_title, (string) $source_post->post_date);
+            $canonical_name = self::text(get_post_meta((int) $source_post->ID, 'ma_artist_name', true)) ?: $source_name;
+            if (!$canonical_name) {
+                continue;
+            }
+            $aliases[strtolower($canonical_name)] = $canonical_name;
+            foreach (self::split_list(self::text(get_post_meta((int) $source_post->ID, 'ma_artist_aliases', true))) as $alias) {
+                $aliases[strtolower($alias)] = $canonical_name;
+            }
+        }
         foreach ($posts as $post) {
             $post_id = (int) $post->ID;
-            [$name, $period, $has_explicit_period] = self::resident_artist_name_and_period((string) $post->post_title, (string) $post->post_date);
+            [$name, $period, $has_explicit_period, $has_title_period] = self::resident_artist_name_and_period((string) $post->post_title, (string) $post->post_date);
+            $source_artist_name = self::text(get_post_meta($post_id, 'ma_artist_name', true));
+            if ($source_artist_name) {
+                $name = $source_artist_name;
+            }
             $stored_period = self::text(get_post_meta($post_id, 'ma_artist_residency_period', true));
             if ($stored_period) {
                 $period = $stored_period;
@@ -5116,6 +5134,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     $name = $profile_name;
                 }
             }
+            $name = $aliases[strtolower($name)] ?? $name;
             if (!$name) {
                 continue;
             }
@@ -5133,6 +5152,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 } elseif ($has_explicit_period || !$existing_explicit) {
                     $cards[$index]['residency_period'] = self::merge_residency_periods($cards[$index]['residency_period'], $period);
                 }
+                $cards[$index]['residency_source_sort'] = max((int) ($cards[$index]['residency_source_sort'] ?? 0), $has_title_period ? (int) get_post_time('U', true, $post_id) : 0);
                 if (!$cards[$index]['bio'] && $bio) {
                     $cards[$index]['bio'] = $bio;
                 }
@@ -5159,6 +5179,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'location' => $location,
                 'residency_period' => $period,
                 'residency_period_explicit' => $has_explicit_period,
+                'residency_source_sort' => $has_title_period ? (int) get_post_time('U', true, $post_id) : 0,
                 'website' => '',
                 'social' => '',
             ];
@@ -5172,14 +5193,17 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $name = $title;
         $period = '';
         $has_explicit_period = false;
+        $has_title_period = false;
         if (preg_match('/^(.*?)\s*[-–—]\s*' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
             $name = trim($match[1]);
             $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
             $has_explicit_period = true;
+            $has_title_period = true;
         } elseif (preg_match('/^(.*?)\s+' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
             $name = trim($match[1]);
             $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
             $has_explicit_period = true;
+            $has_title_period = true;
         }
         if (!$period && $post_date) {
             $timestamp = strtotime($post_date);
@@ -5187,7 +5211,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 $period = gmdate('F Y', $timestamp);
             }
         }
-        return [self::text($name), self::text($period), $has_explicit_period];
+        return [self::text($name), self::text($period), $has_explicit_period, $has_title_period];
     }
 
     private static function normalize_month_name(string $month): string {
