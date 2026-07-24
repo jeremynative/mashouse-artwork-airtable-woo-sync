@@ -497,7 +497,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 letter-spacing: 0 !important;
             }
 
-            body.single-tribe_events .tribe-events-single-event-title:before {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-single-event-title:before {
                 content: "Exhibition";
                 display: block;
                 margin: 0 0 13px;
@@ -515,14 +515,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 font-size: 15px;
             }
 
-            body.single-tribe_events .tribe_events.type-tribe_events {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe_events.type-tribe_events {
                 display: grid;
                 grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
                 gap: 34px 54px;
                 align-items: start;
             }
 
-            body.single-tribe_events .tribe-events-event-image {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-event-image {
                 grid-column: 1;
                 grid-row: 1 / span 2;
                 margin: 0 !important;
@@ -531,7 +531,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 background: #f8f5ef;
             }
 
-            body.single-tribe_events .tribe-events-event-image img {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-event-image img {
                 display: block;
                 width: 100%;
                 height: auto;
@@ -539,20 +539,20 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 object-fit: contain;
             }
 
-            body.single-tribe_events .tribe-events-single-event-description {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-single-event-description {
                 display: contents;
             }
 
-            body.single-tribe_events .ma-event-body {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .ma-event-body {
                 display: contents;
             }
 
-            body.single-tribe_events .tribe-events-event-meta,
-            body.single-tribe_events #tribe-events-footer {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-event-meta,
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) #tribe-events-footer {
                 grid-column: 1 / -1;
             }
 
-            body.single-tribe_events .ma-event-lede {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .ma-event-lede {
                 grid-column: 2;
                 max-width: 820px;
                 margin: 0;
@@ -564,13 +564,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 color: #171717;
             }
 
-            body.single-tribe_events .ma-event-section {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .ma-event-section {
                 grid-column: 1 / -1;
                 padding-top: 24px;
                 border-top: 1px solid rgba(0, 0, 0, .14);
             }
 
-            body.single-tribe_events .ma-event-section:first-of-type {
+            body.single-tribe_events:has(.tribe_events_cat-exhibit) .ma-event-section:first-of-type {
                 grid-column: 2;
                 padding-top: 0;
                 border-top: 0;
@@ -751,16 +751,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     font-size: clamp(30px, 9vw, 42px) !important;
                 }
 
-                body.single-tribe_events .tribe_events.type-tribe_events {
+                body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe_events.type-tribe_events {
                     display: block;
                 }
 
-                body.single-tribe_events .tribe-events-event-image {
+                body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-event-image {
                     margin: 0 0 28px !important;
                     padding: 8px;
                 }
 
-                body.single-tribe_events .tribe-events-event-image img {
+                body.single-tribe_events:has(.tribe_events_cat-exhibit) .tribe-events-event-image img {
                     max-height: none;
                 }
 
