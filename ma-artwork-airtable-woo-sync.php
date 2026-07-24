@@ -46,6 +46,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('woocommerce_before_main_content', [__CLASS__, 'render_shop_on_view_section'], 25);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_shop_on_view_section'], 4);
         add_action('woocommerce_before_shop_loop', [__CLASS__, 'render_all_art_heading'], 6);
+        add_action('wp', [__CLASS__, 'disable_native_shop_loop_fragments'], 20);
         add_filter('woocommerce_related_products', [__CLASS__, 'filter_contextual_related_products'], 20, 3);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_public_fix_styles'], 999);
         add_action('wp_head', [__CLASS__, 'render_catalog_head_guard'], 1);
@@ -7198,6 +7199,15 @@ HTML;
         echo self::store_catalog_section_html(self::shop_catalog_products_for_custom_grid());
     }
 
+    public static function disable_native_shop_loop_fragments(): void {
+        if (!self::is_artwork_catalog_request()) {
+            return;
+        }
+        remove_action('woocommerce_before_shop_loop', 'woocommerce_result_count', 20);
+        remove_action('woocommerce_before_shop_loop', 'woocommerce_catalog_ordering', 30);
+        remove_action('woocommerce_after_shop_loop', 'woocommerce_pagination', 10);
+    }
+
     private static function store_catalog_section_html(array $items): string {
         if (!$items) {
             return '';
@@ -7299,6 +7309,9 @@ HTML;
             body .elementor-widget-wc-categories,
             body .elementor-widget-woocommerce-product-categories,
             body .elementor-widget-wp-widget-woocommerce_product_categories,
+            body .woocommerce-result-count,
+            body .woocommerce-ordering,
+            body .woocommerce-pagination,
             body .woocommerce ul.products,
             body ul.products,
             body li.product-category{transition:none!important}
@@ -7307,6 +7320,9 @@ HTML;
             body .elementor-widget-wc-categories,
             body .elementor-widget-woocommerce-product-categories,
             body .elementor-widget-wp-widget-woocommerce_product_categories,
+            body .woocommerce-result-count,
+            body .woocommerce-ordering,
+            body .woocommerce-pagination,
             body .woocommerce ul.products,
             body ul.products,
             body li.product-category{display:none!important}
@@ -7335,6 +7351,9 @@ HTML;
                     '.elementor-widget-wc-categories',
                     '.elementor-widget-woocommerce-product-categories',
                     '.elementor-widget-wp-widget-woocommerce_product_categories',
+                    '.woocommerce-result-count',
+                    '.woocommerce-ordering',
+                    '.woocommerce-pagination',
                     '.woocommerce ul.products',
                     'ul.products'
                 ];
@@ -7435,7 +7454,7 @@ HTML;
                 } else {
                     anchor.parentNode.insertBefore(section, anchor);
                 }
-                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.elementor-widget-wp-widget-woocommerce_product_search,.woocommerce.widget_product_search,.woocommerce-product-search,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,ul.products').forEach(function(el){
+                document.querySelectorAll('.elementor-widget-woocommerce-products,.elementor-widget-eael-woo-product-carousel,.elementor-widget-wc-categories,.elementor-widget-wp-widget-woocommerce_product_search,.woocommerce.widget_product_search,.woocommerce-product-search,.wpfMainWrapper,.wpfFilterWrapper,.woocommerce-sidebar,aside.widget-area,.nv-sidebar-wrap,.woocommerce-result-count,.woocommerce-ordering,.woocommerce-pagination,ul.products').forEach(function(el){
                     if (section.contains(el)) return;
                     if (el.querySelector && el.querySelector('.ma-custom-store-grid')) return;
                     el.classList.add('ma-hide-elementor-products');
@@ -7682,6 +7701,18 @@ HTML;
             body.post-type-archive-product .wpfFilterContent,body.tax-product_cat .wpfFilterContent{font-family:' . esc_html($font_stack) . '!important}
             body.post-type-archive-product .wpfFilterButton.wpfButton,body.tax-product_cat .wpfFilterButton.wpfButton{border-radius:0!important;background:#111!important;color:#fff!important;border:1px solid #111!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;font-weight:600!important;letter-spacing:0!important}
             body.post-type-archive-product .wpfClearButton,body.tax-product_cat .wpfClearButton{font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;color:#555!important;text-decoration:underline!important;text-underline-offset:3px}
+            body.post-type-archive-product .woocommerce-result-count,
+            body.post-type-archive-product .woocommerce-ordering,
+            body.post-type-archive-product nav.woocommerce-pagination,
+            body.post-type-archive-product .woocommerce-pagination,
+            body.tax-product_cat .woocommerce-result-count,
+            body.tax-product_cat .woocommerce-ordering,
+            body.tax-product_cat nav.woocommerce-pagination,
+            body.tax-product_cat .woocommerce-pagination,
+            body.post-type-archive-product .woocommerce ul.products:not(.ma-shop-catalog-grid),
+            body.post-type-archive-product ul.products:not(.ma-shop-catalog-grid),
+            body.tax-product_cat .woocommerce ul.products:not(.ma-shop-catalog-grid),
+            body.tax-product_cat ul.products:not(.ma-shop-catalog-grid){display:none!important}
             .ma-shop-on-view{clear:both;width:100%;margin:0 0 46px;padding:0 0 34px;border-bottom:1px solid #dedbd4;background:#fff}
             .ma-shop-section-header{clear:both;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 22px}
             .ma-shop-section-header h2{margin:0;font-family:' . esc_html($font_stack) . ';font-size:23px;line-height:1.15;font-weight:540;letter-spacing:0;color:#111}
