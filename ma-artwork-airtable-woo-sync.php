@@ -7225,6 +7225,7 @@ HTML;
                 </div>
                 <div class="ma-store-count"><span class="ma-custom-store-count"><?php echo esc_html((string) count($items)); ?></span> items</div>
             </div>
+            <p class="ma-store-support-note">Every purchase helps fund Ma&rsquo;s House exhibitions, residencies, workshops, and community programs, supporting BIPOC artists and makers.</p>
             <div class="ma-custom-store-active-filters" hidden></div>
             <div class="ma-custom-store-grid__items">
                 <?php foreach ($items as $item) {
@@ -7447,7 +7448,7 @@ HTML;
                 var section = document.createElement('section');
                 section.className = 'ma-custom-store-grid';
                 section.setAttribute('aria-label','Store catalog');
-                section.innerHTML = '<div class="ma-store-toolbar"><label class="ma-store-search"><span>Search</span><input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog"></label><div class="ma-store-chips" aria-label="Store categories">' + categoryControls() + '</div><div class="ma-store-count"><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> items</div></div><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
+                section.innerHTML = '<div class="ma-store-toolbar"><label class="ma-store-search"><span>Search</span><input type="search" placeholder="Search works, artists, merch" aria-label="Search store catalog"></label><div class="ma-store-chips" aria-label="Store categories">' + categoryControls() + '</div><div class="ma-store-count"><span class="ma-custom-store-count">' + esc(customProducts.length) + '</span> items</div></div><p class="ma-store-support-note">Every purchase helps fund Ma&rsquo;s House exhibitions, residencies, workshops, and community programs, supporting BIPOC artists and makers.</p><div class="ma-custom-store-active-filters" hidden></div><div class="ma-custom-store-grid__items">' + customProducts.map(productCard).join('') + '</div><p class="ma-custom-store-empty" hidden>No items match those filters.</p>';
                 var placeholder = document.querySelector('.ma-store-grid-placeholder');
                 if (placeholder && placeholder.parentNode) {
                     placeholder.parentNode.replaceChild(section, placeholder);
@@ -7755,6 +7756,7 @@ HTML;
             .ma-store-chip{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:34px!important;margin:0!important;padding:0 13px!important;border:1px solid #d7d2ca!important;border-radius:999px!important;background:#fff!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1!important;font-weight:560!important;letter-spacing:0!important;text-transform:none!important;cursor:pointer!important}
             .ma-store-chip.is-active{border-color:#111!important;background:#111!important;color:#fff!important}
             .ma-store-count{color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;font-weight:560;text-align:right;white-space:nowrap}
+            .ma-store-support-note{max-width:760px;margin:0 0 28px!important;color:#333;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;line-height:1.5!important;font-weight:400!important}
             .ma-custom-store-grid [hidden]{display:none!important}
             .ma-custom-store-active-filters{margin:-12px 0 24px!important;color:#555;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.4}
             .ma-custom-store-grid--loading .ma-custom-store-grid__items{opacity:.45;transition:opacity .15s ease}
