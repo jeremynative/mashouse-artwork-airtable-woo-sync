@@ -95,6 +95,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
         add_filter('the_content', [__CLASS__, 'replace_residency_page_content'], 40);
         add_filter('the_content', [__CLASS__, 'replace_community_artists_page_content'], 41);
+        add_filter('the_content', [__CLASS__, 'link_event_artist_names'], 41);
         add_filter('the_content', [__CLASS__, 'prepend_single_post_content_header'], 41);
         add_filter('the_content', [__CLASS__, 'prepend_artist_post_content_header'], 42);
         add_shortcode('ma_on_view_now', [__CLASS__, 'on_view_shortcode']);
@@ -696,6 +697,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 border: 1px solid #ded8cf;
                 background: #fff;
                 font-weight: 650;
+            }
+
+            body.single-tribe_events .ma-event-artists a {
+                color: inherit;
+                text-decoration: underline;
+                text-decoration-thickness: 1px;
+                text-underline-offset: 4px;
+            }
+
+            body.single-tribe_events .ma-event-artists a:hover,
+            body.single-tribe_events .ma-event-artists a:focus {
+                color: #9f1d14;
             }
 
             body.single-tribe_events .ma-event-credit,
@@ -3210,6 +3223,73 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return 0;
     }
 
+    private static function find_artist_profile_post_by_name(string $artist_name): int {
+        $artist_name = self::text($artist_name);
+        if (!$artist_name) {
+            return 0;
+        }
+
+        $post_id = self::find_artist_profile_post(['name' => $artist_name]);
+        if ($post_id) {
+            return $post_id;
+        }
+
+        $name_variants = array_values(array_unique(array_filter([
+            $artist_name,
+            preg_replace('/["“”][^"“”]+["“”]/u', '', $artist_name) ?: '',
+            preg_replace("/['‘’][^'‘’]+['‘’]/u", '', $artist_name) ?: '',
+        ])));
+        $normalized_variants = array_map([__CLASS__, 'normalize_artist_match_text'], $name_variants);
+
+        $candidate_posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => 800,
+            'orderby' => 'title',
+            'order' => 'ASC',
+        ]);
+
+        foreach ($candidate_posts as $candidate) {
+            if (!$candidate instanceof WP_Post || !self::is_artist_profile_post((int) $candidate->ID, (string) $candidate->post_title)) {
+                continue;
+            }
+            $candidate_title = self::normalize_artist_match_text((string) $candidate->post_title);
+            if (in_array($candidate_title, $normalized_variants, true)) {
+                return (int) $candidate->ID;
+            }
+            foreach ($normalized_variants as $variant) {
+                if ($variant && self::artist_name_tokens_match($variant, $candidate_title)) {
+                    return (int) $candidate->ID;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private static function normalize_artist_match_text(string $text): string {
+        $text = remove_accents(wp_strip_all_tags($text));
+        $text = strtolower($text);
+        $text = preg_replace('/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|artist|profile|residency|resident)\b/u', ' ', $text) ?: $text;
+        $text = preg_replace('/\b20\d{2}\b/u', ' ', $text) ?: $text;
+        $text = preg_replace('/[^a-z0-9]+/u', ' ', $text) ?: $text;
+        return trim(preg_replace('/\s+/u', ' ', $text) ?: $text);
+    }
+
+    private static function artist_name_tokens_match(string $needle, string $candidate): bool {
+        $needle_tokens = array_values(array_filter(explode(' ', $needle), static fn($token) => strlen($token) > 1));
+        $candidate_tokens = array_values(array_filter(explode(' ', $candidate), static fn($token) => strlen($token) > 1));
+        if (count($needle_tokens) < 2 || count($candidate_tokens) < 2) {
+            return false;
+        }
+        foreach ($needle_tokens as $token) {
+            if (!in_array($token, $candidate_tokens, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static function ensure_post_category(string $name): int {
         $existing = term_exists($name, 'category');
         if (!$existing) {
@@ -3968,6 +4048,39 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         return self::residency_page_html();
+    }
+
+    public static function link_event_artist_names(string $content): string {
+        if (is_admin() || !is_singular('tribe_events') || strpos($content, 'ma-event-artists') === false) {
+            return $content;
+        }
+
+        return preg_replace_callback('/<ul([^>]*class="[^"]*\bma-event-artists\b[^"]*"[^>]*)>(.*?)<\/ul>/is', static function (array $matches): string {
+            $list_content = preg_replace_callback('/<li([^>]*)>(.*?)<\/li>/is', static function (array $li_matches): string {
+                if (stripos($li_matches[2], '<a ') !== false) {
+                    return $li_matches[0];
+                }
+
+                $artist_name = trim(wp_strip_all_tags($li_matches[2]));
+                if (!$artist_name) {
+                    return $li_matches[0];
+                }
+
+                $post_id = self::find_artist_profile_post_by_name($artist_name);
+                if (!$post_id) {
+                    return $li_matches[0];
+                }
+
+                $url = get_permalink($post_id);
+                if (!$url) {
+                    return $li_matches[0];
+                }
+
+                return '<li' . $li_matches[1] . '><a href="' . esc_url($url) . '">' . wp_kses_post($li_matches[2]) . '</a></li>';
+            }, $matches[2]) ?: $matches[2];
+
+            return '<ul' . $matches[1] . '>' . $list_content . '</ul>';
+        }, $content) ?: $content;
     }
 
     public static function replace_community_artists_page_content(string $content): string {
