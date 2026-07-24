@@ -4768,6 +4768,38 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
     private static function residency_alumni_page_html(): string {
         $artists = self::resident_artist_cards_data();
+        $canonical_names = [];
+        foreach ($artists as $artist) {
+            $canonical_name = self::text($artist['name'] ?? '');
+            foreach ((array) ($artist['aliases'] ?? []) as $alias) {
+                $alias = self::text($alias);
+                if ($alias && $canonical_name) {
+                    $canonical_names[strtolower($alias)] = $canonical_name;
+                }
+            }
+        }
+        $merged_artists = [];
+        foreach ($artists as $artist) {
+            $name = self::text($artist['name'] ?? '');
+            $canonical_name = $canonical_names[strtolower($name)] ?? $name;
+            $key = strtolower($canonical_name);
+            $artist['name'] = $canonical_name;
+            if (!isset($merged_artists[$key])) {
+                $merged_artists[$key] = $artist;
+                continue;
+            }
+            $existing = &$merged_artists[$key];
+            $existing['residency_period'] = self::merge_residency_periods(self::text($existing['residency_period'] ?? ''), self::text($artist['residency_period'] ?? ''));
+            $existing['residency_source_sort'] = max((int) ($existing['residency_source_sort'] ?? 0), (int) ($artist['residency_source_sort'] ?? 0));
+            foreach (['url', 'image', 'bio', 'location', 'website', 'social'] as $field) {
+                if (empty($existing[$field]) && !empty($artist[$field])) {
+                    $existing[$field] = $artist[$field];
+                }
+            }
+            $existing['mediums'] = array_values(array_unique(array_merge((array) ($existing['mediums'] ?? []), (array) ($artist['mediums'] ?? []))));
+            unset($existing);
+        }
+        $artists = array_values($merged_artists);
         $profiles_by_name = [];
         foreach (self::community_artist_cards_data() as $profile) {
             $profiles_by_name[strtolower(self::text($profile['name'] ?? ''))] = $profile;
@@ -5180,6 +5212,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'residency_period' => $period,
                 'residency_period_explicit' => $has_explicit_period,
                 'residency_source_sort' => $has_title_period ? (int) get_post_time('U', true, $post_id) : 0,
+                'aliases' => self::split_list(self::text(get_post_meta($post_id, 'ma_artist_aliases', true))),
                 'website' => '',
                 'social' => '',
             ];
