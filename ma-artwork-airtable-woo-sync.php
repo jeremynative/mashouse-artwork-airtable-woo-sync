@@ -7783,7 +7783,7 @@ HTML;
             .ma-clean-artist-filter .wpfLiLabel{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:5px 0!important;color:#222;font-family:' . esc_html($font_stack) . ';font-size:13px;line-height:1.3}
             .ma-clean-artist-filter .wpfFilterTaxNameWrapper,.ma-clean-artist-filter .wpfValue{white-space:normal!important;word-break:normal!important}
             .ma-clean-artist-filter .wpfCount{margin-left:4px;color:#777;font-size:12px}
-            /* The catalog toolbar is fixed below the site header. Keep the first row close to it instead of inheriting the archive template's three stacked top gutters. */
+            /* The catalog toolbar is fixed below the site header. Keep the first row close to it instead of inheriting the archive template top gutters. */
             body.post-type-archive-product .neve-main{padding-top:0!important}
             body.post-type-archive-product .elementor-location-archive{padding-top:0!important}
             body.post-type-archive-product .elementor-element-1e95a2b9{padding-top:34px!important}
