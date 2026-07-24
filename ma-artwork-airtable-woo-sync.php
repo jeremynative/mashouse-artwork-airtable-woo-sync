@@ -479,7 +479,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
 
             body.single-tribe_events .tribe-events-pg-template {
-                max-width: 1180px;
+                max-width: 1220px;
                 padding-left: 32px;
                 padding-right: 32px;
             }
@@ -491,39 +491,60 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .tribe-events-single-event-title {
                 max-width: 980px;
                 margin-bottom: 18px !important;
-                font-size: clamp(38px, 4.4vw, 58px) !important;
-                line-height: 1.04 !important;
-                font-weight: 650 !important;
+                font-size: clamp(36px, 4vw, 54px) !important;
+                line-height: 1.05 !important;
+                font-weight: 620 !important;
                 letter-spacing: 0 !important;
+            }
+
+            body.single-tribe_events .tribe-events-single-event-title:before {
+                content: "Exhibition";
+                display: block;
+                margin: 0 0 13px;
+                color: #8f1c16;
+                font-size: 12px;
+                line-height: 1;
+                font-weight: 800;
+                letter-spacing: .11em;
+                text-transform: uppercase;
             }
 
             body.single-tribe_events .tribe-events-schedule {
                 margin: 0 0 28px !important;
+                color: #3c332d;
+                font-size: 15px;
             }
 
             body.single-tribe_events .tribe_events.type-tribe_events {
                 display: grid;
-                grid-template-columns: minmax(300px, 440px) minmax(0, 1fr);
-                gap: 38px 44px;
+                grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+                gap: 34px 54px;
                 align-items: start;
             }
 
             body.single-tribe_events .tribe-events-event-image {
                 grid-column: 1;
+                grid-row: 1 / span 2;
                 margin: 0 !important;
-                background: #f6f3ee;
+                padding: 12px;
+                border: 1px solid #ddd6cc;
+                background: #f8f5ef;
             }
 
             body.single-tribe_events .tribe-events-event-image img {
                 display: block;
                 width: 100%;
                 height: auto;
-                max-height: 640px;
+                max-height: 620px;
                 object-fit: contain;
             }
 
             body.single-tribe_events .tribe-events-single-event-description {
-                grid-column: 2;
+                display: contents;
+            }
+
+            body.single-tribe_events .ma-event-body {
+                display: contents;
             }
 
             body.single-tribe_events .tribe-events-event-meta,
@@ -531,27 +552,28 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 grid-column: 1 / -1;
             }
 
-            body.single-tribe_events .ma-event-body {
-                display: grid;
-                gap: 28px;
-                max-width: 980px;
-                margin: 0;
-            }
-
             body.single-tribe_events .ma-event-lede {
+                grid-column: 2;
                 max-width: 820px;
                 margin: 0;
-                padding: 0 0 22px;
-                border-bottom: 3px solid #ad231b;
-                font-size: 20px;
-                line-height: 1.5;
+                padding: 0 0 24px;
+                border-bottom: 2px solid #ad231b;
+                font-size: clamp(19px, 2vw, 24px);
+                line-height: 1.45;
                 font-weight: 520;
                 color: #171717;
             }
 
             body.single-tribe_events .ma-event-section {
+                grid-column: 1 / -1;
                 padding-top: 24px;
                 border-top: 1px solid rgba(0, 0, 0, .14);
+            }
+
+            body.single-tribe_events .ma-event-section:first-of-type {
+                grid-column: 2;
+                padding-top: 0;
+                border-top: 0;
             }
 
             body.single-tribe_events .ma-event-section h2 {
@@ -566,7 +588,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
             body.single-tribe_events .ma-event-details {
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: 1fr;
                 gap: 12px;
                 margin: 0;
                 padding: 0;
@@ -575,7 +597,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
             body.single-tribe_events .ma-event-details li {
                 min-height: 100%;
-                padding: 15px;
+                padding: 14px 16px;
                 border: 1px solid rgba(0, 0, 0, .14);
                 background: #faf8f4;
             }
@@ -596,9 +618,20 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-details strong {
                 display: block;
                 color: #111;
-                font-size: 15px;
+                font-size: 16px;
                 line-height: 1.45;
                 font-weight: 650;
+            }
+
+            body.single-tribe_events .ma-event-section:not(:first-of-type) {
+                max-width: none;
+                margin-top: 8px;
+            }
+
+            body.single-tribe_events .ma-event-section:not(:first-of-type) > p {
+                max-width: 840px;
+                font-size: 17px;
+                line-height: 1.68;
             }
 
             body.single-tribe_events .ma-event-focus-list,
@@ -613,15 +646,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-focus-list li {
                 display: block !important;
                 position: relative;
-                max-width: 760px;
+                max-width: 840px;
                 margin: 0 !important;
-                padding: 14px 16px 14px 48px !important;
-                border: 1px solid rgba(173, 35, 27, .24);
-                border-left: 4px solid #ad231b;
-                background: #fbf8f3;
+                padding: 0 0 0 28px !important;
+                border: 0;
+                background: transparent;
                 color: #171717;
-                font-size: 16px;
-                line-height: 1.45;
+                font-size: 17px;
+                line-height: 1.55;
                 font-weight: 560;
                 list-style: none !important;
             }
@@ -634,21 +666,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-focus-list li:before {
                 content: "";
                 position: absolute;
-                left: 18px;
-                top: 20px;
-                width: 10px;
-                height: 10px;
+                left: 0;
+                top: .74em;
+                width: 12px;
+                height: 2px;
                 background: #ad231b;
             }
 
             body.single-tribe_events .ma-event-focus-list li:after {
-                content: "";
-                position: absolute;
-                left: 22px;
-                top: 24px;
-                width: 2px;
-                height: 2px;
-                background: #fff;
+                content: none;
             }
 
             body.single-tribe_events .ma-event-focus-list li p {
@@ -657,14 +683,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
 
             body.single-tribe_events .ma-event-artists {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                max-width: 760px;
-                gap: 0 22px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                max-width: none;
+                gap: 12px;
             }
 
             body.single-tribe_events .ma-event-artists li {
-                padding: 10px 0;
-                border-bottom: 1px solid rgba(0, 0, 0, .1);
+                padding: 15px 16px;
+                border: 1px solid #ded8cf;
+                background: #fff;
                 font-weight: 650;
             }
 
@@ -679,11 +706,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
             body.single-tribe_events .ma-event-contact {
                 display: grid;
                 grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 16px;
+                gap: 14px;
+                max-width: none;
             }
 
             body.single-tribe_events .ma-event-contact p {
-                margin: 0;
+                margin: 0 !important;
+                padding: 15px 16px;
+                border: 1px solid #ded8cf;
+                background: #faf8f4;
             }
 
             body.single-tribe_events .ma-event-rsvp-link {
@@ -726,18 +757,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
                 body.single-tribe_events .tribe-events-event-image {
                     margin: 0 0 28px !important;
+                    padding: 8px;
                 }
 
                 body.single-tribe_events .tribe-events-event-image img {
                     max-height: none;
                 }
 
-                body.single-tribe_events .ma-event-body {
-                    gap: 28px;
-                }
-
                 body.single-tribe_events .ma-event-lede {
                     font-size: 17px;
+                    margin-bottom: 28px;
                 }
 
                 body.single-tribe_events .ma-event-details,
