@@ -4142,7 +4142,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (is_admin() || !is_singular('post') || !self::is_current_artist_profile_post()) {
             return $content;
         }
-        if (strpos($content, 'ma-artist-content-header') !== false || strpos($content, 'ma-artist-page__heading') !== false) {
+        if (strpos($content, 'ma-artist-content-header') !== false) {
             return $content;
         }
         $post = get_queried_object();
@@ -4152,6 +4152,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $title = self::text(get_the_title($post));
         if (!$title) {
             return $content;
+        }
+        if (strpos($content, 'ma-artist-page__heading') !== false) {
+            return self::ensure_artist_page_portrait_in_content($content, (int) $post->ID, $title);
         }
         $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
         $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
@@ -4173,6 +4176,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $header .= '</header>';
         return $header . self::artist_page_back_and_tags_html($roles, $mediums) . $content;
+    }
+
+    private static function ensure_artist_page_portrait_in_content(string $content, int $post_id, string $name): string {
+        $portrait_url = self::public_image_url(self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true)));
+        if (!$portrait_url) {
+            return $content;
+        }
+        $portrait = '<figure class="ma-artist-page__portrait"><img src="' . esc_url($portrait_url) . '" alt="' . esc_attr($name . ' portrait') . '" loading="eager" decoding="async"></figure>';
+        if (strpos($content, 'ma-artist-page__portrait') !== false) {
+            return preg_replace('~<figure[^>]*class="[^"]*ma-artist-page__portrait[^"]*"[^>]*>.*?</figure>~s', $portrait, $content, 1) ?? $content;
+        }
+        return preg_replace('~(<header[^>]*class="[^"]*ma-artist-page__heading[^"]*"[^>]*>.*?</header>)~s', '$1' . $portrait, $content, 1) ?? $content;
     }
 
     private static function content_already_contains_featured_image(string $content, int $post_id): bool {
