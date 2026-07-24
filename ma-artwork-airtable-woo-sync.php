@@ -96,6 +96,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('the_content', [__CLASS__, 'replace_podcast_page_content'], 39);
         add_filter('the_content', [__CLASS__, 'replace_residency_page_content'], 40);
         add_filter('the_content', [__CLASS__, 'replace_community_artists_page_content'], 41);
+        add_filter('the_content', [__CLASS__, 'replace_residency_alumni_page_content'], 42);
         add_filter('the_content', [__CLASS__, 'link_event_artist_names'], 41);
         add_filter('the_content', [__CLASS__, 'prepend_single_post_content_header'], 41);
         add_filter('the_content', [__CLASS__, 'prepend_artist_post_content_header'], 42);
@@ -103,6 +104,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_artist_artworks', [__CLASS__, 'artist_artworks_shortcode']);
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
         add_shortcode('ma_home_events', [__CLASS__, 'home_events_shortcode']);
+        add_shortcode('ma_residency_alumni', [__CLASS__, 'residency_alumni_shortcode']);
     }
 
     public static function order_donate_menu_after_community_artists(array $items, $args): array {
@@ -4092,6 +4094,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::community_artists_page_html();
     }
 
+    public static function replace_residency_alumni_page_content(string $content): string {
+        if (is_admin() || (!is_page('residency-alumni') && (int) get_queried_object_id() !== 42041)) {
+            return $content;
+        }
+
+        return self::residency_alumni_page_html();
+    }
+
+    public static function residency_alumni_shortcode(): string {
+        return self::residency_alumni_page_html();
+    }
+
     public static function prepend_single_post_content_header(string $content): string {
         if (is_admin() || !is_singular('post') || self::is_current_artist_profile_post()) {
             return $content;
@@ -4750,6 +4764,181 @@ final class MA_Artwork_Airtable_Woo_Sync {
         </script>
         <?php
         return (string) ob_get_clean();
+    }
+
+    private static function residency_alumni_page_html(): string {
+        $artists = array_values(array_filter(self::community_artist_cards_data(), static function (array $artist): bool {
+            return in_array('Residency Artist', (array) ($artist['roles'] ?? []), true)
+                || self::text($artist['residency_period'] ?? '') !== '';
+        }));
+        foreach ($artists as &$artist) {
+            $artist['period_sort'] = self::residency_period_sort_value(self::text($artist['residency_period'] ?? ''));
+        }
+        unset($artist);
+        usort($artists, static function (array $a, array $b): int {
+            $date_compare = ((int) ($b['period_sort'] ?? 0)) <=> ((int) ($a['period_sort'] ?? 0));
+            return $date_compare ?: strcasecmp(self::artist_last_name_sort_key($a['name'] ?? ''), self::artist_last_name_sort_key($b['name'] ?? ''));
+        });
+
+        $mediums = [];
+        $locations = [];
+        foreach ($artists as $artist) {
+            foreach ((array) ($artist['mediums'] ?? []) as $medium) {
+                $medium = self::text($medium);
+                if ($medium) {
+                    $mediums[$medium] = $medium;
+                }
+            }
+            $location = self::text($artist['location'] ?? '');
+            if ($location) {
+                $locations[$location] = $location;
+            }
+        }
+        natcasesort($mediums);
+        natcasesort($locations);
+
+        ob_start();
+        ?>
+        <style id="ma-residency-alumni-stable-css">
+            body.page-id-42041 .nv-page-title-wrap{display:none!important}
+            .ma-residency-alumni-page{width:min(1400px,calc(100vw - 64px));margin:0 auto;padding:58px 0 76px;color:#111;font-family:Arial,Helvetica,sans-serif}
+            .ma-residency-alumni-page *{box-sizing:border-box}
+            .ma-residency-alumni-hero{display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px;align-items:start;padding:0 0 32px;border-bottom:1px solid #d7d2ca}
+            .ma-residency-alumni-hero>p{margin:10px 0 0;color:#6b6258;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+            .ma-residency-alumni-hero h1{margin:0 0 18px!important;color:#111!important;font-size:42px!important;line-height:1.08!important;font-weight:650!important;letter-spacing:0!important}
+            .ma-residency-alumni-hero div p{max-width:760px;margin:0!important;color:#333;font-size:17px;line-height:1.55}
+            .ma-residency-alumni-controls{display:flex;flex-wrap:wrap;align-items:end;gap:16px 22px;padding:26px 0 20px;border-bottom:1px solid #dfdbd3}
+            .ma-residency-alumni-control{display:grid;gap:7px;min-width:180px}
+            .ma-residency-alumni-control--search{flex:1 1 280px}
+            .ma-residency-alumni-control label{color:#635c54;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+            .ma-residency-alumni-control input,.ma-residency-alumni-control select{width:100%;height:40px;padding:0 12px;border:1px solid #cfc9c0;border-radius:0;background:#fff;color:#111;font:inherit;font-size:14px;box-shadow:none}
+            .ma-residency-alumni-count{margin:18px 0 30px!important;color:#333;font-size:14px;font-weight:600}
+            .ma-residency-alumni-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:48px 28px}
+            .ma-residency-alumni-card{min-width:0;border-top:3px solid #d5232f}
+            .ma-residency-alumni-card__image{display:block;margin:14px 0 16px;background:#f2efe9;color:#111;text-decoration:none}
+            .ma-residency-alumni-card__image img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+            .ma-residency-alumni-card__body{display:grid;gap:7px}
+            .ma-residency-alumni-card h2{margin:0!important;color:#111!important;font-size:20px!important;line-height:1.16!important;font-weight:700!important;letter-spacing:0!important}
+            .ma-residency-alumni-card h2 a{color:inherit!important;text-decoration:none!important}
+            .ma-residency-alumni-card h2 a:hover{text-decoration:underline!important;text-underline-offset:3px!important}
+            .ma-residency-alumni-card__period,.ma-residency-alumni-card__practice,.ma-residency-alumni-card__location{margin:0!important;color:#3b3b3b;font-size:13px!important;line-height:1.42!important}
+            .ma-residency-alumni-card__period{font-weight:650!important}
+            .ma-residency-alumni-card__practice{color:#5d5d5d}
+            .ma-residency-alumni-empty{margin:0!important;padding:40px 0;color:#555;font-size:16px}
+            @media(max-width:900px){.ma-residency-alumni-page{width:min(100% - 32px,760px);padding:38px 0 56px}.ma-residency-alumni-hero{grid-template-columns:1fr;gap:12px}.ma-residency-alumni-hero>p{margin:0}.ma-residency-alumni-hero h1{font-size:34px!important}.ma-residency-alumni-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:38px 20px}}
+            @media(max-width:560px){.ma-residency-alumni-grid{grid-template-columns:1fr}.ma-residency-alumni-control{width:100%}.ma-residency-alumni-hero h1{font-size:31px!important}}
+        </style>
+        <article class="ma-residency-alumni-page" data-ma-residency-alumni>
+            <header class="ma-residency-alumni-hero">
+                <p>Residency Alumni</p>
+                <div>
+                    <h1>Ma&rsquo;s House residency alumni</h1>
+                    <p>Artists who have spent time in residence at Ma&rsquo;s House, sharing research, workshops, open studios, talks, performances, and new work with the community.</p>
+                </div>
+            </header>
+
+            <section class="ma-residency-alumni-controls" aria-label="Residency alumni filters">
+                <div class="ma-residency-alumni-control ma-residency-alumni-control--search">
+                    <label for="ma-residency-alumni-search">Search artists</label>
+                    <input id="ma-residency-alumni-search" type="search" placeholder="Search artists or practices">
+                </div>
+                <div class="ma-residency-alumni-control">
+                    <label for="ma-residency-alumni-practice">Practice</label>
+                    <select id="ma-residency-alumni-practice">
+                        <option value="">All practices</option>
+                        <?php foreach ($mediums as $medium) : ?>
+                            <option value="<?php echo esc_attr(sanitize_title($medium)); ?>"><?php echo esc_html($medium); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="ma-residency-alumni-control">
+                    <label for="ma-residency-alumni-location">Location</label>
+                    <select id="ma-residency-alumni-location">
+                        <option value="">All locations</option>
+                        <?php foreach ($locations as $location) : ?>
+                            <option value="<?php echo esc_attr(sanitize_title($location)); ?>"><?php echo esc_html($location); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="ma-residency-alumni-control">
+                    <label for="ma-residency-alumni-sort">Sort</label>
+                    <select id="ma-residency-alumni-sort">
+                        <option value="date">Most recent residency</option>
+                        <option value="name">Artist name</option>
+                    </select>
+                </div>
+            </section>
+            <p class="ma-residency-alumni-count" aria-live="polite">Showing <?php echo esc_html((string) count($artists)); ?> residency artists</p>
+            <section class="ma-residency-alumni-grid" aria-label="Residency artists">
+                <?php foreach ($artists as $artist) : ?>
+                    <article class="ma-residency-alumni-card" data-name="<?php echo esc_attr(strtolower($artist['name'])); ?>" data-practice="<?php echo esc_attr(implode(' ', array_map('sanitize_title', (array) $artist['mediums']))); ?>" data-location="<?php echo esc_attr(sanitize_title(self::text($artist['location'] ?? ''))); ?>" data-date="<?php echo esc_attr((string) ($artist['period_sort'] ?? 0)); ?>">
+                        <?php if (!empty($artist['image'])) : ?>
+                            <a class="ma-residency-alumni-card__image" href="<?php echo esc_url($artist['url']); ?>">
+                                <img src="<?php echo esc_url($artist['image']); ?>" alt="<?php echo esc_attr($artist['name'] . ' portrait'); ?>" loading="lazy">
+                            </a>
+                        <?php endif; ?>
+                        <div class="ma-residency-alumni-card__body">
+                            <h2><a href="<?php echo esc_url($artist['url']); ?>"><?php echo esc_html($artist['name']); ?></a></h2>
+                            <?php if (!empty($artist['residency_period'])) : ?><p class="ma-residency-alumni-card__period">In residence: <?php echo esc_html($artist['residency_period']); ?></p><?php endif; ?>
+                            <?php if (!empty($artist['mediums'])) : ?><p class="ma-residency-alumni-card__practice"><?php echo esc_html(implode(', ', $artist['mediums'])); ?></p><?php endif; ?>
+                            <?php if (!empty($artist['location'])) : ?><p class="ma-residency-alumni-card__location">Based in <?php echo esc_html($artist['location']); ?></p><?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </section>
+            <p class="ma-residency-alumni-empty" hidden>No residency artists match those filters.</p>
+        </article>
+        <script id="ma-residency-alumni-stable-js">
+        (function(){
+            var root = document.querySelector('[data-ma-residency-alumni]');
+            if (!root || root.dataset.ready === '1') return;
+            root.dataset.ready = '1';
+            var search = root.querySelector('#ma-residency-alumni-search');
+            var practice = root.querySelector('#ma-residency-alumni-practice');
+            var location = root.querySelector('#ma-residency-alumni-location');
+            var sort = root.querySelector('#ma-residency-alumni-sort');
+            var grid = root.querySelector('.ma-residency-alumni-grid');
+            var count = root.querySelector('.ma-residency-alumni-count');
+            var empty = root.querySelector('.ma-residency-alumni-empty');
+            var cards = Array.prototype.slice.call(root.querySelectorAll('.ma-residency-alumni-card'));
+            function apply(){
+                var query = (search.value || '').trim().toLowerCase();
+                var shown = 0;
+                cards.forEach(function(card){
+                    var matches = (!query || card.textContent.toLowerCase().indexOf(query) !== -1)
+                        && (!practice.value || card.getAttribute('data-practice').split(' ').indexOf(practice.value) !== -1)
+                        && (!location.value || card.getAttribute('data-location') === location.value);
+                    card.hidden = !matches;
+                    if (matches) shown++;
+                });
+                cards.sort(function(a,b){
+                    if (sort.value === 'name') return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+                    return Number(b.getAttribute('data-date')) - Number(a.getAttribute('data-date')) || a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+                }).forEach(function(card){ grid.appendChild(card); });
+                count.textContent = 'Showing ' + shown + ' residency artist' + (shown === 1 ? '' : 's');
+                empty.hidden = shown !== 0;
+            }
+            [search, practice, location, sort].forEach(function(control){ control.addEventListener(control === search ? 'input' : 'change', apply); });
+            apply();
+        }());
+        </script>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function residency_period_sort_value(string $period): int {
+        if (!$period) {
+            return 0;
+        }
+        preg_match_all('/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i', $period, $matches, PREG_SET_ORDER);
+        $latest = 0;
+        foreach ($matches as $match) {
+            $timestamp = strtotime($match[1] . ' 1 ' . $match[2]);
+            if ($timestamp && $timestamp > $latest) {
+                $latest = $timestamp;
+            }
+        }
+        return $latest;
     }
 
     private static function news_posts_for_category(string $slug, int $limit): array {
