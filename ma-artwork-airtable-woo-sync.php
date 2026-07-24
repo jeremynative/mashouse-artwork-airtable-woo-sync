@@ -7485,7 +7485,11 @@ HTML;
                 buildCustomGrid();
                 applyCustomFilters();
                 hideContradictoryEmptyStates();
-                document.querySelectorAll('ul.products').forEach(function(list){ list.classList.add('ma-shop-catalog-grid'); });
+                document.querySelectorAll('ul.products').forEach(function(list){
+                    if (list.closest('.ma-custom-store-grid')) return;
+                    list.classList.add('ma-hide-elementor-products');
+                    list.setAttribute('aria-hidden', 'true');
+                });
                 document.querySelectorAll('li.product, div.product').forEach(function(card){
                     var idClass = Array.prototype.find.call(card.classList, function(c){return /^post-\d+$/.test(c);});
                     if (!idClass) return;
@@ -7766,6 +7770,10 @@ HTML;
             .ma-custom-store-card__artist,.ma-custom-store-card__medium{margin:0 0 5px!important;color:#555!important;font-family:' . esc_html($font_stack) . '!important;font-size:13px!important;line-height:1.35!important}
             .ma-custom-store-card__price{display:block!important;margin:10px 0 0!important;color:#111!important;font-family:' . esc_html($font_stack) . '!important;font-size:14px!important;line-height:1.25!important;font-weight:650!important;text-align:left!important;font-variant-numeric:tabular-nums}
             .woocommerce ul.products.ma-shop-catalog-grid{clear:both;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:42px!important;row-gap:58px!important;width:100%!important;height:auto!important;margin:0!important;align-items:start!important;list-style:none!important}
+            .woocommerce ul.products.ma-hide-elementor-products,
+            .woocommerce ul.products.ma-hide-elementor-products.ma-shop-catalog-grid,
+            ul.products.ma-hide-elementor-products,
+            ul.products.ma-hide-elementor-products.ma-shop-catalog-grid{display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
             .woocommerce ul.products.ma-shop-catalog-grid>li.product{position:relative!important;left:auto!important;top:auto!important;float:none!important;display:block!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;transform:none!important;background:#fff!important;border:0!important;box-shadow:none!important}
             .woocommerce ul.products.ma-shop-catalog-grid .woocommerce-LoopProduct-link,.woocommerce ul.products.ma-shop-catalog-grid .product-image-wrap,.woocommerce ul.products.ma-shop-catalog-grid .image-wrap{display:block!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;aspect-ratio:4/3!important}
             .woocommerce ul.products.ma-shop-catalog-grid .button,.woocommerce ul.products.ma-shop-catalog-grid .added_to_cart,.woocommerce ul.products.ma-shop-catalog-grid .star-rating{display:none!important}
