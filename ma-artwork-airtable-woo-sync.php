@@ -77,6 +77,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_product_assets'], 100);
         add_action('wp_enqueue_scripts', [__CLASS__, 'optimize_frontend_global_assets'], 101);
         add_action('send_headers', [__CLASS__, 'send_front_page_public_cache_headers'], 999);
+        add_action('send_headers', [__CLASS__, 'send_event_public_cache_headers'], 999);
         add_filter('wp_headers', [__CLASS__, 'filter_public_cache_headers'], 999);
         add_filter('woocommerce_set_cookie_enabled', [__CLASS__, 'filter_woocommerce_cookie_enabled'], 20, 5);
         add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
@@ -5807,6 +5808,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function filter_public_cache_headers(array $headers): array {
+        if (!is_admin() && !wp_doing_ajax() && !is_user_logged_in() && function_exists('is_singular') && is_singular('tribe_events')) {
+            $headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+            $headers['Pragma'] = 'no-cache';
+            $headers['Expires'] = 'Wed, 11 Jan 1984 05:00:00 GMT';
+            return $headers;
+        }
+
         if (is_admin() || wp_doing_ajax() || is_user_logged_in() || !function_exists('is_front_page') || !is_front_page()) {
             return $headers;
         }
@@ -5829,6 +5837,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
         header_remove('Pragma');
         header_remove('Expires');
         header('Cache-Control: max-age=14400, must-revalidate', true);
+    }
+
+    public static function send_event_public_cache_headers(): void {
+        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || !function_exists('is_singular') || !is_singular('tribe_events')) {
+            return;
+        }
+
+        header_remove('Cache-Control');
+        header_remove('Pragma');
+        header_remove('Expires');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true);
+        header('Pragma: no-cache', true);
+        header('Expires: Wed, 11 Jan 1984 05:00:00 GMT', true);
     }
 
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
