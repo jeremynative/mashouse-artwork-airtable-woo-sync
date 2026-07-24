@@ -3224,7 +3224,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function find_artist_profile_post_by_name(string $artist_name): int {
-        $artist_name = self::text($artist_name);
+        $artist_name = html_entity_decode(self::text($artist_name), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         if (!$artist_name) {
             return 0;
         }
