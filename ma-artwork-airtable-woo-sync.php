@@ -4155,13 +4155,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
         $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
-        $image = (has_post_thumbnail((int) $post->ID) && !self::content_already_contains_featured_image($content, (int) $post->ID))
-            ? get_the_post_thumbnail((int) $post->ID, 'large', [
+        $portrait_url = self::public_image_url(self::text(get_post_meta((int) $post->ID, 'ma_artist_portrait_url', true)));
+        if ($portrait_url) {
+            $image = '<img class="ma-single-post-featured-image" src="' . esc_url($portrait_url) . '" alt="' . esc_attr($title . ' portrait') . '" loading="eager" decoding="async">';
+        } else {
+            $image = (has_post_thumbnail((int) $post->ID) && !self::content_already_contains_featured_image($content, (int) $post->ID))
+                ? get_the_post_thumbnail((int) $post->ID, 'large', [
                 'class' => 'ma-single-post-featured-image',
                 'loading' => 'eager',
                 'decoding' => 'async',
-            ])
-            : '';
+                ])
+                : '';
+        }
         $header = '<header class="ma-artist-content-header"><h1>' . esc_html($title) . '</h1>';
         if ($image) {
             $header .= '<figure class="ma-artist-content-header__image">' . $image . '</figure>';
