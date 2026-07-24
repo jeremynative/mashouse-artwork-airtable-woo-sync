@@ -79,6 +79,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('send_headers', [__CLASS__, 'send_front_page_public_cache_headers'], 999);
         add_action('send_headers', [__CLASS__, 'send_event_public_cache_headers'], 999);
         add_filter('wp_headers', [__CLASS__, 'filter_public_cache_headers'], 999);
+        add_filter('sgo_exclude_urls_from_cache', [__CLASS__, 'filter_event_cache_excluded_urls'], 999);
+        add_filter('rocket_cache_reject_uri', [__CLASS__, 'filter_rocket_event_cache_reject_uri'], 999);
         add_filter('woocommerce_set_cookie_enabled', [__CLASS__, 'filter_woocommerce_cookie_enabled'], 20, 5);
         add_filter('script_loader_tag', [__CLASS__, 'filter_frontend_script_tag'], 20, 3);
         add_filter('style_loader_tag', [__CLASS__, 'filter_frontend_style_tag'], 20, 4);
@@ -5808,7 +5810,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function filter_public_cache_headers(array $headers): array {
-        if (!is_admin() && !wp_doing_ajax() && !is_user_logged_in() && function_exists('is_singular') && is_singular('tribe_events')) {
+        if (!is_admin() && !wp_doing_ajax() && !is_user_logged_in() && self::is_event_request_path()) {
             $headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
             $headers['Pragma'] = 'no-cache';
             $headers['Expires'] = 'Wed, 11 Jan 1984 05:00:00 GMT';
@@ -5840,7 +5842,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function send_event_public_cache_headers(): void {
-        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || !function_exists('is_singular') || !is_singular('tribe_events')) {
+        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || !self::is_event_request_path()) {
             return;
         }
 
@@ -5850,6 +5852,32 @@ final class MA_Artwork_Airtable_Woo_Sync {
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true);
         header('Pragma: no-cache', true);
         header('Expires: Wed, 11 Jan 1984 05:00:00 GMT', true);
+    }
+
+    public static function filter_event_cache_excluded_urls(array $urls): array {
+        foreach (['/event*', '/events*'] as $pattern) {
+            if (!in_array($pattern, $urls, true)) {
+                $urls[] = $pattern;
+            }
+        }
+        return $urls;
+    }
+
+    public static function filter_rocket_event_cache_reject_uri(array $urls): array {
+        foreach (['/event/(.*)/', '/events/(.*)/'] as $pattern) {
+            if (!in_array($pattern, $urls, true)) {
+                $urls[] = $pattern;
+            }
+        }
+        return $urls;
+    }
+
+    private static function is_event_request_path(): bool {
+        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        if (!is_string($path)) {
+            return false;
+        }
+        return preg_match('#^/(event|events)(/|$)#', $path) === 1;
     }
 
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
