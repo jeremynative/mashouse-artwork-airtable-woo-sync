@@ -4158,7 +4158,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
         $roles = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_roles', true)));
         $mediums = self::split_list(self::text(get_post_meta((int) $post->ID, 'ma_artist_mediums', true)));
-        $portrait_url = self::public_image_url(self::text(get_post_meta((int) $post->ID, 'ma_artist_portrait_url', true)));
+        $portrait_url = self::preferred_artist_portrait_url((int) $post->ID, $title);
         if ($portrait_url) {
             $image = '<img class="ma-single-post-featured-image" src="' . esc_url($portrait_url) . '" alt="' . esc_attr($title . ' portrait') . '" loading="eager" decoding="async">';
         } else {
@@ -4179,7 +4179,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function ensure_artist_page_portrait_in_content(string $content, int $post_id, string $name): string {
-        $portrait_url = self::public_image_url(self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true)));
+        $portrait_url = self::preferred_artist_portrait_url($post_id, $name);
         if (!$portrait_url) {
             return $content;
         }
@@ -4188,6 +4188,40 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return preg_replace('~<figure[^>]*class="[^"]*ma-artist-page__portrait[^"]*"[^>]*>.*?</figure>~s', $portrait, $content, 1) ?? $content;
         }
         return preg_replace('~(<header[^>]*class="[^"]*ma-artist-page__heading[^"]*"[^>]*>.*?</header>)~s', '$1' . $portrait, $content, 1) ?? $content;
+    }
+
+    /**
+     * A residency post's featured image is the established portrait for alumni.
+     * Airtable's portrait field remains useful for artists without a residency post,
+     * but must not replace a known residency photograph with an artwork image.
+     */
+    private static function preferred_artist_portrait_url(int $post_id, string $fallback_name = ''): string {
+        $name = self::text(get_post_meta($post_id, 'ma_artist_name', true)) ?: self::text($fallback_name);
+        if ($name) {
+            [$parsed_name] = self::resident_artist_name_and_period($name, '');
+            $name = $parsed_name ?: $name;
+        }
+        $normalized_name = strtolower(trim($name));
+        if ($normalized_name) {
+            foreach (self::resident_artist_cards_data() as $resident) {
+                $resident_aliases = is_array($resident['aliases'] ?? null)
+                    ? $resident['aliases']
+                    : self::split_list(self::text($resident['aliases'] ?? ''));
+                $resident_names = array_merge([
+                    self::text($resident['name'] ?? ''),
+                ], $resident_aliases);
+                foreach ($resident_names as $resident_name) {
+                    if ($normalized_name !== strtolower(trim($resident_name))) {
+                        continue;
+                    }
+                    $source_image = self::public_image_url(self::text($resident['image'] ?? ''));
+                    if ($source_image) {
+                        return $source_image;
+                    }
+                }
+            }
+        }
+        return self::public_image_url(self::text(get_post_meta($post_id, 'ma_artist_portrait_url', true)));
     }
 
     private static function content_already_contains_featured_image(string $content, int $post_id): bool {
