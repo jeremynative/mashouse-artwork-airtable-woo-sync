@@ -4830,6 +4830,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 continue;
             }
             foreach (['post_id', 'url', 'image', 'bio', 'mediums', 'location', 'website', 'social'] as $field) {
+                if ($field === 'image' && !empty($artist['image'])) {
+                    continue;
+                }
                 if (!empty($profile[$field])) {
                     $artist[$field] = $profile[$field];
                 }
