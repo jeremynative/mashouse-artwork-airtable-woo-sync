@@ -4767,10 +4767,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function residency_alumni_page_html(): string {
-        $artists = array_values(array_filter(self::community_artist_cards_data(), static function (array $artist): bool {
-            return in_array('Residency Artist', (array) ($artist['roles'] ?? []), true)
-                || self::text($artist['residency_period'] ?? '') !== '';
-        }));
+        $artists = self::resident_artist_cards_data();
+        $profiles_by_name = [];
+        foreach (self::community_artist_cards_data() as $profile) {
+            $profiles_by_name[strtolower(self::text($profile['name'] ?? ''))] = $profile;
+        }
+        foreach ($artists as &$artist) {
+            $profile = $profiles_by_name[strtolower(self::text($artist['name'] ?? ''))] ?? null;
+            if (!is_array($profile)) {
+                continue;
+            }
+            foreach (['post_id', 'url', 'image', 'bio', 'mediums', 'location', 'website', 'social'] as $field) {
+                if (!empty($profile[$field])) {
+                    $artist[$field] = $profile[$field];
+                }
+            }
+        }
+        unset($artist);
         foreach ($artists as &$artist) {
             $artist['period_sort'] = self::residency_period_sort_value(self::text($artist['residency_period'] ?? ''));
         }
