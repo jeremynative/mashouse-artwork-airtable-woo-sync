@@ -5100,7 +5100,22 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $seen = [];
         foreach ($posts as $post) {
             $post_id = (int) $post->ID;
-            [$name, $period] = self::resident_artist_name_and_period((string) $post->post_title, (string) $post->post_date);
+            [$name, $period, $has_explicit_period] = self::resident_artist_name_and_period((string) $post->post_title, (string) $post->post_date);
+            $stored_period = self::text(get_post_meta($post_id, 'ma_artist_residency_period', true));
+            if ($stored_period) {
+                $period = $stored_period;
+                $has_explicit_period = true;
+            }
+            $profile_post_id = (int) get_post_meta($post_id, '_ma_artist_redirect_to_post_id', true);
+            if ($profile_post_id) {
+                $profile_name = self::text(get_post_meta($profile_post_id, 'ma_artist_name', true));
+                if (!$profile_name) {
+                    $profile_name = self::text(get_the_title($profile_post_id));
+                }
+                if ($profile_name) {
+                    $name = $profile_name;
+                }
+            }
             if (!$name) {
                 continue;
             }
@@ -5111,7 +5126,13 @@ final class MA_Artwork_Airtable_Woo_Sync {
             $mediums = self::correct_artist_mediums($name, self::infer_artist_mediums($bio));
             if (isset($seen[$key])) {
                 $index = $seen[$key];
-                $cards[$index]['residency_period'] = self::merge_residency_periods($cards[$index]['residency_period'], $period);
+                $existing_explicit = !empty($cards[$index]['residency_period_explicit']);
+                if ($has_explicit_period && !$existing_explicit) {
+                    $cards[$index]['residency_period'] = $period;
+                    $cards[$index]['residency_period_explicit'] = true;
+                } elseif ($has_explicit_period || !$existing_explicit) {
+                    $cards[$index]['residency_period'] = self::merge_residency_periods($cards[$index]['residency_period'], $period);
+                }
                 if (!$cards[$index]['bio'] && $bio) {
                     $cards[$index]['bio'] = $bio;
                 }
@@ -5137,6 +5158,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'roles' => ['Residency Artist'],
                 'location' => $location,
                 'residency_period' => $period,
+                'residency_period_explicit' => $has_explicit_period,
                 'website' => '',
                 'social' => '',
             ];
@@ -5149,12 +5171,15 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $months = '(January|February|March|April|May|June|July|August|September|Sept|October|November|December)';
         $name = $title;
         $period = '';
+        $has_explicit_period = false;
         if (preg_match('/^(.*?)\s*[-–—]\s*' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
             $name = trim($match[1]);
             $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
+            $has_explicit_period = true;
         } elseif (preg_match('/^(.*?)\s+' . $months . '\s+(\d{4})\s*$/i', $title, $match)) {
             $name = trim($match[1]);
             $period = self::normalize_month_name($match[2]) . ' ' . $match[3];
+            $has_explicit_period = true;
         }
         if (!$period && $post_date) {
             $timestamp = strtotime($post_date);
@@ -5162,7 +5187,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 $period = gmdate('F Y', $timestamp);
             }
         }
-        return [self::text($name), self::text($period)];
+        return [self::text($name), self::text($period), $has_explicit_period];
     }
 
     private static function normalize_month_name(string $month): string {
