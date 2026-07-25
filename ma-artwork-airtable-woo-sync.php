@@ -35,6 +35,8 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('admin_init', [__CLASS__, 'register_settings']);
         add_action('init', [__CLASS__, 'register_artist_profile_rewrites'], 5);
         add_action('init', [__CLASS__, 'ensure_runtime_setup'], 20);
+        add_action('admin_post_ma_visitor_checkin', [__CLASS__, 'handle_visitor_checkin']);
+        add_action('admin_post_nopriv_ma_visitor_checkin', [__CLASS__, 'handle_visitor_checkin']);
         add_action('save_post_post', [__CLASS__, 'sync_artist_post_to_products'], 20, 3);
         add_action('event_tickets_rsvp_attendee_created', [__CLASS__, 'sync_rsvp_attendee_created'], 20, 4);
         add_action('event_tickets_rsvp_ticket_created', [__CLASS__, 'sync_rsvp_ticket_created'], 25, 4);
@@ -105,6 +107,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_past_sponsors', [__CLASS__, 'past_sponsors_shortcode']);
         add_shortcode('ma_home_events', [__CLASS__, 'home_events_shortcode']);
         add_shortcode('ma_residency_alumni', [__CLASS__, 'residency_alumni_shortcode']);
+        add_shortcode('ma_visitor_checkin', [__CLASS__, 'visitor_checkin_shortcode']);
     }
 
     public static function order_donate_menu_after_community_artists(array $items, $args): array {
@@ -332,12 +335,123 @@ final class MA_Artwork_Airtable_Woo_Sync {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'ma_artwork_every_six_hours', self::CRON_HOOK);
         }
 
+        self::ensure_visitor_checkin_page();
+
         $rewrite_version = 'artist-profile-v1';
         if (get_option('ma_artwork_rewrite_version') !== $rewrite_version) {
             self::register_artist_profile_rewrites();
             flush_rewrite_rules(false);
             update_option('ma_artwork_rewrite_version', $rewrite_version, false);
         }
+    }
+
+    private static function ensure_visitor_checkin_page(): void {
+        $page = get_page_by_path('signin', OBJECT, 'page');
+        if ($page instanceof WP_Post) {
+            return;
+        }
+
+        wp_insert_post([
+            'post_type' => 'page',
+            'post_status' => 'publish',
+            'post_title' => "Ma's House Visitor Check-In",
+            'post_name' => 'signin',
+            'post_content' => '[ma_visitor_checkin]',
+        ]);
+    }
+
+    public static function visitor_checkin_shortcode(): string {
+        $today = wp_date('Y-m-d');
+        $status = sanitize_key((string) ($_GET['ma_checkin'] ?? ''));
+
+        ob_start();
+        ?>
+        <section class="ma-visitor-checkin" aria-labelledby="ma-visitor-checkin-title">
+            <div class="ma-visitor-checkin__intro">
+                <p class="ma-visitor-checkin__eyebrow">Ma's House</p>
+                <h1 id="ma-visitor-checkin-title">Visitor Check-In</h1>
+                <p>Welcome. Please sign in when you arrive.</p>
+            </div>
+            <?php if ($status === 'thanks') : ?>
+                <div class="ma-visitor-checkin__notice" role="status">Thank you. You are checked in.</div>
+            <?php elseif ($status === 'missing-name') : ?>
+                <div class="ma-visitor-checkin__notice ma-visitor-checkin__notice--error" role="alert">Please enter your name to check in.</div>
+            <?php elseif ($status === 'error') : ?>
+                <div class="ma-visitor-checkin__notice ma-visitor-checkin__notice--error" role="alert">We could not save your check-in just now. Please try again or let a Ma's House team member know.</div>
+            <?php endif; ?>
+            <form class="ma-visitor-checkin__form" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
+                <input type="hidden" name="action" value="ma_visitor_checkin">
+                <?php wp_nonce_field('ma_visitor_checkin', 'ma_visitor_checkin_nonce'); ?>
+                <p class="ma-visitor-checkin__field ma-visitor-checkin__field--name">
+                    <label for="ma-visitor-name">Name <span aria-hidden="true">*</span></label>
+                    <input id="ma-visitor-name" name="visitor_name" type="text" autocomplete="name" required autofocus>
+                </p>
+                <p class="ma-visitor-checkin__field">
+                    <label for="ma-visitor-date">Today's date</label>
+                    <input id="ma-visitor-date" name="visit_date" type="date" value="<?php echo esc_attr($today); ?>">
+                </p>
+                <p class="ma-visitor-checkin__field">
+                    <label for="ma-visitor-group">How many are in your group?</label>
+                    <input id="ma-visitor-group" name="group_size" type="number" min="1" step="1" inputmode="numeric">
+                </p>
+                <p class="ma-visitor-checkin__field">
+                    <label for="ma-visitor-zip">ZIP code</label>
+                    <input id="ma-visitor-zip" name="zip_code" type="text" inputmode="numeric" autocomplete="postal-code">
+                </p>
+                <p class="ma-visitor-checkin__field">
+                    <label for="ma-visitor-email">Email to join our newsletter <span class="ma-visitor-checkin__optional">(optional)</span></label>
+                    <input id="ma-visitor-email" name="visitor_email" type="email" autocomplete="email">
+                </p>
+                <p class="ma-visitor-checkin__field ma-visitor-checkin__field--full">
+                    <label for="ma-visitor-comments">Comments</label>
+                    <textarea id="ma-visitor-comments" name="comments" rows="4"></textarea>
+                </p>
+                <p class="ma-visitor-checkin__actions"><button type="submit">Check in</button></p>
+            </form>
+        </section>
+        <style id="ma-visitor-checkin-css">
+            .ma-visitor-checkin{max-width:760px;margin:48px auto 80px;padding:0 24px;color:#18211b}.ma-visitor-checkin__intro{margin-bottom:28px}.ma-visitor-checkin__eyebrow{margin:0 0 8px;color:#9b1c17!important;font-size:12px!important;font-weight:700!important;letter-spacing:.08em;text-transform:uppercase}.ma-visitor-checkin h1{margin:0 0 10px!important;color:#18211b!important;font-size:40px!important;line-height:1.1!important}.ma-visitor-checkin__intro>p:last-child{margin:0!important;font-size:18px!important}.ma-visitor-checkin__form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;padding:30px;background:#f7f5f0;border:1px solid #e2ddd4}.ma-visitor-checkin__field{margin:0!important}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:1/-1}.ma-visitor-checkin label{display:block;margin:0 0 7px!important;color:#18211b!important;font-size:14px!important;font-weight:700!important}.ma-visitor-checkin input,.ma-visitor-checkin textarea{box-sizing:border-box;width:100%;margin:0!important;padding:12px!important;border:1px solid #bdb7ac!important;border-radius:0!important;background:#fff!important;color:#18211b!important;font:inherit!important;line-height:1.35!important}.ma-visitor-checkin textarea{resize:vertical}.ma-visitor-checkin__optional{font-weight:400}.ma-visitor-checkin__actions{margin:4px 0 0!important}.ma-visitor-checkin button{width:100%;padding:14px 20px;border:0;border-radius:0;background:#a3211b;color:#fff;font:inherit;font-weight:700;cursor:pointer}.ma-visitor-checkin button:hover,.ma-visitor-checkin button:focus{background:#7f1915}.ma-visitor-checkin__notice{margin:0 0 22px;padding:14px 16px;background:#e7f1e5;border-left:4px solid #3f6d45;font-weight:600}.ma-visitor-checkin__notice--error{background:#f8e9e6;border-left-color:#a3211b}@media(max-width:620px){.ma-visitor-checkin{margin-top:28px;padding:0 18px}.ma-visitor-checkin h1{font-size:32px!important}.ma-visitor-checkin__form{grid-template-columns:1fr;padding:22px}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:auto}}</style>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    public static function handle_visitor_checkin(): void {
+        $redirect = wp_get_referer() ?: home_url('/signin/');
+        if (!isset($_POST['ma_visitor_checkin_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ma_visitor_checkin_nonce'])), 'ma_visitor_checkin')) {
+            wp_safe_redirect(add_query_arg('ma_checkin', 'error', $redirect));
+            exit;
+        }
+
+        $name = sanitize_text_field(wp_unslash($_POST['visitor_name'] ?? ''));
+        if ($name === '') {
+            wp_safe_redirect(add_query_arg('ma_checkin', 'missing-name', $redirect));
+            exit;
+        }
+
+        $date = self::date_ymd(sanitize_text_field(wp_unslash($_POST['visit_date'] ?? '')));
+        $email = sanitize_email(wp_unslash($_POST['visitor_email'] ?? ''));
+        $group_size = absint($_POST['group_size'] ?? 0);
+        $zip_code = sanitize_text_field(wp_unslash($_POST['zip_code'] ?? ''));
+        $comments = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
+        $fields = ['Name' => $name];
+        if ($date !== '') { $fields["Today's Date"] = $date; }
+        if ($group_size > 0) { $fields['How many in group'] = $group_size; }
+        if ($zip_code !== '') { $fields['Zip Code'] = $zip_code; }
+        if ($email !== '') { $fields['Email to Join our Newsletter (Optional)'] = $email; }
+        if ($comments !== '') { $fields['Comments'] = $comments; }
+
+        try {
+            $options = self::options();
+            if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['visitor_table_id'])) {
+                throw new RuntimeException('Airtable Visitors settings are incomplete.');
+            }
+            self::create_airtable_record($options, (string) $options['visitor_table_id'], $fields);
+            wp_safe_redirect(add_query_arg('ma_checkin', 'thanks', $redirect));
+        } catch (Throwable $error) {
+            error_log('Ma visitor check-in failed: ' . $error->getMessage());
+            wp_safe_redirect(add_query_arg('ma_checkin', 'error', $redirect));
+        }
+        exit;
     }
 
     public static function filter_artist_profile_permalink(string $permalink, WP_Post $post, bool $leavename): string {
@@ -6265,7 +6379,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function filter_public_cache_headers(array $headers): array {
-        if (!is_admin() && !wp_doing_ajax() && !is_user_logged_in() && self::is_event_request_path()) {
+        if (!is_admin() && !wp_doing_ajax() && !is_user_logged_in() && (self::is_event_request_path() || self::is_visitor_checkin_request_path())) {
             $headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
             $headers['Pragma'] = 'no-cache';
             $headers['Expires'] = 'Wed, 11 Jan 1984 05:00:00 GMT';
@@ -6297,7 +6411,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function send_event_public_cache_headers(): void {
-        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || !self::is_event_request_path()) {
+        if (headers_sent() || is_admin() || wp_doing_ajax() || is_user_logged_in() || (!self::is_event_request_path() && !self::is_visitor_checkin_request_path())) {
             return;
         }
 
@@ -6310,7 +6424,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function filter_event_cache_excluded_urls(array $urls): array {
-        foreach (['/event*', '/events*'] as $pattern) {
+        foreach (['/event*', '/events*', '/signin*'] as $pattern) {
             if (!in_array($pattern, $urls, true)) {
                 $urls[] = $pattern;
             }
@@ -6319,7 +6433,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     public static function filter_rocket_event_cache_reject_uri(array $urls): array {
-        foreach (['/event/(.*)/', '/events/(.*)/'] as $pattern) {
+        foreach (['/event/(.*)/', '/events/(.*)/', '/signin/(.*)'] as $pattern) {
             if (!in_array($pattern, $urls, true)) {
                 $urls[] = $pattern;
             }
@@ -6333,6 +6447,11 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return false;
         }
         return preg_match('#^/(event|events)(/|$)#', $path) === 1;
+    }
+
+    private static function is_visitor_checkin_request_path(): bool {
+        $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        return is_string($path) && preg_match('#^/signin(/|$)#', $path) === 1;
     }
 
     public static function filter_frontend_script_tag(string $tag, string $handle, string $src): string {
