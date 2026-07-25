@@ -60,6 +60,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_homepage_final_layout_overrides'], 19);
         add_action('wp_head', [__CLASS__, 'render_donate_menu_button_css'], 19);
         add_action('wp_head', [__CLASS__, 'render_artist_profile_css'], 20);
+        add_action('wp_head', [__CLASS__, 'render_visitor_checkin_page_css'], 21);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
         add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
@@ -413,6 +414,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
             .ma-visitor-checkin{max-width:760px;margin:48px auto 80px;padding:0 24px;color:#18211b}.ma-visitor-checkin__intro{margin-bottom:28px}.ma-visitor-checkin__eyebrow{margin:0 0 8px;color:#9b1c17!important;font-size:12px!important;font-weight:700!important;letter-spacing:.08em;text-transform:uppercase}.ma-visitor-checkin h1{margin:0 0 10px!important;color:#18211b!important;font-size:40px!important;line-height:1.1!important}.ma-visitor-checkin__intro>p:last-child{margin:0!important;font-size:18px!important}.ma-visitor-checkin__form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;padding:30px;background:#f7f5f0;border:1px solid #e2ddd4}.ma-visitor-checkin__field{margin:0!important}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:1/-1}.ma-visitor-checkin label{display:block;margin:0 0 7px!important;color:#18211b!important;font-size:14px!important;font-weight:700!important}.ma-visitor-checkin input,.ma-visitor-checkin textarea{box-sizing:border-box;width:100%;margin:0!important;padding:12px!important;border:1px solid #bdb7ac!important;border-radius:0!important;background:#fff!important;color:#18211b!important;font:inherit!important;line-height:1.35!important}.ma-visitor-checkin textarea{resize:vertical}.ma-visitor-checkin__optional{font-weight:400}.ma-visitor-checkin__actions{margin:4px 0 0!important}.ma-visitor-checkin button{width:100%;padding:14px 20px;border:0;border-radius:0;background:#a3211b;color:#fff;font:inherit;font-weight:700;cursor:pointer}.ma-visitor-checkin button:hover,.ma-visitor-checkin button:focus{background:#7f1915}.ma-visitor-checkin__notice{margin:0 0 22px;padding:14px 16px;background:#e7f1e5;border-left:4px solid #3f6d45;font-weight:600}.ma-visitor-checkin__notice--error{background:#f8e9e6;border-left-color:#a3211b}@media(max-width:620px){.ma-visitor-checkin{margin-top:28px;padding:0 18px}.ma-visitor-checkin h1{font-size:32px!important}.ma-visitor-checkin__form{grid-template-columns:1fr;padding:22px}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:auto}}</style>
         <?php
         return (string) ob_get_clean();
+    }
+
+    public static function render_visitor_checkin_page_css(): void {
+        if (!is_page('signin')) {
+            return;
+        }
+        ?>
+        <style id="ma-visitor-checkin-page-css">
+            body.page .entry-header:has(.entry-title),
+            body.page .entry-title{display:none!important}
+        </style>
+        <?php
     }
 
     public static function handle_visitor_checkin(): void {
