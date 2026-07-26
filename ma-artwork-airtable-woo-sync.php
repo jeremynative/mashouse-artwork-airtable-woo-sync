@@ -337,6 +337,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         self::ensure_visitor_checkin_page();
+        self::ensure_visitor_checkin_time_field();
 
         $rewrite_version = 'artist-profile-v1';
         if (get_option('ma_artwork_rewrite_version') !== $rewrite_version) {
@@ -361,8 +362,36 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ]);
     }
 
+    private static function ensure_visitor_checkin_time_field(): void {
+        $options = self::options();
+        if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['visitor_table_id'])) {
+            return;
+        }
+
+        $fields = self::airtable_table_field_names($options, (string) $options['visitor_table_id']);
+        if (in_array('Time', $fields, true)) {
+            return;
+        }
+
+        $endpoint = sprintf('https://api.airtable.com/v0/meta/bases/%s/tables/%s/fields', rawurlencode($options['base_id']), rawurlencode((string) $options['visitor_table_id']));
+        $response = wp_remote_post($endpoint, [
+            'timeout' => 30,
+            'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token'], 'Content-Type' => 'application/json'],
+            'body' => wp_json_encode(['name' => 'Time', 'type' => 'singleLineText']),
+        ]);
+        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) < 300) {
+            $cached = get_option(self::VISITOR_FIELD_CACHE_KEY, []);
+            $cached = is_array($cached) ? $cached : [];
+            $cached[] = 'Time';
+            $cached = array_values(array_unique($cached));
+            sort($cached, SORT_NATURAL | SORT_FLAG_CASE);
+            update_option(self::VISITOR_FIELD_CACHE_KEY, $cached, false);
+        }
+    }
+
     public static function visitor_checkin_shortcode(): string {
         $today = wp_date('Y-m-d');
+        $time = wp_date('H:i');
         $status = sanitize_key((string) ($_GET['ma_checkin'] ?? ''));
 
         ob_start();
@@ -392,8 +421,12 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     <input id="ma-visitor-date" name="visit_date" type="date" value="<?php echo esc_attr($today); ?>">
                 </p>
                 <p class="ma-visitor-checkin__field">
+                    <label for="ma-visitor-time">Time</label>
+                    <input id="ma-visitor-time" name="visit_time" type="time" value="<?php echo esc_attr($time); ?>">
+                </p>
+                <p class="ma-visitor-checkin__field">
                     <label for="ma-visitor-group">How many are in your group?</label>
-                    <input id="ma-visitor-group" name="group_size" type="number" min="1" step="1" inputmode="numeric">
+                    <input id="ma-visitor-group" name="group_size" type="number" min="1" step="1" inputmode="numeric" value="1">
                 </p>
                 <p class="ma-visitor-checkin__field">
                     <label for="ma-visitor-zip">ZIP code</label>
@@ -412,7 +445,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         </section>
         <style id="ma-visitor-checkin-css">
             .ma-visitor-checkin{max-width:760px;margin:48px auto 80px;padding:0 24px;color:#18211b}.ma-visitor-checkin__intro{margin-bottom:28px}.ma-visitor-checkin__eyebrow{margin:0 0 8px;color:#9b1c17!important;font-size:12px!important;font-weight:700!important;letter-spacing:.08em;text-transform:uppercase}.ma-visitor-checkin h1{margin:0 0 10px!important;color:#18211b!important;font-size:40px!important;line-height:1.1!important}.ma-visitor-checkin__intro>p:last-child{margin:0!important;font-size:18px!important}.ma-visitor-checkin__form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;padding:30px;background:#f7f5f0;border:1px solid #e2ddd4}.ma-visitor-checkin__field{margin:0!important}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:1/-1}.ma-visitor-checkin__honeypot{display:none!important}.ma-visitor-checkin label{display:block;margin:0 0 7px!important;color:#18211b!important;font-size:14px!important;font-weight:700!important}.ma-visitor-checkin input,.ma-visitor-checkin textarea{box-sizing:border-box;width:100%;margin:0!important;padding:12px!important;border:1px solid #bdb7ac!important;border-radius:0!important;background:#fff!important;color:#18211b!important;font:inherit!important;line-height:1.35!important}.ma-visitor-checkin textarea{resize:vertical}.ma-visitor-checkin__optional{font-weight:400}.ma-visitor-checkin__actions{margin:4px 0 0!important}.ma-visitor-checkin button{width:100%;padding:14px 20px;border:0;border-radius:0;background:#a3211b;color:#fff;font:inherit;font-weight:700;cursor:pointer}.ma-visitor-checkin button:hover,.ma-visitor-checkin button:focus{background:#7f1915}.ma-visitor-checkin__notice{margin:0 0 22px;padding:14px 16px;background:#e7f1e5;border-left:4px solid #3f6d45;font-weight:600}.ma-visitor-checkin__notice--error{background:#f8e9e6;border-left-color:#a3211b}@media(max-width:620px){.ma-visitor-checkin{margin-top:28px;padding:0 18px}.ma-visitor-checkin h1{font-size:32px!important}.ma-visitor-checkin__form{grid-template-columns:1fr;padding:22px}.ma-visitor-checkin__field--name,.ma-visitor-checkin__field--full,.ma-visitor-checkin__actions{grid-column:auto}}</style>
-        <script id="ma-visitor-checkin-date">document.addEventListener('DOMContentLoaded',function(){var input=document.getElementById('ma-visitor-date');if(input){input.value=new Date().toLocaleDateString('en-CA');}});</script>
+        <script id="ma-visitor-checkin-date">document.addEventListener('DOMContentLoaded',function(){var now=new Date(),date=document.getElementById('ma-visitor-date'),time=document.getElementById('ma-visitor-time');if(date){date.value=now.toLocaleDateString('en-CA');}if(time){time.value=now.toTimeString().slice(0,5);}});</script>
         <?php
         return (string) ob_get_clean();
     }
@@ -443,12 +476,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         $date = self::date_ymd(sanitize_text_field(wp_unslash($_POST['visit_date'] ?? '')));
+        $time = preg_match('/^([01]\\d|2[0-3]):[0-5]\\d$/', (string) ($_POST['visit_time'] ?? '')) ? sanitize_text_field(wp_unslash($_POST['visit_time'])) : '';
         $email = sanitize_email(wp_unslash($_POST['visitor_email'] ?? ''));
         $group_size = absint($_POST['group_size'] ?? 0);
         $zip_code = sanitize_text_field(wp_unslash($_POST['zip_code'] ?? ''));
         $comments = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
         $fields = ['Name' => $name];
         if ($date !== '') { $fields["Today's Date"] = $date; }
+        if ($time !== '') { $fields['Time'] = $time; }
         if ($group_size > 0) { $fields['How many in group'] = $group_size; }
         if ($zip_code !== '') { $fields['Zip Code'] = $zip_code; }
         if ($email !== '') { $fields['Email to Join our Newsletter (Optional)'] = $email; }
