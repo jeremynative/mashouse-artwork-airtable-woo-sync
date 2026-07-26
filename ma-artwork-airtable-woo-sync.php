@@ -337,7 +337,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         }
 
         self::ensure_visitor_checkin_page();
-        self::ensure_visitor_checkin_time_field();
 
         $rewrite_version = 'artist-profile-v1';
         if (get_option('ma_artwork_rewrite_version') !== $rewrite_version) {
@@ -360,33 +359,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
             'post_name' => 'signin',
             'post_content' => '[ma_visitor_checkin]',
         ]);
-    }
-
-    private static function ensure_visitor_checkin_time_field(): void {
-        $options = self::options();
-        if (empty($options['airtable_token']) || empty($options['base_id']) || empty($options['visitor_table_id'])) {
-            return;
-        }
-
-        $fields = self::airtable_table_field_names($options, (string) $options['visitor_table_id']);
-        if (in_array('Time', $fields, true)) {
-            return;
-        }
-
-        $endpoint = sprintf('https://api.airtable.com/v0/meta/bases/%s/tables/%s/fields', rawurlencode($options['base_id']), rawurlencode((string) $options['visitor_table_id']));
-        $response = wp_remote_post($endpoint, [
-            'timeout' => 30,
-            'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token'], 'Content-Type' => 'application/json'],
-            'body' => wp_json_encode(['name' => 'Time', 'type' => 'singleLineText']),
-        ]);
-        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) < 300) {
-            $cached = get_option(self::VISITOR_FIELD_CACHE_KEY, []);
-            $cached = is_array($cached) ? $cached : [];
-            $cached[] = 'Time';
-            $cached = array_values(array_unique($cached));
-            sort($cached, SORT_NATURAL | SORT_FLAG_CASE);
-            update_option(self::VISITOR_FIELD_CACHE_KEY, $cached, false);
-        }
     }
 
     public static function visitor_checkin_shortcode(): string {
@@ -483,10 +455,14 @@ final class MA_Artwork_Airtable_Woo_Sync {
         $comments = sanitize_textarea_field(wp_unslash($_POST['comments'] ?? ''));
         $fields = ['Name' => $name];
         if ($date !== '') { $fields["Today's Date"] = $date; }
-        if ($time !== '') { $fields['Time'] = $time; }
         if ($group_size > 0) { $fields['How many in group'] = $group_size; }
         if ($zip_code !== '') { $fields['Zip Code'] = $zip_code; }
         if ($email !== '') { $fields['Email to Join our Newsletter (Optional)'] = $email; }
+        if ($time !== '') {
+            [$hour, $minute] = array_map('intval', explode(':', $time));
+            $time_label = (($hour % 12) ?: 12) . ':' . str_pad((string) $minute, 2, '0', STR_PAD_LEFT) . ($hour >= 12 ? ' PM' : ' AM');
+            $comments = 'Check-in time: ' . $time_label . ($comments !== '' ? "\n\n" . $comments : '');
+        }
         if ($comments !== '') { $fields['Comments'] = $comments; }
 
         try {
