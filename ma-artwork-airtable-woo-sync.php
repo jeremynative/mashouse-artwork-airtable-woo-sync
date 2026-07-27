@@ -6693,6 +6693,11 @@ body.home #ma-library-home-carousel .ma-library-home-carousel__track{box-sizing:
 body.home #ma-library-home-carousel .ma-library-home-slide{box-sizing:border-box!important;grid-template-columns:220px minmax(0,1fr)!important;min-width:0!important;width:100%!important}
 body.home #ma-library-home-carousel .ma-library-home-slide__cover{max-width:220px!important;width:220px!important}
 body.home #ma-library-home-carousel .ma-library-home-slide__body{min-width:0!important;width:100%!important}
+body.home .give-donor-wall-shortcode-wrap .give-grid{align-items:stretch!important;grid-auto-rows:224px!important}
+body.home .give-donor-wall-shortcode-wrap .give-grid__item{display:block!important;height:224px!important;min-height:0!important}
+body.home .give-donor-wall-shortcode-wrap .give-donor.give-card{box-sizing:border-box!important;height:224px!important;min-height:0!important;overflow:hidden!important;width:100%!important}
+body.home .give-donor-wall-shortcode-wrap .give-donor-container{box-sizing:border-box!important;height:100%!important;min-height:0!important}
+body.home .give-donor-wall-shortcode-wrap .give-donor-content__comment{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:5!important;overflow:hidden!important}
 body.home .ma-firefox-video-fallback{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important;background-size:cover!important;background-position:center!important;color:#fff!important;text-decoration:none!important}
 body.home .ma-firefox-video-fallback__play{width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.62);box-shadow:0 0 0 1px rgba(255,255,255,.35);position:relative}
 body.home .ma-firefox-video-fallback__play:after{content:"";position:absolute;left:23px;top:17px;border-left:18px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent}
@@ -6755,6 +6760,9 @@ body.home .ma-home-events-custom__thumb img{width:100%;height:auto;aspect-ratio:
 body.home #ma-library-home-carousel{padding-left:16px!important;padding-right:16px!important}
 body.home #ma-library-home-carousel .ma-library-home-slide{grid-template-columns:1fr!important}
 body.home #ma-library-home-carousel .ma-library-home-slide__cover{max-width:180px!important;width:100%!important}
+body.home .give-donor-wall-shortcode-wrap .give-grid{grid-auto-rows:auto!important}
+body.home .give-donor-wall-shortcode-wrap .give-grid__item,
+body.home .give-donor-wall-shortcode-wrap .give-donor.give-card{height:auto!important;min-height:180px!important}
 }
 </style>
 <script id="ma-firefox-autoplay-video-fallback" data-no-optimize="1" data-cfasync="false">
