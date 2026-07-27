@@ -35,6 +35,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('admin_init', [__CLASS__, 'register_settings']);
         add_action('init', [__CLASS__, 'register_artist_profile_rewrites'], 5);
         add_action('init', [__CLASS__, 'ensure_runtime_setup'], 20);
+        add_action('init', [__CLASS__, 'ensure_givebutter_donor_wall_schedule'], 21);
         add_action('admin_post_ma_visitor_checkin', [__CLASS__, 'handle_visitor_checkin']);
         add_action('admin_post_nopriv_ma_visitor_checkin', [__CLASS__, 'handle_visitor_checkin']);
         add_action('save_post_post', [__CLASS__, 'sync_artist_post_to_products'], 20, 3);
@@ -109,6 +110,16 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_shortcode('ma_home_events', [__CLASS__, 'home_events_shortcode']);
         add_shortcode('ma_residency_alumni', [__CLASS__, 'residency_alumni_shortcode']);
         add_shortcode('ma_visitor_checkin', [__CLASS__, 'visitor_checkin_shortcode']);
+    }
+
+    public static function ensure_givebutter_donor_wall_schedule(): void {
+        $hook = 'ma_givebutter_donor_wall_sync';
+
+        if (!function_exists('ma_givebutter_donor_wall_sync') || wp_next_scheduled($hook)) {
+            return;
+        }
+
+        wp_schedule_event(time() + 300, 'hourly', $hook);
     }
 
     public static function order_donate_menu_after_community_artists(array $items, $args): array {

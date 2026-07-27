@@ -919,6 +919,29 @@ body.page-id-3388 .elementor-element-5647690 > .elementor-background-overlay {
   display: none !important;
 }
 
+/* Keep the homepage donor wall calm and aligned when a donor leaves no message. */
+body.home .give-donor-wall-shortcode-wrap .give-grid__item {
+  display: flex !important;
+}
+
+body.home .give-donor-wall-shortcode-wrap .give-donor.give-card {
+  height: 218px !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+body.home .give-donor-wall-shortcode-wrap .give-donor-container {
+  box-sizing: border-box !important;
+  height: 100% !important;
+}
+
+body.home .give-donor-wall-shortcode-wrap .give-donor-content__comment {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 5 !important;
+  overflow: hidden !important;
+}
+
 .give-donor-wall-shortcode-wrap .give-donor__load_more {
   display: block !important;
   width: auto !important;
