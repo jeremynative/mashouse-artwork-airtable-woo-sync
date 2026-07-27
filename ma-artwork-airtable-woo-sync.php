@@ -74,6 +74,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('nav_menu_link_attributes', [__CLASS__, 'filter_donate_menu_link_attributes'], 20, 4);
         add_filter('nav_menu_css_class', [__CLASS__, 'filter_donate_menu_item_classes'], 20, 4);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
+        add_action('wp_footer', [__CLASS__, 'render_home_donor_wall_layout'], PHP_INT_MAX);
         add_action('wp_footer', [__CLASS__, 'render_global_givebutter_donation_buttons'], 0);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
         add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
@@ -542,6 +543,19 @@ final class MA_Artwork_Airtable_Woo_Sync {
             });
         });
         </script>
+        <?php
+    }
+
+    public static function render_home_donor_wall_layout(): void {
+        if (!is_front_page()) {
+            return;
+        }
+        ?>
+        <style id="ma-home-donor-wall-responsive-layout" data-no-optimize="1" data-cfasync="false">
+        body.home.page-id-97 .elementor-element-5647690 .give-grid.give-grid--3{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px!important;max-width:1500px!important;width:min(1500px,calc(100vw - 48px))!important}
+        @media(max-width:900px){body.home.page-id-97 .elementor-element-5647690 .give-grid.give-grid--3{grid-template-columns:repeat(2,minmax(0,1fr))!important;width:calc(100vw - 32px)!important}}
+        @media(max-width:640px){body.home.page-id-97 .elementor-element-5647690 .give-grid.give-grid--3{grid-template-columns:minmax(0,1fr)!important}}
+        </style>
         <?php
     }
 
