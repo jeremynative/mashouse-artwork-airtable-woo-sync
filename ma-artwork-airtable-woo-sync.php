@@ -521,19 +521,21 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ?>
         <script id="ma-home-donation-button-redirect">
         document.addEventListener('DOMContentLoaded', function () {
+            var campaignUrl = 'https://givebutter.com/support-mas-house-year-round-s5wfol';
             var selectors = [
                 '.elementor-element-bb41249 button.js-give-embed-form-modal-opener',
                 '.elementor-element-6060d11 button.js-give-embed-form-modal-opener'
             ];
             selectors.forEach(function (selector) {
                 document.querySelectorAll(selector).forEach(function (button) {
-                    button.type = 'button';
-                    button.setAttribute('aria-label', 'Go to the Ma\'s House donation page');
-                    button.addEventListener('click', function (event) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        window.location.href = '<?php echo esc_js(home_url('/donate/')); ?>';
-                    }, true);
+                    var donate = document.createElement('a');
+                    donate.href = campaignUrl;
+                    donate.className = button.className + ' ma-home-givebutter-button';
+                    donate.dataset.gbAccount = 'yQLEsDOjxW31tHDZ';
+                    donate.dataset.gbCampaign = 'support-mas-house-year-round-s5wfol';
+                    donate.setAttribute('aria-label', 'Donate to Ma\'s House through Givebutter');
+                    donate.textContent = 'Donate';
+                    button.replaceWith(donate);
                 });
             });
         });
@@ -6697,7 +6699,11 @@ body.home .give-donor-wall-shortcode-wrap .give-grid{display:block!important;col
 body.home .give-donor-wall-shortcode-wrap .give-grid__item{break-inside:avoid!important;display:inline-block!important;height:auto!important;margin:0 0 18px!important;min-height:0!important;vertical-align:top!important;width:100%!important}
 body.home .give-donor-wall-shortcode-wrap .give-donor.give-card{box-sizing:border-box!important;height:auto!important;min-height:0!important;overflow:visible!important;width:100%!important}
 body.home .give-donor-wall-shortcode-wrap .give-donor-container{box-sizing:border-box!important;height:auto!important;min-height:0!important}
-@media(min-width:1000px){body.home .give-donor-wall-shortcode-wrap{box-sizing:border-box!important;max-width:none!important;width:min(1500px,calc(100vw - 48px))!important}body.home .give-donor-wall-shortcode-wrap .give-grid{column-count:4!important}}
+@media(min-width:901px){body.home .give-donor-wall-shortcode-wrap{box-sizing:border-box!important;max-width:none!important;width:min(1500px,calc(100vw - 48px))!important}body.home .give-donor-wall-shortcode-wrap .give-grid{column-count:4!important}}
+body.home .elementor-element-c3fdf81 .elementor-heading-title{color:#9f261e!important;font-weight:700!important;letter-spacing:.08em!important;text-shadow:none!important}
+body.home .elementor-element-a43c8f4 .elementor-heading-title{color:#151515!important;font-size:clamp(32px,4vw,52px)!important;font-weight:650!important;letter-spacing:0!important;line-height:1.08!important;text-shadow:none!important}
+body.home .ma-home-givebutter-button{align-items:center!important;background:#a2261f!important;border:0!important;border-radius:0!important;color:#fff!important;display:inline-flex!important;font-family:Arial,Helvetica,sans-serif!important;font-size:15px!important;font-weight:800!important;justify-content:center!important;line-height:1!important;min-height:48px!important;padding:15px 28px!important;text-decoration:none!important}
+body.home .ma-home-givebutter-button:hover,body.home .ma-home-givebutter-button:focus{background:#111!important;color:#fff!important;text-decoration:none!important}
 body.home .ma-firefox-video-fallback{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important;background-size:cover!important;background-position:center!important;color:#fff!important;text-decoration:none!important}
 body.home .ma-firefox-video-fallback__play{width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.62);box-shadow:0 0 0 1px rgba(255,255,255,.35);position:relative}
 body.home .ma-firefox-video-fallback__play:after{content:"";position:absolute;left:23px;top:17px;border-left:18px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent}
