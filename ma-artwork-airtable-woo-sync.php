@@ -6697,6 +6697,7 @@ body.home .give-donor-wall-shortcode-wrap .give-grid{display:block!important;col
 body.home .give-donor-wall-shortcode-wrap .give-grid__item{break-inside:avoid!important;display:inline-block!important;height:auto!important;margin:0 0 18px!important;min-height:0!important;vertical-align:top!important;width:100%!important}
 body.home .give-donor-wall-shortcode-wrap .give-donor.give-card{box-sizing:border-box!important;height:auto!important;min-height:0!important;overflow:visible!important;width:100%!important}
 body.home .give-donor-wall-shortcode-wrap .give-donor-container{box-sizing:border-box!important;height:auto!important;min-height:0!important}
+@media(min-width:1000px){body.home .give-donor-wall-shortcode-wrap{box-sizing:border-box!important;max-width:none!important;width:min(1500px,calc(100vw - 48px))!important}body.home .give-donor-wall-shortcode-wrap .give-grid{column-count:4!important}}
 body.home .ma-firefox-video-fallback{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important;background-size:cover!important;background-position:center!important;color:#fff!important;text-decoration:none!important}
 body.home .ma-firefox-video-fallback__play{width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.62);box-shadow:0 0 0 1px rgba(255,255,255,.35);position:relative}
 body.home .ma-firefox-video-fallback__play:after{content:"";position:absolute;left:23px;top:17px;border-left:18px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent}
@@ -6763,6 +6764,7 @@ body.home .give-donor-wall-shortcode-wrap .give-grid{column-count:1!important}
 body.home .give-donor-wall-shortcode-wrap .give-grid__item,
 body.home .give-donor-wall-shortcode-wrap .give-donor.give-card{height:auto!important;min-height:0!important}
 }
+@media(max-width:900px) and (min-width:601px){body.home .give-donor-wall-shortcode-wrap .give-grid{column-count:2!important}}
 </style>
 <script id="ma-firefox-autoplay-video-fallback" data-no-optimize="1" data-cfasync="false">
 (function(){
