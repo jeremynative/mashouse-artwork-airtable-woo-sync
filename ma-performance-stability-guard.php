@@ -10,39 +10,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MA_STABILITY_LAST_CRON_SPAWN', 'ma_stability_last_cron_spawn' );
-define( 'MA_STABILITY_CRON_THROTTLE', 10 * MINUTE_IN_SECONDS );
-
 add_filter( 'pre_spawn_cron', 'ma_stability_throttle_frontend_cron_spawn', 1 );
 function ma_stability_throttle_frontend_cron_spawn( $pre ) {
-	if ( ma_stability_allow_cron_for_request() ) {
-		return $pre;
-	}
-
-	$last_spawn = (int) get_transient( MA_STABILITY_LAST_CRON_SPAWN );
-	if ( $last_spawn && ( time() - $last_spawn ) < MA_STABILITY_CRON_THROTTLE ) {
-		return true;
-	}
-
-	set_transient( MA_STABILITY_LAST_CRON_SPAWN, time(), MA_STABILITY_CRON_THROTTLE );
-	return $pre;
+	return ma_stability_allow_cron_for_request() ? $pre : true;
 }
 
 function ma_stability_allow_cron_for_request(): bool {
-	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
-		return true;
-	}
-
-	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-		return false;
-	}
-
-	$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
-	if ( preg_match( '#/(wp-cron\.php|wp-admin/|wp-login\.php)#', $uri ) ) {
-		return true;
-	}
-
-	return false;
+	return wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
 }
 
 add_action( 'send_headers', 'ma_stability_public_cache_headers', PHP_INT_MAX );
