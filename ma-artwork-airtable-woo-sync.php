@@ -64,6 +64,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_action('wp_head', [__CLASS__, 'render_visitor_checkin_page_css'], 21);
         add_action('wp_head', [__CLASS__, 'render_staff_page_spacing_css'], 999);
         add_action('template_redirect', [__CLASS__, 'start_frontend_performance_buffer'], 0);
+        add_action('template_redirect', [__CLASS__, 'redirect_legacy_givewp_form_pages'], 1);
         add_action('template_redirect', [__CLASS__, 'render_news_posts_page_template'], 2);
         add_action('template_redirect', [__CLASS__, 'redirect_dated_artist_profile_urls'], 3);
         add_action('pre_get_posts', [__CLASS__, 'exclude_artist_profiles_from_home_news']);
@@ -73,6 +74,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         add_filter('nav_menu_link_attributes', [__CLASS__, 'filter_donate_menu_link_attributes'], 20, 4);
         add_filter('nav_menu_css_class', [__CLASS__, 'filter_donate_menu_item_classes'], 20, 4);
         add_action('wp_footer', [__CLASS__, 'render_home_donation_button_redirect'], 1);
+        add_action('wp_footer', [__CLASS__, 'render_global_givebutter_donation_buttons'], 0);
         add_action('wp_footer', [__CLASS__, 'render_donate_page_button_redirect'], 2);
         add_action('wp_footer', [__CLASS__, 'render_single_event_rsvp_jump_button'], 4);
         add_action('wp_footer', [__CLASS__, 'render_staff_page_spacing_fallback'], 1);
@@ -537,6 +539,54 @@ final class MA_Artwork_Airtable_Woo_Sync {
                     donate.textContent = 'Donate';
                     button.replaceWith(donate);
                 });
+            });
+        });
+        </script>
+        <?php
+    }
+
+    public static function redirect_legacy_givewp_form_pages(): void {
+        if (is_admin() || !is_singular('give_forms')) {
+            return;
+        }
+
+        wp_redirect(self::givebutter_campaign_url_for_form((int) get_queried_object_id()), 302);
+        exit;
+    }
+
+    private static function givebutter_campaign_url_for_form(int $form_id = 0): string {
+        $campaign = 'https://givebutter.com/support-mas-house-year-round-s5wfol';
+        $funds = [
+            1018 => '63364',
+            7700 => '63367&amount=500',
+            7705 => '63365&amount=1000',
+            7709 => '63366&amount=2500',
+        ];
+
+        return isset($funds[$form_id]) ? $campaign . '?fund=' . $funds[$form_id] : $campaign;
+    }
+
+    public static function render_global_givebutter_donation_buttons(): void {
+        if (is_admin()) {
+            return;
+        }
+        ?>
+        <script id="ma-global-givebutter-donation-buttons" data-no-optimize="1" data-cfasync="false">
+        document.addEventListener('DOMContentLoaded', function () {
+            var campaignUrl = 'https://givebutter.com/support-mas-house-year-round-s5wfol';
+            document.querySelectorAll('button.js-give-embed-form-modal-opener').forEach(function (button) {
+                if (button.dataset.maGivebutterConverted === '1') {
+                    return;
+                }
+                var donate = document.createElement('a');
+                donate.href = campaignUrl;
+                donate.className = button.className + ' ma-givebutter-donate-link';
+                donate.dataset.gbAccount = 'yQLEsDOjxW31tHDZ';
+                donate.dataset.gbCampaign = 'support-mas-house-year-round-s5wfol';
+                donate.setAttribute('aria-label', 'Donate to Ma\'s House through Givebutter');
+                donate.textContent = 'Donate';
+                button.dataset.maGivebutterConverted = '1';
+                button.replaceWith(donate);
             });
         });
         </script>
