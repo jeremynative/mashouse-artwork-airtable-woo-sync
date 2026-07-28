@@ -1606,6 +1606,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
 
         try {
             if (!$dry_run && ($force_all || !get_transient(self::ARTIST_FIELD_SETUP_CACHE_KEY))) {
+                self::ensure_artwork_airtable_fields($options);
                 self::ensure_artist_portrait_airtable_fields($options);
                 set_transient(self::ARTIST_FIELD_SETUP_CACHE_KEY, 1, WEEK_IN_SECONDS);
             }
@@ -2096,6 +2097,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
                 'title' => $product_name,
                 'series' => $series,
                 'has_airtable_image' => !empty($attachment['url']),
+                'additional_images' => count(self::airtable_attachment_items($fields, $options, 'additional_images')),
                 'artist_name' => self::text($artist['name'] ?? ''),
                 'has_artist_bio' => !empty($artist['bio']),
                 'has_artist_portrait' => !empty($artist['portrait_url']),
@@ -2112,6 +2114,9 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if ($image_id) {
             $product->set_image_id($image_id);
         }
+        $additional_image_ids = self::ensure_airtable_images($fields, $options, 'additional_images', $inventory_number, $title, (string) ($record['id'] ?? ''));
+        $artist_portrait_image_id = self::attachment_id_from_public_image_url(self::text($artist['portrait_url'] ?? ''));
+        $product->set_gallery_image_ids($additional_image_ids);
 
         $product_id = $product->save();
         self::remove_uncategorized_product_category($product_id);
@@ -2130,6 +2135,33 @@ final class MA_Artwork_Airtable_Woo_Sync {
         update_post_meta($product_id, 'ma_artist_portrait_source', self::text($artist['portrait_source'] ?? ''));
         update_post_meta($product_id, 'ma_artist_profile_post_id', (int) ($artist['profile_post_id'] ?? 0));
         update_post_meta($product_id, 'ma_artist_profile_url', esc_url_raw($artist['profile_url'] ?? ''));
+        $info_card_id = self::ensure_artwork_social_info_card($product_id, [
+            'artist_name' => self::text($artist['name'] ?? ''),
+            'title' => $title,
+            'year' => $year,
+            'medium' => $medium,
+            'dimensions' => $dimensions,
+            'edition' => $edition,
+            'price' => $price,
+            'collection_only' => false,
+            'availability' => '',
+        ]);
+        if ($info_card_id) {
+            update_post_meta($product_id, '_ma_artwork_info_card_id', $info_card_id);
+        } else {
+            delete_post_meta($product_id, '_ma_artwork_info_card_id');
+        }
+        $social_gallery_ids = array_values(array_unique(array_filter(array_merge([$image_id], $additional_image_ids, [$artist_portrait_image_id, $info_card_id]))));
+        if ($social_gallery_ids) {
+            update_post_meta($product_id, '_ma_social_gallery_image_ids', implode(',', array_map('absint', $social_gallery_ids)));
+        } else {
+            delete_post_meta($product_id, '_ma_social_gallery_image_ids');
+        }
+        if ($additional_image_ids) {
+            update_post_meta($product_id, '_ma_additional_image_ids', implode(',', array_map('absint', $additional_image_ids)));
+        } else {
+            delete_post_meta($product_id, '_ma_additional_image_ids');
+        }
         update_post_meta($product_id, self::META_PREFIX . 'exhibits_json', wp_json_encode(self::compact_exhibit_records($linked_exhibits)));
         self::assign_clean_artist_tag($product_id, self::text($artist['name'] ?? ''));
 
@@ -2263,6 +2295,42 @@ final class MA_Artwork_Airtable_Woo_Sync {
             return $fields;
         }
         return [];
+    }
+
+    private static function ensure_artwork_airtable_fields(array $options): void {
+        if (empty($options['table_id']) || empty($options['airtable_token']) || empty($options['base_id'])) {
+            return;
+        }
+
+        $url = 'https://api.airtable.com/v0/meta/bases/' . rawurlencode($options['base_id']) . '/tables';
+        $response = wp_remote_get($url, [
+            'timeout' => 30,
+            'headers' => ['Authorization' => 'Bearer ' . $options['airtable_token']],
+        ]);
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) >= 300) {
+            return;
+        }
+
+        $json = json_decode(wp_remote_retrieve_body($response), true);
+        $table_id = '';
+        $target = self::text($options['table_id']);
+        $field_names = [];
+        foreach (($json['tables'] ?? []) as $table) {
+            if (($table['id'] ?? '') !== $target && ($table['name'] ?? '') !== $target) {
+                continue;
+            }
+            $table_id = self::text($table['id'] ?? '');
+            foreach (($table['fields'] ?? []) as $field) {
+                $field_names[] = self::text($field['name'] ?? '');
+            }
+            break;
+        }
+        if (!$table_id || in_array('Additional Images', $field_names, true)) {
+            return;
+        }
+
+        self::create_airtable_field($options, $table_id, 'Additional Images', 'multipleAttachments');
+        delete_option(self::FIELD_CACHE_KEY);
     }
 
     private static function ensure_artist_portrait_airtable_fields(array $options): void {
@@ -3667,8 +3735,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
     }
 
     private static function ensure_airtable_image(array $fields, array $options, string $inventory_number, string $title, string $record_id): int {
-        $attachments = self::field_raw($fields, $options, 'image');
-        $attachment = is_array($attachments) ? ($attachments[0] ?? null) : null;
+        $attachment = self::airtable_attachment_items($fields, $options, 'image')[0] ?? null;
         if (!$attachment || empty($attachment['url'])) {
             return 0;
         }
@@ -3681,24 +3748,80 @@ final class MA_Artwork_Airtable_Woo_Sync {
         return self::sideload_airtable_image((string) $attachment['url'], $title, $inventory_number, $record_id, $airtable_attachment_id, $filename);
     }
 
-    private static function find_exact_media(string $inventory_number, string $record_id, string $attachment_id, string $filename): int {
-        $meta_queries = [
-            [self::META_PREFIX . 'inventory_number', $inventory_number],
-            [self::META_PREFIX . 'record_id', $record_id],
-            [self::META_PREFIX . 'attachment_id', $attachment_id],
-        ];
-        foreach ($meta_queries as [$key, $value]) {
-            if (!$value) {
+    private static function ensure_airtable_images(array $fields, array $options, string $key, string $inventory_number, string $title, string $record_id): array {
+        $ids = [];
+        foreach (self::airtable_attachment_items($fields, $options, $key) as $index => $attachment) {
+            if (empty($attachment['url'])) {
                 continue;
             }
+            $airtable_attachment_id = self::text($attachment['id'] ?? '');
+            $filename = self::text($attachment['filename'] ?? '');
+            $existing = self::find_exact_media($inventory_number, $record_id, $airtable_attachment_id, $filename);
+            if (!$existing) {
+                $existing = self::sideload_airtable_image((string) $attachment['url'], $title . ' additional image ' . ((int) $index + 1), $inventory_number, $record_id, $airtable_attachment_id, $filename);
+            }
+            if ($existing) {
+                $ids[] = (int) $existing;
+            }
+        }
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    private static function airtable_attachment_items(array $fields, array $options, string $key): array {
+        $raw = self::field_raw($fields, $options, $key);
+        if (!is_array($raw)) {
+            return [];
+        }
+        $items = [];
+        foreach ($raw as $item) {
+            if (is_array($item) && !empty($item['url'])) {
+                $items[] = $item;
+            }
+        }
+        return $items;
+    }
+
+    private static function attachment_id_from_public_image_url(string $url): int {
+        $url = self::public_image_url($url);
+        if (!$url) {
+            return 0;
+        }
+        $id = attachment_url_to_postid($url);
+        if ($id) {
+            return (int) $id;
+        }
+        $path = (string) wp_parse_url($url, PHP_URL_PATH);
+        $filename = $path ? wp_basename($path) : '';
+        if (!$filename) {
+            return 0;
+        }
+        $ids = get_posts([
+            'post_type' => 'attachment',
+            'post_status' => 'inherit',
+            'post_mime_type' => 'image',
+            'posts_per_page' => 10,
+            'fields' => 'ids',
+            's' => preg_replace('/-\d+x\d+(?=\.[a-z0-9]+$)/i', '', $filename),
+        ]);
+        foreach ($ids as $candidate_id) {
+            $candidate_url = wp_get_attachment_url((int) $candidate_id);
+            if ($candidate_url && wp_basename((string) wp_parse_url($candidate_url, PHP_URL_PATH)) === preg_replace('/-\d+x\d+(?=\.[a-z0-9]+$)/i', '', $filename)) {
+                return (int) $candidate_id;
+            }
+        }
+        return 0;
+    }
+
+    private static function find_exact_media(string $inventory_number, string $record_id, string $attachment_id, string $filename): int {
+        if ($attachment_id) {
             $ids = get_posts([
                 'post_type' => 'attachment',
                 'post_status' => 'inherit',
                 'post_mime_type' => 'image',
                 'posts_per_page' => 1,
                 'fields' => 'ids',
-                'meta_key' => $key,
-                'meta_value' => $value,
+                'meta_key' => self::META_PREFIX . 'attachment_id',
+                'meta_value' => $attachment_id,
             ]);
             if ($ids) {
                 return (int) $ids[0];
@@ -3717,6 +3840,26 @@ final class MA_Artwork_Airtable_Woo_Sync {
             foreach ($attachments as $id) {
                 if ((string) get_post_meta($id, self::META_PREFIX . 'inventory_number', true) === $inventory_number) {
                     return (int) $id;
+                }
+            }
+        }
+
+        if (!$attachment_id && !$filename) {
+            foreach ([[self::META_PREFIX . 'inventory_number', $inventory_number], [self::META_PREFIX . 'record_id', $record_id]] as [$key, $value]) {
+                if (!$value) {
+                    continue;
+                }
+                $ids = get_posts([
+                    'post_type' => 'attachment',
+                    'post_status' => 'inherit',
+                    'post_mime_type' => 'image',
+                    'posts_per_page' => 1,
+                    'fields' => 'ids',
+                    'meta_key' => $key,
+                    'meta_value' => $value,
+                ]);
+                if ($ids) {
+                    return (int) $ids[0];
                 }
             }
         }
@@ -3747,6 +3890,199 @@ final class MA_Artwork_Airtable_Woo_Sync {
         update_post_meta($new_id, self::META_PREFIX . 'record_id', $record_id);
         update_post_meta($new_id, self::META_PREFIX . 'attachment_id', $attachment_id);
         return (int) $new_id;
+    }
+
+    private static function ensure_artwork_social_info_card(int $product_id, array $data): int {
+        if (!function_exists('imagecreatetruecolor') || !function_exists('imagettftext')) {
+            return 0;
+        }
+
+        $artist_name = self::text($data['artist_name'] ?? '');
+        $title = self::text($data['title'] ?? '');
+        $year = self::text($data['year'] ?? '');
+        $medium = self::text($data['medium'] ?? '');
+        $dimensions = self::text($data['dimensions'] ?? '');
+        $edition = self::text($data['edition'] ?? '');
+        $price = self::money($data['price'] ?? '');
+        $collection_only = !empty($data['collection_only']);
+        $availability = self::text($data['availability'] ?? '');
+        if (!$title && !$artist_name) {
+            return 0;
+        }
+
+        $series_label = $collection_only ? "Ma's House\nPermanent Collection" : "Ma's House\nArtwork for Sale";
+        $hash = substr(md5(wp_json_encode(['v5', $series_label, $artist_name, $title, $year, $medium, $dimensions, $edition, $price, $collection_only, $availability])), 0, 12);
+        $existing_id = (int) get_post_meta($product_id, '_ma_artwork_info_card_id', true);
+        if ($existing_id && (string) get_post_meta($existing_id, self::META_PREFIX . 'info_card_hash', true) === $hash) {
+            return $existing_id;
+        }
+
+        $font = self::social_card_font_path();
+        if (!$font) {
+            return 0;
+        }
+
+        $upload_dir = wp_upload_dir();
+        if (empty($upload_dir['basedir']) || empty($upload_dir['baseurl'])) {
+            return 0;
+        }
+        $subdir = trailingslashit($upload_dir['basedir']) . 'ma-artwork-info-cards';
+        if (!wp_mkdir_p($subdir)) {
+            return 0;
+        }
+
+        $width = 1080;
+        $height = 1080;
+        $canvas = imagecreatetruecolor($width, $height);
+        $bg = imagecolorallocate($canvas, 40, 18, 52);
+        $white = imagecolorallocate($canvas, 250, 247, 242);
+        $muted = imagecolorallocate($canvas, 224, 211, 224);
+        $orange = imagecolorallocate($canvas, 245, 158, 11);
+        imagefill($canvas, 0, 0, $bg);
+
+        $margin = 70;
+        self::draw_social_card_text($canvas, $font, $series_label, 31, 0, $margin, 86, $white, 620, 1.22);
+        self::draw_social_card_logo($canvas, 848, 54, 165, 120);
+        imagesetthickness($canvas, 9);
+        imageline($canvas, $margin, 224, $width - $margin, 224, $orange);
+
+        $y = 335;
+        if ($artist_name) {
+            $y = self::draw_social_card_wrapped_text($canvas, $font, $artist_name, 38, $margin, $y, $orange, 900, 1.35);
+            $y += 48;
+        }
+        $title_line = trim($title . ($year ? ', ' . $year : ''));
+        if ($title_line) {
+            $y = self::draw_social_card_wrapped_text($canvas, $font, $title_line, 44, $margin, $y, $white, 900, 1.28);
+            $y += 42;
+        }
+        foreach (array_filter([$medium, $dimensions, $edition ? 'Edition ' . $edition : '']) as $detail) {
+            $y = self::draw_social_card_wrapped_text($canvas, $font, self::text($detail), 34, $margin, $y, $muted, 880, 1.28);
+            $y += 18;
+        }
+
+        if ($price) {
+            $status = '$' . number_format((float) $price, 0);
+        } elseif ($collection_only) {
+            $status = "In Ma's House Permanent Collection";
+        } else {
+            $status = 'Available / inquire';
+        }
+        $y += 50;
+        self::draw_social_card_wrapped_text($canvas, $font, $status, $collection_only ? 28 : 38, $margin, $y, $orange, 930, 1.24);
+
+        imageline($canvas, $margin, 928, $width - $margin, 928, $orange);
+        $footer = $collection_only ? 'Explore Ma\'s House collection at mashouse.studio' : 'View available work at mashouse.studio';
+        self::draw_social_card_centered_text($canvas, $font, $footer, 26, 980, $orange, $width);
+
+        $filename = sanitize_file_name('ma-artwork-info-card-' . $product_id . '-' . $hash . '.jpg');
+        $path = trailingslashit($subdir) . $filename;
+        if (!imagejpeg($canvas, $path, 92)) {
+            imagedestroy($canvas);
+            return 0;
+        }
+        imagedestroy($canvas);
+
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $filetype = wp_check_filetype($filename, null);
+        $attachment_id = wp_insert_attachment([
+            'post_mime_type' => $filetype['type'] ?: 'image/jpeg',
+            'post_title' => get_the_title($product_id) . ' social info card',
+            'post_content' => '',
+            'post_status' => 'inherit',
+        ], $path, $product_id);
+        if (is_wp_error($attachment_id) || !$attachment_id) {
+            @unlink($path);
+            return 0;
+        }
+        wp_update_attachment_metadata((int) $attachment_id, wp_generate_attachment_metadata((int) $attachment_id, $path));
+        update_post_meta((int) $attachment_id, self::META_PREFIX . 'info_card_hash', $hash);
+        update_post_meta((int) $attachment_id, self::META_PREFIX . 'info_card_for_product', $product_id);
+        return (int) $attachment_id;
+    }
+
+    private static function social_card_font_path(): string {
+        foreach ([
+            '/usr/share/fonts/google-droid-sans-fonts/DroidSans-Bold.ttf',
+            '/usr/share/fonts/google-droid-sans-fonts/DroidSans.ttf',
+            '/usr/share/fonts/google-noto-vf/NotoSans[wght].ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+        ] as $font) {
+            if ($font && file_exists($font) && is_readable($font)) {
+                return $font;
+            }
+        }
+        return '';
+    }
+
+    private static function draw_social_card_wrapped_text($canvas, string $font, string $text, int $size, int $x, int $y, int $color, int $max_width, float $line_height = 1.25): int {
+        $lines = [];
+        foreach (preg_split('/\R/', trim($text)) as $paragraph) {
+            $words = preg_split('/\s+/', trim($paragraph));
+            $line = '';
+            foreach ($words as $word) {
+                $candidate = trim($line . ' ' . $word);
+                if ($line !== '' && self::social_card_text_width($font, $size, $candidate) > $max_width) {
+                    $lines[] = $line;
+                    $line = $word;
+                } else {
+                    $line = $candidate;
+                }
+            }
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+        foreach ($lines as $line) {
+            imagettftext($canvas, $size, 0, $x, $y, $color, $font, $line);
+            $y += (int) round($size * $line_height);
+        }
+        return $y;
+    }
+
+    private static function draw_social_card_text($canvas, string $font, string $text, int $size, int $angle, int $x, int $y, int $color, int $max_width, float $line_height = 1.25): int {
+        return self::draw_social_card_wrapped_text($canvas, $font, $text, $size, $x, $y, $color, $max_width, $line_height);
+    }
+
+    private static function draw_social_card_centered_text($canvas, string $font, string $text, int $size, int $baseline_y, int $color, int $canvas_width): void {
+        $text_width = self::social_card_text_width($font, $size, $text);
+        $x = max(20, (int) round(($canvas_width - $text_width) / 2));
+        imagettftext($canvas, $size, 0, $x, $baseline_y, $color, $font, $text);
+    }
+
+    private static function social_card_text_width(string $font, int $size, string $text): int {
+        $box = imagettfbbox($size, 0, $font, $text);
+        return $box ? abs((int) $box[2] - (int) $box[0]) : 0;
+    }
+
+    private static function draw_social_card_logo($canvas, int $x, int $y, int $max_w, int $max_h): void {
+        $logo_id = (int) get_theme_mod('custom_logo');
+        $logo_path = $logo_id ? get_attached_file($logo_id) : '';
+        if ($logo_path && file_exists($logo_path) && is_readable($logo_path)) {
+            $bytes = file_get_contents($logo_path);
+            $logo = $bytes ? imagecreatefromstring($bytes) : false;
+            if ($logo) {
+                $w = imagesx($logo);
+                $h = imagesy($logo);
+                $scale = min($max_w / max(1, $w), $max_h / max(1, $h));
+                $dw = (int) round($w * $scale);
+                $dh = (int) round($h * $scale);
+                imagecopyresampled($canvas, $logo, $x + (int) (($max_w - $dw) / 2), $y + (int) (($max_h - $dh) / 2), 0, 0, $dw, $dh, $w, $h);
+                imagedestroy($logo);
+                return;
+            }
+        }
+
+        $red = imagecolorallocate($canvas, 230, 51, 42);
+        $white = imagecolorallocate($canvas, 250, 247, 242);
+        $yellow = imagecolorallocate($canvas, 255, 221, 74);
+        imagefilledrectangle($canvas, $x + 16, $y + 48, $x + 150, $y + 114, $red);
+        imagefilledpolygon($canvas, [$x + 16, $y + 48, $x + 82, $y + 14, $x + 150, $y + 48], 3, $red);
+        imagefilledrectangle($canvas, $x + 62, $y + 34, $x + 118, $y + 55, $white);
+        imagefilledrectangle($canvas, $x + 28, $y + 82, $x + 62, $y + 114, imagecolorallocate($canvas, 45, 18, 78));
+        imagefilledrectangle($canvas, $x + 116, $y + 78, $x + 144, $y + 104, $yellow);
     }
 
     private static function ensure_artwork_categories(string $series): array {
@@ -9062,6 +9398,7 @@ HTML;
             'series' => 'Photo Series',
             'availability' => 'Available',
             'image' => 'Jpeg Image',
+            'additional_images' => 'Additional Images',
             'inventory_number' => 'Inventory Number',
             'exhibit_records' => 'Exhibit Records',
             'exhibit_title' => 'Exhibit Title',
@@ -9112,6 +9449,7 @@ HTML;
             'series' => ['Photo Series', 'Artwork Series', 'Series', 'Category'],
             'availability' => ['Available', 'Availability', 'Status', 'Inventory Status'],
             'image' => ['Jpeg Image', 'JPEG Image', 'Image', 'Images', 'Artwork Image', 'Photo'],
+            'additional_images' => ['Additional Images', 'Additional Image', 'Social Images', 'Carousel Images', 'Installation Images', 'Process Images', 'Artwork Additional Images'],
             'inventory_number' => ['Inventory Number'],
             'exhibit_records' => ['Exhibit Records', 'Exhibitions', 'Exhibit'],
             'exhibit_title' => ['Exhibit Title', 'Currently On View', 'On View'],
