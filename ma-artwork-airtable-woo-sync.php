@@ -2151,7 +2151,7 @@ final class MA_Artwork_Airtable_Woo_Sync {
         } else {
             delete_post_meta($product_id, '_ma_artwork_info_card_id');
         }
-        $social_gallery_ids = array_values(array_unique(array_filter(array_merge([$image_id], $additional_image_ids, [$artist_portrait_image_id, $info_card_id]))));
+        $social_gallery_ids = self::deduplicate_attachment_ids_by_content(array_merge([$image_id], $additional_image_ids, [$artist_portrait_image_id, $info_card_id]));
         if ($social_gallery_ids) {
             update_post_meta($product_id, '_ma_social_gallery_image_ids', implode(',', array_map('absint', $social_gallery_ids)));
         } else {
@@ -3810,6 +3810,23 @@ final class MA_Artwork_Airtable_Woo_Sync {
             }
         }
         return 0;
+    }
+
+    private static function deduplicate_attachment_ids_by_content(array $ids): array {
+        $unique_ids = [];
+        $seen_hashes = [];
+        foreach (array_values(array_unique(array_filter(array_map('absint', $ids)))) as $attachment_id) {
+            $path = get_attached_file($attachment_id);
+            $hash = ($path && is_readable($path)) ? @md5_file($path) : '';
+            if ($hash && isset($seen_hashes[$hash])) {
+                continue;
+            }
+            if ($hash) {
+                $seen_hashes[$hash] = true;
+            }
+            $unique_ids[] = $attachment_id;
+        }
+        return $unique_ids;
     }
 
     private static function find_exact_media(string $inventory_number, string $record_id, string $attachment_id, string $filename): int {
