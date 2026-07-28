@@ -3815,18 +3815,70 @@ final class MA_Artwork_Airtable_Woo_Sync {
     private static function deduplicate_attachment_ids_by_content(array $ids): array {
         $unique_ids = [];
         $seen_hashes = [];
+        $seen_signatures = [];
         foreach (array_values(array_unique(array_filter(array_map('absint', $ids)))) as $attachment_id) {
             $path = get_attached_file($attachment_id);
             $hash = ($path && is_readable($path)) ? @md5_file($path) : '';
             if ($hash && isset($seen_hashes[$hash])) {
                 continue;
             }
+            $signature = self::attachment_visual_signature($path);
+            $is_visual_duplicate = false;
+            foreach ($seen_signatures as $seen_signature) {
+                if (self::attachment_visual_difference($signature, $seen_signature) <= 8.0) {
+                    $is_visual_duplicate = true;
+                    break;
+                }
+            }
+            if ($is_visual_duplicate) {
+                continue;
+            }
             if ($hash) {
                 $seen_hashes[$hash] = true;
+            }
+            if ($signature) {
+                $seen_signatures[] = $signature;
             }
             $unique_ids[] = $attachment_id;
         }
         return $unique_ids;
+    }
+
+    private static function attachment_visual_signature(string $path): array {
+        if (!$path || !is_readable($path) || !function_exists('imagecreatefromstring')) {
+            return [];
+        }
+        $bytes = @file_get_contents($path);
+        $source = $bytes ? @imagecreatefromstring($bytes) : false;
+        if (!$source) {
+            return [];
+        }
+        $sample = imagecreatetruecolor(16, 16);
+        imagecopyresampled($sample, $source, 0, 0, 0, 0, 16, 16, imagesx($source), imagesy($source));
+        $signature = [];
+        for ($y = 0; $y < 16; $y++) {
+            for ($x = 0; $x < 16; $x++) {
+                $rgb = imagecolorat($sample, $x, $y);
+                $red = ($rgb >> 16) & 0xff;
+                $green = ($rgb >> 8) & 0xff;
+                $blue = $rgb & 0xff;
+                $signature[] = (int) round(($red * 0.299) + ($green * 0.587) + ($blue * 0.114));
+            }
+        }
+        imagedestroy($sample);
+        imagedestroy($source);
+        return $signature;
+    }
+
+    private static function attachment_visual_difference(array $left, array $right): float {
+        if (!$left || count($left) !== count($right)) {
+            return PHP_FLOAT_MAX;
+        }
+        $difference = 0;
+        foreach ($left as $index => $value) {
+            $difference += abs((int) $value - (int) $right[$index]);
+        }
+        return $difference / count($left);
     }
 
     private static function find_exact_media(string $inventory_number, string $record_id, string $attachment_id, string $filename): int {
