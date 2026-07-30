@@ -159,18 +159,29 @@ jobs:
           for URL in \
             "https://www.mashouse.studio/visit/" \
             "https://www.mashouse.studio/collection-artworks/"; do
-            BODY="$(curl --fail --silent --show-error --location --max-time 30 "$URL")"
-            test -n "$BODY"
             case "$URL" in
               */visit/) MARKER="ma-contact-page" ;;
               */collection-artworks/) MARKER="ma-collection-page" ;;
             esac
-            if ! printf '%s' "$BODY" | grep -Fq "$MARKER"; then
-              echo "Expected protected renderer missing at $URL" >&2
-              exit 1
-            fi
-            if printf '%s' "$BODY" | grep -Eq '\[ma_(visit_contact|collection_artworks)\]'; then
-              echo "Raw protected shortcode found at $URL" >&2
+
+            HEALTHY=0
+            for ATTEMPT in 1 2 3; do
+              RESPONSE_FILE="$(mktemp)"
+              if curl --fail --silent --show-error --location --max-time 30 \
+                --output "$RESPONSE_FILE" "$URL" \
+                && test -s "$RESPONSE_FILE" \
+                && grep -Fq "$MARKER" "$RESPONSE_FILE" \
+                && ! grep -Eq '\[ma_(visit_contact|collection_artworks)\]' "$RESPONSE_FILE"; then
+                HEALTHY=1
+                rm -f "$RESPONSE_FILE"
+                break
+              fi
+              rm -f "$RESPONSE_FILE"
+              sleep 5
+            done
+
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "Protected public page failed after three checks: $URL" >&2
               exit 1
             fi
           done
