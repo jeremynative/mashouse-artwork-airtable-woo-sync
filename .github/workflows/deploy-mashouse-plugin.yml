@@ -8,6 +8,9 @@ on:
     paths:
       - "ma-artwork-airtable-woo-sync.php"
       - "ma-performance-stability-guard.php"
+      - "ma-site-integrity-guard.php"
+      - "ma-visit-contact-page.php"
+      - "ma-collection-page.php"
       - "ma-library-fsposter-highlights/**"
       - "README.md"
       - "assets/**"
@@ -27,6 +30,9 @@ jobs:
         run: |
           php -l ma-artwork-airtable-woo-sync.php
           php -l ma-performance-stability-guard.php
+          php -l ma-site-integrity-guard.php
+          php -l ma-visit-contact-page.php
+          php -l ma-collection-page.php
           php -l ma-library-fsposter-highlights/ma-library-fsposter-highlights.php
           php -l ma-library-fsposter-highlights/wp-cli-schedule-makeup.php
 
@@ -44,19 +50,33 @@ jobs:
             --exclude ".github/" \
             --exclude "DEPLOYMENT.md" \
             --exclude "ma-performance-stability-guard.php" \
+            --exclude "ma-site-integrity-guard.php" \
+            --exclude "ma-visit-contact-page.php" \
+            --exclude "ma-collection-page.php" \
             -e "ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
             ./ "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:${{ secrets.MASHOUSE_PLUGIN_PATH }}/"
 
-      - name: Deploy stability guard as must-use plugin
+      - name: Deploy protected must-use plugins
         run: |
-          scp -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -P "${{ secrets.SITEGROUND_PORT }}" \
+          tar -czf ma-protected-mu-plugins.tgz \
             ma-performance-stability-guard.php \
-            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:/tmp/ma-performance-stability-guard.php"
+            ma-site-integrity-guard.php \
+            ma-visit-contact-page.php \
+            ma-collection-page.php
+          scp -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -P "${{ secrets.SITEGROUND_PORT }}" \
+            ma-protected-mu-plugins.tgz \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:/tmp/ma-protected-mu-plugins.tgz"
           ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
             "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
-             mkdir -p \"\$WP_ROOT/wp-content/mu-plugins\"; \
-             mv /tmp/ma-performance-stability-guard.php \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\""
+             MU_DIR=\"\$WP_ROOT/wp-content/mu-plugins\"; \
+             STAGE=\$(mktemp -d); \
+             tar -xzf /tmp/ma-protected-mu-plugins.tgz -C \"\$STAGE\"; \
+             mkdir -p \"\$MU_DIR\"; \
+             for FILE in ma-performance-stability-guard.php ma-site-integrity-guard.php ma-visit-contact-page.php ma-collection-page.php; do \
+               php -l \"\$STAGE/\$FILE\" >/dev/null && mv \"\$STAGE/\$FILE\" \"\$MU_DIR/\$FILE\"; \
+             done; \
+             rm -rf \"\$STAGE\" /tmp/ma-protected-mu-plugins.tgz"
 
       - name: Deploy library highlight scheduler
         run: |
@@ -89,7 +109,24 @@ jobs:
             "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
              test -f '${{ secrets.MASHOUSE_PLUGIN_PATH }}/ma-artwork-airtable-woo-sync.php' && \
              test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-performance-stability-guard.php\" && \
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-site-integrity-guard.php\" && \
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-visit-contact-page.php\" && \
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-collection-page.php\" && \
              test -f \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights/ma-library-fsposter-highlights.php\""
+
+      - name: Verify protected pages and theme
+        run: |
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             wp --path=\"\$WP_ROOT\" eval '
+               \$status = ma_integrity_status();
+               foreach (\$status[\"pages\"] as \$page) {
+                 if (in_array(false, \$page, true)) { fwrite(STDERR, json_encode(\$status)); exit(1); }
+               }
+               if (!\$status[\"theme_ok\"]) { fwrite(STDERR, json_encode(\$status)); exit(1); }
+               echo json_encode(\$status);
+             '"
 
       - name: Clear public site caches
         run: |
@@ -116,3 +153,24 @@ jobs:
                    \"\$WP_ROOT/wp-content/cache/breeze\" \
                    \"\$WP_ROOT/wp-content/cache/wpo-minify\" || true; \
             find \"\$WP_ROOT/wp-content/cache\" -maxdepth 3 -type f \( -name '*.html' -o -name '*.html_gzip' -o -name '*.css' -o -name '*.js' \) -delete 2>/dev/null || true"
+
+      - name: Verify public protected pages
+        run: |
+          for URL in \
+            "https://www.mashouse.studio/visit/" \
+            "https://www.mashouse.studio/collection-artworks/"; do
+            BODY="$(curl --fail --silent --show-error --location --max-time 30 "$URL")"
+            test -n "$BODY"
+            case "$URL" in
+              */visit/) MARKER="ma-contact-page" ;;
+              */collection-artworks/) MARKER="ma-collection-page" ;;
+            esac
+            if ! printf '%s' "$BODY" | grep -Fq "$MARKER"; then
+              echo "Expected protected renderer missing at $URL" >&2
+              exit 1
+            fi
+            if printf '%s' "$BODY" | grep -Eq '\[ma_(visit_contact|collection_artworks)\]'; then
+              echo "Raw protected shortcode found at $URL" >&2
+              exit 1
+            fi
+          done
