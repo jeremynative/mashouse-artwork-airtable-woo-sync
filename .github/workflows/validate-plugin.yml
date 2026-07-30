@@ -1,0 +1,41 @@
+name: Validate Ma's House WordPress Plugin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate PHP and protected deployment files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint PHP
+        run: |
+          php -l ma-artwork-airtable-woo-sync.php
+          php -l ma-performance-stability-guard.php
+          php -l ma-site-integrity-guard.php
+          php -l ma-visit-contact-page.php
+          php -l ma-collection-page.php
+          php -l ma-library-fsposter-highlights/ma-library-fsposter-highlights.php
+          php -l ma-library-fsposter-highlights/wp-cli-schedule-makeup.php
+
+      - name: Check protected deployment contract
+        run: |
+          for FILE in \
+            ma-performance-stability-guard.php \
+            ma-site-integrity-guard.php \
+            ma-visit-contact-page.php \
+            ma-collection-page.php; do
+            test -s "$FILE"
+            grep -Fq "$FILE" .github/workflows/deploy-mashouse-plugin.yml
+          done
+          grep -Fq "ma_visit_contact" ma-site-integrity-guard.php
+          grep -Fq "ma_collection_artworks" ma-site-integrity-guard.php
+          grep -Fq "https://www.mashouse.studio/visit/" .github/workflows/deploy-mashouse-plugin.yml
+          grep -Fq "https://www.mashouse.studio/collection-artworks/" .github/workflows/deploy-mashouse-plugin.yml
