@@ -6804,7 +6804,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         ];
         foreach ($script_handles as $handle) {
             wp_dequeue_script($handle);
-            wp_deregister_script($handle);
         }
 
         $style_handles = [
@@ -6835,7 +6834,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$allow_payment_assets) {
             foreach (self::payment_script_handles() as $handle) {
                 wp_dequeue_script($handle);
-                wp_deregister_script($handle);
             }
             foreach (self::payment_style_handles() as $handle) {
                 wp_dequeue_style($handle);
@@ -6846,7 +6844,6 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$allow_donation_assets) {
             foreach (self::donation_script_handles() as $handle) {
                 wp_dequeue_script($handle);
-                wp_deregister_script($handle);
             }
             foreach (self::donation_style_handles() as $handle) {
                 wp_dequeue_style($handle);
@@ -6857,21 +6854,18 @@ final class MA_Artwork_Airtable_Woo_Sync {
         if (!$allow_contact_assets) {
             foreach (['google-recaptcha', 'wpcf7-recaptcha'] as $handle) {
                 wp_dequeue_script($handle);
-                wp_deregister_script($handle);
             }
         }
 
         if (!self::allow_marketing_assets_on_current_request()) {
             foreach (['klaviyo', 'klaviyo-js', 'kl-identify-browser', 'kl-identify-browser-js', 'wck-viewed-product', 'wck-viewed-product-js'] as $handle) {
                 wp_dequeue_script($handle);
-                wp_deregister_script($handle);
             }
         }
 
         if (!$allow_donation_assets && !$allow_contact_assets) {
             foreach (self::front_end_editor_script_handles() as $handle) {
                 wp_dequeue_script($handle);
-                wp_deregister_script($handle);
             }
         }
     }

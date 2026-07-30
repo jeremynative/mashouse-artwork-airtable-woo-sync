@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ma's House Performance Stability Guard
  * Description: Emergency public-page stability guard for Ma's House. Keeps expensive background work out of anonymous page loads and improves cacheability.
- * Version: 0.1.0
+ * Version: 0.1.2
  * Author: Ma's House
  */
 
@@ -11,6 +11,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'pre_spawn_cron', 'ma_stability_throttle_frontend_cron_spawn', 1 );
+add_filter( 'action_scheduler_queue_runner_concurrent_batches', 'ma_stability_limit_action_scheduler_concurrency', 20 );
+add_filter( 'action_scheduler_queue_runner_batch_size', 'ma_stability_limit_action_scheduler_batch_size', 20 );
+
+function ma_stability_limit_action_scheduler_concurrency( $batches ) {
+	return 1;
+}
+
+function ma_stability_limit_action_scheduler_batch_size( $batch_size ) {
+	if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_cron() ) {
+		return $batch_size;
+	}
+
+	return min( (int) $batch_size, 10 );
+}
+
 function ma_stability_throttle_frontend_cron_spawn( $pre ) {
 	return ma_stability_allow_cron_for_request() ? $pre : true;
 }
@@ -29,7 +44,9 @@ function ma_stability_public_cache_headers(): void {
 	header_remove( 'Pragma' );
 	header_remove( 'Expires' );
 	header_remove( 'Cache-Control' );
-	header( 'Cache-Control: public, max-age=300, s-maxage=14400, stale-while-revalidate=3600' );
+	// Keep edge caching useful without allowing Cloudflare to hold page
+	// changes, schedule updates, or repairs for several hours.
+	header( 'Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=60' );
 }
 
 function ma_stability_is_cacheable_public_request(): bool {
@@ -44,10 +61,6 @@ function ma_stability_is_cacheable_public_request(): bool {
 	}
 
 	if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() || is_account_page() ) ) {
-		return false;
-	}
-
-	if ( function_exists( 'is_woocommerce' ) && is_woocommerce() ) {
 		return false;
 	}
 

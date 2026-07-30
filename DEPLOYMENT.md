@@ -36,6 +36,29 @@ Current working values:
 
 Use the direct SiteGround host above for deploys. Do not use `ssh.mashouse.studio`, because that hostname currently resolves through Cloudflare and GitHub Actions cannot SSH through it.
 
+## Protected public pages
+
+The Visit and Collection pages must not depend on the replaceable main plugin
+or on parent-theme files. Their renderers and integrity checks are deployed as
+must-use plugins:
+
+- `ma-visit-contact-page.php`
+- `ma-collection-page.php`
+- `ma-site-integrity-guard.php`
+- `ma-performance-stability-guard.php`
+
+The integrity guard preserves page 40576 as `/visit/` with
+`[ma_visit_contact]`, page 42601 as `/collection-artworks/` with
+`[ma_collection_artworks]`, and the production Neve theme. The deploy workflow
+must fail if any protected file is missing, a protected page drifts, its
+shortcode is not registered, the active theme changes, or raw protected
+shortcode text appears on a public page.
+
+For an intentional page or theme migration, temporarily define
+`MA_ALLOW_PROTECTED_SITE_CHANGES` as `true` in `wp-config.php`, make the
+migration, update the integrity guard's canonical values, and remove the
+bypass.
+
 The local deploy key generated for this workflow is stored outside the plugin repo here:
 
 - Private key for GitHub secret `SITEGROUND_SSH_KEY`:
