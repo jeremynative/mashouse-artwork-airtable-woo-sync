@@ -11,6 +11,7 @@ on:
       - "ma-site-integrity-guard.php"
       - "ma-visit-contact-page.php"
       - "ma-collection-page.php"
+      - "ma-fsposter-story-layout-guard.php"
       - "ma-library-fsposter-highlights/**"
       - "README.md"
       - "assets/**"
@@ -33,6 +34,7 @@ jobs:
           php -l ma-site-integrity-guard.php
           php -l ma-visit-contact-page.php
           php -l ma-collection-page.php
+          php -l ma-fsposter-story-layout-guard.php
           php -l ma-library-fsposter-highlights/ma-library-fsposter-highlights.php
           php -l ma-library-fsposter-highlights/wp-cli-schedule-makeup.php
 
@@ -53,6 +55,7 @@ jobs:
             --exclude "ma-site-integrity-guard.php" \
             --exclude "ma-visit-contact-page.php" \
             --exclude "ma-collection-page.php" \
+            --exclude "ma-fsposter-story-layout-guard.php" \
             -e "ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p ${{ secrets.SITEGROUND_PORT }}" \
             ./ "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:${{ secrets.MASHOUSE_PLUGIN_PATH }}/"
 
@@ -62,7 +65,8 @@ jobs:
             ma-performance-stability-guard.php \
             ma-site-integrity-guard.php \
             ma-visit-contact-page.php \
-            ma-collection-page.php
+            ma-collection-page.php \
+            ma-fsposter-story-layout-guard.php
           scp -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -P "${{ secrets.SITEGROUND_PORT }}" \
             ma-protected-mu-plugins.tgz \
             "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}:/tmp/ma-protected-mu-plugins.tgz"
@@ -73,7 +77,7 @@ jobs:
              STAGE=\$(mktemp -d); \
              tar -xzf /tmp/ma-protected-mu-plugins.tgz -C \"\$STAGE\"; \
              mkdir -p \"\$MU_DIR\"; \
-             for FILE in ma-performance-stability-guard.php ma-site-integrity-guard.php ma-visit-contact-page.php ma-collection-page.php; do \
+             for FILE in ma-performance-stability-guard.php ma-site-integrity-guard.php ma-visit-contact-page.php ma-collection-page.php ma-fsposter-story-layout-guard.php; do \
                php -l \"\$STAGE/\$FILE\" >/dev/null && mv \"\$STAGE/\$FILE\" \"\$MU_DIR/\$FILE\"; \
              done; \
              rm -rf \"\$STAGE\" /tmp/ma-protected-mu-plugins.tgz"
@@ -112,7 +116,15 @@ jobs:
              test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-site-integrity-guard.php\" && \
              test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-visit-contact-page.php\" && \
              test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-collection-page.php\" && \
+             test -f \"\$WP_ROOT/wp-content/mu-plugins/ma-fsposter-story-layout-guard.php\" && \
              test -f \"\$WP_ROOT/wp-content/plugins/ma-library-fsposter-highlights/ma-library-fsposter-highlights.php\""
+
+      - name: Repair future FS Poster event story settings
+        run: |
+          ssh -4 -o StrictHostKeyChecking=accept-new -i ~/.ssh/siteground_key -p "${{ secrets.SITEGROUND_PORT }}" \
+            "${{ secrets.SITEGROUND_USER }}@${{ secrets.SITEGROUND_HOST }}" \
+            "WP_ROOT=\$(cd '${{ secrets.MASHOUSE_PLUGIN_PATH }}/../../..' && pwd); \
+             wp --path=\"\$WP_ROOT\" eval 'echo wp_json_encode(ma_fsposter_story_layout_guard_repair_configuration());'"
 
       - name: Verify protected pages and theme
         run: |
