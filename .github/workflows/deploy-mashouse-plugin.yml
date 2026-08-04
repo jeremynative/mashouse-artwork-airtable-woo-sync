@@ -179,8 +179,11 @@ jobs:
             HEALTHY=0
             for ATTEMPT in 1 2 3; do
               RESPONSE_FILE="$(mktemp)"
+              CHECK_URL="${URL}?ma_deploy_verify=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${ATTEMPT}"
               if curl --fail --silent --show-error --location --max-time 30 \
-                --output "$RESPONSE_FILE" "$URL" \
+                --header "Cache-Control: no-cache" \
+                --user-agent "MaHouseDeployVerifier/1.0" \
+                --output "$RESPONSE_FILE" "$CHECK_URL" \
                 && test -s "$RESPONSE_FILE" \
                 && grep -Fq "$MARKER" "$RESPONSE_FILE" \
                 && ! grep -Eq '\[ma_(visit_contact|collection_artworks)\]' "$RESPONSE_FILE"; then
