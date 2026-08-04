@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ma's House Site Integrity Guard
  * Description: Keeps protected public pages, their shortcodes, and the production theme from being reverted by deployments or updates.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Ma's House
  */
 
@@ -148,6 +148,96 @@ add_filter( 'pre_update_option_stylesheet', 'ma_integrity_preserve_stylesheet', 
 add_filter( 'pre_update_option_template', 'ma_integrity_preserve_stylesheet', PHP_INT_MAX, 2 );
 
 /**
+ * The homepage Press feed must be an allow-list. Excluding the historical
+ * Resident Artists category is not sufficient because newer artist profiles
+ * use the broader Artists category and would otherwise leak into Latest News.
+ */
+function ma_integrity_repair_home_news_widget(): void {
+	if ( ma_integrity_bypass_enabled() || wp_installing() ) {
+		return;
+	}
+
+	if ( get_transient( 'ma_integrity_home_news_healthy' ) ) {
+		return;
+	}
+
+	$home_id    = 97;
+	$widget_id  = 'efa97c0';
+	$news_term  = '226';
+	$raw_data   = get_post_meta( $home_id, '_elementor_data', true );
+	$elements   = is_string( $raw_data ) ? json_decode( $raw_data, true ) : $raw_data;
+	$was_fixed  = false;
+	$was_found  = false;
+
+	if ( ! is_array( $elements ) ) {
+		error_log( 'Ma site integrity: homepage Elementor data is invalid.' );
+		return;
+	}
+
+	ma_integrity_set_news_widget_terms( $elements, $widget_id, $news_term, $was_found, $was_fixed );
+
+	if ( ! $was_found ) {
+		error_log( sprintf( 'Ma site integrity: homepage news widget %s is missing.', $widget_id ) );
+		return;
+	}
+
+	if ( $was_fixed ) {
+		$encoded = wp_json_encode( $elements );
+		if ( false === $encoded || false === update_post_meta( $home_id, '_elementor_data', wp_slash( $encoded ) ) ) {
+			error_log( 'Ma site integrity: homepage news widget repair failed.' );
+			return;
+		}
+
+		delete_post_meta( $home_id, '_elementor_element_cache' );
+		delete_post_meta( $home_id, '_elementor_css' );
+		delete_transient( 'ma_integrity_home_news_healthy' );
+		update_option( 'ma_integrity_home_news_last_repair', gmdate( 'c' ), false );
+		return;
+	}
+
+	set_transient( 'ma_integrity_home_news_healthy', 1, 5 * MINUTE_IN_SECONDS );
+}
+add_action( 'init', 'ma_integrity_repair_home_news_widget', PHP_INT_MAX - 2 );
+
+function ma_integrity_set_news_widget_terms( array &$elements, string $widget_id, string $news_term, bool &$was_found, bool &$was_fixed ): void {
+	foreach ( $elements as &$element ) {
+		if ( ! is_array( $element ) ) {
+			continue;
+		}
+
+		if ( isset( $element['id'] ) && $widget_id === (string) $element['id'] ) {
+			$was_found = true;
+			$settings  = isset( $element['settings'] ) && is_array( $element['settings'] ) ? $element['settings'] : array();
+			$expected  = array( $news_term );
+
+			if ( array( 'terms' ) !== ( $settings['posts_include'] ?? array() ) ) {
+				$settings['posts_include'] = array( 'terms' );
+				$was_fixed = true;
+			}
+			if ( $expected !== array_values( (array) ( $settings['posts_include_term_ids'] ?? array() ) ) ) {
+				$settings['posts_include_term_ids'] = $expected;
+				$was_fixed = true;
+			}
+			if ( isset( $settings['posts_exclude'], $settings['posts_exclude_term_ids'] ) ) {
+				unset( $settings['posts_exclude'], $settings['posts_exclude_term_ids'] );
+				$was_fixed = true;
+			}
+
+			$element['settings'] = $settings;
+			return;
+		}
+
+		if ( isset( $element['elements'] ) && is_array( $element['elements'] ) ) {
+			ma_integrity_set_news_widget_terms( $element['elements'], $widget_id, $news_term, $was_found, $was_fixed );
+			if ( $was_found ) {
+				return;
+			}
+		}
+	}
+	unset( $element );
+}
+
+/**
  * Machine-readable verification for deployments and support checks.
  */
 function ma_integrity_status(): array {
@@ -165,6 +255,7 @@ function ma_integrity_status(): array {
 
 	return array(
 		'theme_ok' => 'neve' === get_option( 'stylesheet' ) && 'neve' === get_option( 'template' ),
+		'home_news_guarded' => get_transient( 'ma_integrity_home_news_healthy' ) || (bool) get_option( 'ma_integrity_home_news_last_repair' ),
 		'pages'    => $pages,
 	);
 }
